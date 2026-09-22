@@ -1,0 +1,32 @@
+{
+  "target_id": "PySnooper:1",
+  "condition": "C",
+  "condition_name": "STRUCTURED_APPLICABILITY_AWARE",
+  "attempt": 4,
+  "prompt_sha256": "853d7557474fc5bc9322cf789013f0a6cb1ce2939fb7ef871724c5fb977e3d55",
+  "repair_attempts": 0,
+  "parse_error": null,
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 14,
+    "retry_index": 0,
+    "latency_seconds": 1.523,
+    "usage": {
+      "prompt_tokens": 19575,
+      "completion_tokens": 37,
+      "total_tokens": 19612,
+      "prompt_tokens_details": {
+        "cached_tokens": 10112
+      },
+      "prompt_cache_hit_tokens": 10112,
+      "prompt_cache_miss_tokens": 9463
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "raw_response": "{\"status\": \"NO_SUPPORTED_HYPOTHESIS\", \"applicability\": \"NOT_APPLICABLE\", \"hypothesis\": null, \"test_code\": null}",
+  "status": "NO_SUPPORTED_HYPOTHESIS",
+  "applicability": "NOT_APPLICABLE",
+  "hypothesis": null,
+  "test_path": null
+}

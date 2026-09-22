@@ -1,0 +1,32 @@
+{
+  "target_id": "PySnooper:1",
+  "condition": "B",
+  "condition_name": "NAIVE_RAW_HISTORY",
+  "attempt": 1,
+  "prompt_sha256": "f47d292705854c3607fb7b7e17b121d84be7b05b30ef502e9e52d803d13a1170",
+  "repair_attempts": 0,
+  "parse_error": null,
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 6,
+    "retry_index": 0,
+    "latency_seconds": 1.632,
+    "usage": {
+      "prompt_tokens": 11962,
+      "completion_tokens": 133,
+      "total_tokens": 12095,
+      "prompt_tokens_details": {
+        "cached_tokens": 11776
+      },
+      "prompt_cache_hit_tokens": 11776,
+      "prompt_cache_miss_tokens": 186
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "raw_response": "{\n  \"status\": \"NO_SUPPORTED_HYPOTHESIS\",\n  \"applicability\": \"The target context is PySnooper:1, but the only historical evidence provided is for PySnooper:2 and PySnooper:3, which concern different bug fixes (custom_repr tuple support and issue #2). No bug report, commit subject, fix summary, or regression test specific to PySnooper:1 is available. Without a supported oracle for the target bug, any hypothesis would be speculative and not falsifiable against the intended defect.\",\n  \"hypothesis\": null,\n  \"test_code\": null\n}",
+  "status": "NO_SUPPORTED_HYPOTHESIS",
+  "applicability": "The target context is PySnooper:1, but the only historical evidence provided is for PySnooper:2 and PySnooper:3, which concern different bug fixes (custom_repr tuple support and issue #2). No bug report, commit subject, fix summary, or regression test specific to PySnooper:1 is available. Without a supported oracle for the target bug, any hypothesis would be speculative and not falsifiable against the intended defect.",
+  "hypothesis": null,
+  "test_path": null
+}

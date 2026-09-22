@@ -1,0 +1,32 @@
+{
+  "target_id": "PySnooper:1",
+  "condition": "A",
+  "condition_name": "TARGET_ONLY",
+  "attempt": 5,
+  "prompt_sha256": "e06a298af7a27c69bc36876f31b2ced81f1367d8e83e1ac8e95e82a81e71f346",
+  "repair_attempts": 0,
+  "parse_error": null,
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 5,
+    "retry_index": 0,
+    "latency_seconds": 1.765,
+    "usage": {
+      "prompt_tokens": 10220,
+      "completion_tokens": 153,
+      "total_tokens": 10373,
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      },
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 10220
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "raw_response": "{\n  \"status\": \"NO_SUPPORTED_HYPOTHESIS\",\n  \"applicability\": \"The provided target context is insufficient to formulate a falsifiable hypothesis about a defect in PySnooper. The visible code includes configuration, documentation, and partial source files, but the core tracing logic in pysnooper/tracer.py is truncated. Without the full implementation of Tracer.__exit__, trace, and related methods, any proposed invariant would rely on guessing hidden behavior rather than reasoning from the available context. The existing tests in tests/test_pysnooper.py are also truncated, so they cannot serve as a complete oracle. Therefore, no supported hypothesis can be derived.\",\n  \"hypothesis\": null,\n  \"test_code\": null\n}",
+  "status": "NO_SUPPORTED_HYPOTHESIS",
+  "applicability": "The provided target context is insufficient to formulate a falsifiable hypothesis about a defect in PySnooper. The visible code includes configuration, documentation, and partial source files, but the core tracing logic in pysnooper/tracer.py is truncated. Without the full implementation of Tracer.__exit__, trace, and related methods, any proposed invariant would rely on guessing hidden behavior rather than reasoning from the available context. The existing tests in tests/test_pysnooper.py are also truncated, so they cannot serve as a complete oracle. Therefore, no supported hypothesis can be derived.",
+  "hypothesis": null,
+  "test_path": null
+}

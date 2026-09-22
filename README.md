@@ -1,0 +1,76 @@
+# History-guided proactive bug discovery — empirical PoC
+
+## Research question
+
+Given the same target repository and LLM budget, does structured historical bug knowledge with applicability filtering produce more grounded and verifiable discoveries than target-only exploration or raw historical bug evidence?
+
+## What was executed
+
+This PoC used the official [BugsInPy repository](https://github.com/soarsmu/BugsInPy), one held-out real target (`PySnooper:1`), and six historical bugs from two projects. The target’s real buggy/fixed revisions were executed before the LLM study. The final matrix had five attempts for each of:
+
+- A — target-only context
+- B — the same target context plus raw historical evidence
+- C — the same target context plus the same historical IDs represented as structured Bug Knowledge Units and bounded applicability decisions
+
+Historical cases were retrospectively selected to test transfer feasibility; this experiment does not validate autonomous retrieval.
+
+## Harness evidence
+
+The target buggy commit is `e21a31162f4c54be693d8ca8260e42393b39abd3`; the fixed commit is `56f22f8ffe1c6b2be4d2cf3ad1987fdb66113da2`. The unmodified BugsInPy regression test failed on the buggy checkout and passed on the fixed checkout under the same Python 3.9.18 environment and ASCII locale. See `artifacts/harness/verification.json` and the two regression logs.
+
+Python 3.13 was not usable for this historical revision because it removed `collections.Mapping`. Docker was installed but its daemon was unavailable, so the benchmark’s declared Python 3.8-era behavior was reproduced with the available local Python 3.9 runtime. This environment decision is documented in `research_log.md`.
+
+## Leakage controls
+
+Generation saw only `data/target_context/PySnooper-1.txt` for the target. It did not see the target issue, fixed revision, fix diff, regression test, BugsInPy metadata, or changed-file metadata. Evaluator-only target truth is in `data/evaluator_truth/`. Historical raw and structured records are separate and share exactly the same six candidate IDs.
+
+The structured representation contains Context, Preconditions, Trigger, Expected Invariant, Observed Failure, Failure Mechanism, Oracle, Oracle Provenance, Test Strategy, Evidence References, and Confidence. Direct versus inferred provenance is recorded per field.
+
+## DeepSeek configuration
+
+The client follows the official [DeepSeek Chat Completions API](https://api-docs.deepseek.com/api/create-chat-completion/) and disables default reasoning using the documented [Thinking Mode](https://api-docs.deepseek.com/guides/thinking_mode/) switch. Configuration: model `deepseek-flash`, JSON output, `thinking.type=disabled`, temperature `0.2`, max output `1800`, bounded retries, and at most one repair attempt. API keys are read from `DEEPSEEK_API_KEY` and never logged.
+
+## Results
+
+| Condition | Attempts | Tests generated | No supported hypothesis | F2P | P2P | F2F | P2F | Mechanical |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| A target-only | 5 | 4 | 1 | 0 | 3 | 0 | 0 | 1 |
+| B raw history | 5 | 0 | 5 | 0 | 0 | 0 | 0 | 0 |
+| C structured/applicability-aware | 5 | 0 | 5 | 0 | 0 | 0 | 0 | 0 |
+
+The strongest success signal, F2P (meaningful FAIL on buggy and PASS on fixed), was zero for all three conditions. A produced four executable tests: three P2P non-triggers and one mechanical failure, plus one abstention. B produced no executable candidate. C conservatively rejected all five attempts as `NO_SUPPORTED_HYPOTHESIS` / `NOT_APPLICABLE`.
+
+### Detailed generated case
+
+In A/1, DeepSeek proposed that an invalid watched expression should be ignored and generated a real pytest. Both revisions raised `SyntaxError`, so the evaluator classified it mechanical and excluded it from discovery counts. A/2–A/4 were executable but passed on both revisions. The unchanged tests and logs are retained under `generated_tests/PySnooper_1/` and `artifacts/execution_logs/PySnooper_1/`.
+
+The benchmark sanity test is intentionally separate: `tests/test_chinese.py::test_chinese` gives buggy FAIL/fixed PASS and proves the evaluator can observe a real revision-specific semantic difference. It is not counted as an LLM discovery because it is evaluator-only.
+
+## Reproduction
+
+From the repository root:
+
+```bash
+git clone https://github.com/soarsmu/BugsInPy vendor/BugsInPy
+python3 -m scripts.bootstrap_benchmark
+cd workspace/harness-pysnooper-buggy/PySnooper
+/opt/anaconda3/bin/python3.9 -m venv env39
+env39/bin/python -m pip install setuptools pytest python_toolbox
+env39/bin/python setup.py install
+cd ../../harness-pysnooper-fixed/PySnooper
+/opt/anaconda3/bin/python3.9 -m venv env39
+env39/bin/python -m pip install setuptools pytest python_toolbox
+env39/bin/python setup.py install
+cd ../../..
+python3 -m scripts.verify_harness
+python3 scripts/prepare_data.py
+export DEEPSEEK_API_KEY='set this in your shell; do not write it to files'
+python3 -m scripts.run_experiment --attempts 3 --conditions A,B,C
+python3 -m scripts.evaluate_generated_tests
+```
+
+The checked-in `data/`, `generated_tests/`, `artifacts/`, and `results/` files are the outputs from the completed run. `data/case_manifest.json` contains the exact revisions, split, runtime, and model configuration.
+
+## Limitations and conclusion
+
+This is one target, five attempts per condition, and a retrospective historical subset. It cannot support statistical significance, recall claims, or autonomous-retrieval claims. The negative result is still informative: in this setting, structured applicability-aware history did not produce a verified discovery, but it did avoid generating unsupported tests by returning `NO_SUPPORTED_HYPOTHESIS`. The next study should add more held-out targets and pre-register historical retrieval instead of selecting transferable cases retrospectively.

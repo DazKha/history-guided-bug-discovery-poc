@@ -1,0 +1,32 @@
+{
+  "target_id": "PySnooper:1",
+  "condition": "B",
+  "condition_name": "NAIVE_RAW_HISTORY",
+  "attempt": 2,
+  "prompt_sha256": "c319447d7d631514f9aacc79bbfa9b7490aa1e85e995c63ff30ef87a1a221cee",
+  "repair_attempts": 0,
+  "parse_error": null,
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 7,
+    "retry_index": 0,
+    "latency_seconds": 0.882,
+    "usage": {
+      "prompt_tokens": 11962,
+      "completion_tokens": 34,
+      "total_tokens": 11996,
+      "prompt_tokens_details": {
+        "cached_tokens": 11776
+      },
+      "prompt_cache_hit_tokens": 11776,
+      "prompt_cache_miss_tokens": 186
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "raw_response": "{\"status\": \"NO_SUPPORTED_HYPOTHESIS\", \"applicability\": \"unsupported\", \"hypothesis\": null, \"test_code\": null}",
+  "status": "NO_SUPPORTED_HYPOTHESIS",
+  "applicability": "unsupported",
+  "hypothesis": null,
+  "test_path": null
+}

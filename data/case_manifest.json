@@ -1,0 +1,64 @@
+{
+  "source": "https://github.com/soarsmu/BugsInPy",
+  "benchmark_revision": "11c5f1eea954a42132cfd06bf257766a7963e0fd",
+  "historical_pool": [
+    "PySnooper:2",
+    "PySnooper:3",
+    "cookiecutter:1",
+    "cookiecutter:2",
+    "cookiecutter:3",
+    "cookiecutter:4"
+  ],
+  "target_set": [
+    "PySnooper:1"
+  ],
+  "candidate_history_ids_per_target": {
+    "PySnooper:1": [
+      "PySnooper:2",
+      "PySnooper:3",
+      "cookiecutter:1",
+      "cookiecutter:2",
+      "cookiecutter:3",
+      "cookiecutter:4"
+    ]
+  },
+  "runtime": {
+    "python": "/opt/anaconda3/bin/python3.9",
+    "locale": "LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0",
+    "test_command": "env39/bin/python -m pytest -q generated_test.py"
+  },
+  "target": {
+    "target_id": "PySnooper:1",
+    "project": "PySnooper",
+    "bug_id": "1",
+    "buggy_commit_id": "e21a31162f4c54be693d8ca8260e42393b39abd3",
+    "fixed_commit_id": "56f22f8ffe1c6b2be4d2cf3ad1987fdb66113da2",
+    "buggy_repo": "workspace/harness-pysnooper-buggy/PySnooper",
+    "fixed_repo": "workspace/harness-pysnooper-fixed/PySnooper",
+    "test_file_evaluator_only": "tests/test_chinese.py",
+    "target_context": "data/target_context/PySnooper-1.txt"
+  },
+  "leakage_control": {
+    "target_context_excludes": [
+      "tests/test_chinese.py",
+      "bugsinpy_bug.info",
+      "bugsinpy_patchfile.info",
+      "bugsinpy_run_test.sh",
+      "bugsinpy_requirements.txt"
+    ],
+    "evaluator_only": [
+      "target issue/report",
+      "target fixed revision",
+      "target fix diff",
+      "target regression test",
+      "target changed-file metadata"
+    ]
+  },
+  "historical_selection_note": "Historical cases were retrospectively selected to test transfer feasibility; this experiment does not validate autonomous retrieval.",
+  "model": {
+    "name": "deepseek-flash",
+    "endpoint": "https://api.deepseek.com/chat/completions",
+    "temperature": 0.2,
+    "max_tokens": 1800
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "source": "https://github.com/soarsmu/BugsInPy",
+  "project": "PySnooper",
+  "bug": "1",
+  "checkouts": [
+    {
+      "label": "buggy",
+      "path": "/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper",
+      "version": 0
+    },
+    {
+      "label": "fixed",
+      "path": "/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-fixed/PySnooper",
+      "version": 1
+    }
+  ]
+}

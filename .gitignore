@@ -1,0 +1,13 @@
+.env
+__pycache__/
+*.pyc
+vendor/BugsInPy/.git/
+vendor/BugsInPy/
+vendor/upstream_projects/
+workspace/
+vendor/upstream_projects/*/.git/
+workspace/*/PySnooper/.git/
+workspace/*/PySnooper/env/
+workspace/*/PySnooper/env39/
+workspace/*/PySnooper/build/
+workspace/*/PySnooper/*.egg-info/

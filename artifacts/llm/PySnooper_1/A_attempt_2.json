@@ -1,0 +1,38 @@
+{
+  "target_id": "PySnooper:1",
+  "condition": "A",
+  "condition_name": "TARGET_ONLY",
+  "attempt": 2,
+  "prompt_sha256": "84d1ca954e47e53fbff680a6714c1970b0dfafc759fcf02b9dee59a3aa0e6f0a",
+  "repair_attempts": 0,
+  "parse_error": null,
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 2,
+    "retry_index": 0,
+    "latency_seconds": 3.017,
+    "usage": {
+      "prompt_tokens": 10220,
+      "completion_tokens": 670,
+      "total_tokens": 10890,
+      "prompt_tokens_details": {
+        "cached_tokens": 9984
+      },
+      "prompt_cache_hit_tokens": 9984,
+      "prompt_cache_miss_tokens": 236
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "raw_response": "{\n  \"status\": \"SUPPORTED\",\n  \"applicability\": \"The target is PySnooper, a Python debugging decorator. The README documents that `watch_explode` expands values to show all attributes or items of lists/dictionaries, and the Advanced Usage section documents `Attrs`, `Keys`, and `Indices` classes with `exclude` and slicing support. The test suite includes `test_watch_explode` exercising `watch_explode=('_d', '_point', 'lst + []')`. A falsifiable hypothesis can be formed about the documented behavior of `Indices` slicing, which is a public API feature described in the README.\",\n  \"hypothesis\": {\n    \"claim\": \"`pysnooper.Indices('z')[-3:]` limits the expanded indices to the last three elements of the sequence, as documented in the README: 'Add a slice after `Indices` to only see the values within that slice, e.g. `Indices('z')[-3:]`.'\",\n    \"trigger\": \"Create a `Tracer` with `watch_explode=(pysnooper.Indices('z')[-3:],)` and run a function that defines `z = [0, 1, 2, 3, 4]`. Capture the output and inspect the variable entries for `z`.\",\n    \"expected_invariant\": \"The output contains variable entries for `z[2]`, `z[3]`, and `z[4]` (the last three indices), and does not contain entries for `z[0]` or `z[1]`.\",\n    \"oracle\": \"The README's Advanced Usage section explicitly documents that `Indices('z')[-3:]` shows only the values within that slice. This is a documented public behavior, not merely current implementation behavior.\",\n    \"oracle_evidence\": \"README.md: 'Add a slice after `Indices` to only see the values within that slice, e.g. `Indices('z')[-3:]`.'\"\n  },\n  \"test_code\": \"import io\\nimport re\\nimport pysnooper\\n\\n\\ndef test_indices_slice_limits_expanded_indices():\\n    string_io = io.StringIO()\\n\\n    @pysnooper.snoop(string_io, watch_explode=(pysnooper.Indices('z')[-3:],))\\n    def my_function():\\n        z = [0, 1, 2, 3, 4]\\n\\n    my_function()\\n    output = string_io.getvalue()\\n\\n    assert re.search(r'z\\\\[2\\\\] = 2', output)\\n    assert re.search(r'z\\\\[3\\\\] = 3', output)\\n    assert re.search(r'z\\\\[4\\\\] = 4', output)\\n    assert not re.search(r'z\\\\[0\\\\] = 0', output)\\n    assert not re.search(r'z\\\\[1\\\\] = 1', output)\\n\"\n}",
+  "status": "HYPOTHESIS",
+  "applicability": "The target is PySnooper, a Python debugging decorator. The README documents that `watch_explode` expands values to show all attributes or items of lists/dictionaries, and the Advanced Usage section documents `Attrs`, `Keys`, and `Indices` classes with `exclude` and slicing support. The test suite includes `test_watch_explode` exercising `watch_explode=('_d', '_point', 'lst + []')`. A falsifiable hypothesis can be formed about the documented behavior of `Indices` slicing, which is a public API feature described in the README.",
+  "hypothesis": {
+    "claim": "`pysnooper.Indices('z')[-3:]` limits the expanded indices to the last three elements of the sequence, as documented in the README: 'Add a slice after `Indices` to only see the values within that slice, e.g. `Indices('z')[-3:]`.'",
+    "trigger": "Create a `Tracer` with `watch_explode=(pysnooper.Indices('z')[-3:],)` and run a function that defines `z = [0, 1, 2, 3, 4]`. Capture the output and inspect the variable entries for `z`.",
+    "expected_invariant": "The output contains variable entries for `z[2]`, `z[3]`, and `z[4]` (the last three indices), and does not contain entries for `z[0]` or `z[1]`.",
+    "oracle": "The README's Advanced Usage section explicitly documents that `Indices('z')[-3:]` shows only the values within that slice. This is a documented public behavior, not merely current implementation behavior.",
+    "oracle_evidence": "README.md: 'Add a slice after `Indices` to only see the values within that slice, e.g. `Indices('z')[-3:]`.'"
+  },
+  "test_path": "generated_tests/PySnooper_1/A_attempt_2.py"
+}

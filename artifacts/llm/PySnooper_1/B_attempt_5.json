@@ -1,0 +1,32 @@
+{
+  "target_id": "PySnooper:1",
+  "condition": "B",
+  "condition_name": "NAIVE_RAW_HISTORY",
+  "attempt": 5,
+  "prompt_sha256": "f4a840b348791e845cac05f2943e3fd9d062e64de0511d9a7abd5b9e261af5c6",
+  "repair_attempts": 0,
+  "parse_error": null,
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 10,
+    "retry_index": 0,
+    "latency_seconds": 1.43,
+    "usage": {
+      "prompt_tokens": 11962,
+      "completion_tokens": 132,
+      "total_tokens": 12094,
+      "prompt_tokens_details": {
+        "cached_tokens": 10112
+      },
+      "prompt_cache_hit_tokens": 10112,
+      "prompt_cache_miss_tokens": 1850
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "raw_response": "{\n  \"status\": \"NO_SUPPORTED_HYPOTHESIS\",\n  \"applicability\": \"The provided target context (PySnooper:1) contains only source files, README, and CI config. The historical evidence references other PySnooper bug IDs (2 and 3) and cookiecutter bugs, none of which correspond to the target ID. No bug report, commit subject, or fix summary is available for PySnooper:1. Therefore, no falsifiable hypothesis about a specific defect can be derived from the target context alone.\",\n  \"hypothesis\": null,\n  \"test_code\": null\n}",
+  "status": "NO_SUPPORTED_HYPOTHESIS",
+  "applicability": "The provided target context (PySnooper:1) contains only source files, README, and CI config. The historical evidence references other PySnooper bug IDs (2 and 3) and cookiecutter bugs, none of which correspond to the target ID. No bug report, commit subject, or fix summary is available for PySnooper:1. Therefore, no falsifiable hypothesis about a specific defect can be derived from the target context alone.",
+  "hypothesis": null,
+  "test_path": null
+}

@@ -1,0 +1,32 @@
+{
+  "target_id": "PySnooper:1",
+  "condition": "B",
+  "condition_name": "NAIVE_RAW_HISTORY",
+  "attempt": 3,
+  "prompt_sha256": "0468bf230c2bf3983a1783de2423bafb0dfb42d3edd37317e818adb3a5b91dff",
+  "repair_attempts": 0,
+  "parse_error": null,
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 8,
+    "retry_index": 0,
+    "latency_seconds": 1.671,
+    "usage": {
+      "prompt_tokens": 11962,
+      "completion_tokens": 160,
+      "total_tokens": 12122,
+      "prompt_tokens_details": {
+        "cached_tokens": 11776
+      },
+      "prompt_cache_hit_tokens": 11776,
+      "prompt_cache_miss_tokens": 186
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "raw_response": "{\"status\": \"NO_SUPPORTED_HYPOTHESIS\", \"applicability\": \"The provided target context is PySnooper:1, but the only historical evidence available is for PySnooper:2 and PySnooper:3 (and unrelated cookiecutter bugs). No bug report, commit subject, fix summary, or regression test specific to PySnooper:1 is provided. The target files shown (tracer.py, variables.py, utils.py, etc.) are truncated and do not expose a concrete, falsifiable defect tied to a known issue. Without a target-specific oracle or bug description, any hypothesis would be speculative and would treat current implementation behavior as the oracle, which is disallowed.\", \"hypothesis\": null, \"test_code\": null}",
+  "status": "NO_SUPPORTED_HYPOTHESIS",
+  "applicability": "The provided target context is PySnooper:1, but the only historical evidence available is for PySnooper:2 and PySnooper:3 (and unrelated cookiecutter bugs). No bug report, commit subject, fix summary, or regression test specific to PySnooper:1 is provided. The target files shown (tracer.py, variables.py, utils.py, etc.) are truncated and do not expose a concrete, falsifiable defect tied to a known issue. Without a target-specific oracle or bug description, any hypothesis would be speculative and would treat current implementation behavior as the oracle, which is disallowed.",
+  "hypothesis": null,
+  "test_path": null
+}

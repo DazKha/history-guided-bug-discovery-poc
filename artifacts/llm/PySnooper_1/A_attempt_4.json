@@ -1,0 +1,38 @@
+{
+  "target_id": "PySnooper:1",
+  "condition": "A",
+  "condition_name": "TARGET_ONLY",
+  "attempt": 4,
+  "prompt_sha256": "b1413f7c3611dae9f97e7608bd1ea31dd51065b1838a83c83a6bb03dc2311d04",
+  "repair_attempts": 0,
+  "parse_error": null,
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 4,
+    "retry_index": 0,
+    "latency_seconds": 2.78,
+    "usage": {
+      "prompt_tokens": 10220,
+      "completion_tokens": 562,
+      "total_tokens": 10782,
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      },
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 10220
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "raw_response": "{\n  \"status\": \"ok\",\n  \"applicability\": \"The target context includes pysnooper/tracer.py, pysnooper/variables.py, and tests/test_pysnooper.py. The README documents watch_explode behavior and the test suite contains test_watch_explode, which exercises real target code. A falsifiable hypothesis can be derived from the documented behavior of watch_explode expanding attributes/items.\",\n  \"hypothesis\": {\n    \"claim\": \"When watch_explode is used with a variable that is a list, PySnooper should emit output entries for the list's indices, such as 'lst[0]', 'lst[1]', and 'lst[2]', showing their values.\",\n    \"trigger\": \"Decorate a function with @pysnooper.snoop(watch_explode=('lst',)) where lst is a local list, then call the function and capture stderr output.\",\n    \"expected_invariant\": \"The captured output contains lines matching 'lst[0] = 7', 'lst[1] = 8', and 'lst[2] = 9' (or equivalent variable entries for those indices).\",\n    \"oracle\": \"README.md states: 'Expand values to see all their attributes or items of lists/dictionaries' and gives example output 'Modified var:.. foo[2] = ...'. tests/test_pysnooper.py::test_watch_explode exercises watch_explode with a list and expects index entries.\",\n    \"oracle_evidence\": \"README.md section 'Features' includes watch_explode example and output showing 'foo[2] = ...'. tests/test_pysnooper.py contains test_watch_explode which uses watch_explode=('_d', '_point', 'lst + []') and asserts output entries for list indices.\"\n  },\n  \"test_code\": \"import io\\nimport pysnooper\\n\\n\\ndef test_watch_explode_list_indices():\\n    string_io = io.StringIO()\\n\\n    @pysnooper.snoop(string_io, watch_explode=('lst',))\\n    def my_function():\\n        lst = [7, 8, 9]\\n        lst.append(10)\\n\\n    my_function()\\n    output = string_io.getvalue()\\n    assert 'lst[0] = 7' in output\\n    assert 'lst[1] = 8' in output\\n    assert 'lst[2] = 9' in output\\n    assert 'lst[3] = 10' in output\\n\"\n}",
+  "status": "HYPOTHESIS",
+  "applicability": "The target context includes pysnooper/tracer.py, pysnooper/variables.py, and tests/test_pysnooper.py. The README documents watch_explode behavior and the test suite contains test_watch_explode, which exercises real target code. A falsifiable hypothesis can be derived from the documented behavior of watch_explode expanding attributes/items.",
+  "hypothesis": {
+    "claim": "When watch_explode is used with a variable that is a list, PySnooper should emit output entries for the list's indices, such as 'lst[0]', 'lst[1]', and 'lst[2]', showing their values.",
+    "trigger": "Decorate a function with @pysnooper.snoop(watch_explode=('lst',)) where lst is a local list, then call the function and capture stderr output.",
+    "expected_invariant": "The captured output contains lines matching 'lst[0] = 7', 'lst[1] = 8', and 'lst[2] = 9' (or equivalent variable entries for those indices).",
+    "oracle": "README.md states: 'Expand values to see all their attributes or items of lists/dictionaries' and gives example output 'Modified var:.. foo[2] = ...'. tests/test_pysnooper.py::test_watch_explode exercises watch_explode with a list and expects index entries.",
+    "oracle_evidence": "README.md section 'Features' includes watch_explode example and output showing 'foo[2] = ...'. tests/test_pysnooper.py contains test_watch_explode which uses watch_explode=('_d', '_point', 'lst + []') and asserts output entries for list indices."
+  },
+  "test_path": "generated_tests/PySnooper_1/A_attempt_4.py"
+}

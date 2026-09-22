@@ -1,0 +1,38 @@
+{
+  "target_id": "PySnooper:1",
+  "condition": "A",
+  "condition_name": "TARGET_ONLY",
+  "attempt": 3,
+  "prompt_sha256": "c84f64407a0692374d71822ac639ddaf0eecffea607ce454bcb8d64ad150d543",
+  "repair_attempts": 0,
+  "parse_error": null,
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 3,
+    "retry_index": 0,
+    "latency_seconds": 3.223,
+    "usage": {
+      "prompt_tokens": 10220,
+      "completion_tokens": 550,
+      "total_tokens": 10770,
+      "prompt_tokens_details": {
+        "cached_tokens": 9984
+      },
+      "prompt_cache_hit_tokens": 9984,
+      "prompt_cache_miss_tokens": 236
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "raw_response": "{\n  \"status\": \"SUPPORTED\",\n  \"applicability\": \"The target context includes pysnooper/tracer.py, pysnooper/utils.py, and tests/test_pysnooper.py. The tracer's get_local_reprs function builds an OrderedDict of local variable representations and sorts them by vars_order, which is code.co_varnames + code.co_cellvars + code.co_freevars + tuple(frame.f_locals.keys()). This ordering is deterministic for a given function and frame. The test can exercise real target code by decorating a function with pysnooper.snoop and capturing output, then asserting that the first variable entry is the function argument, matching the documented behavior in README.md and tests/test_pysnooper.py.\",\n  \"hypothesis\": {\n    \"claim\": \"For a function decorated with @pysnooper.snoop(), the first variable entry in the snoop output is the function's first argument, because get_local_reprs orders variables by code.co_varnames before other locals.\",\n    \"trigger\": \"Define a function decorated with @pysnooper.snoop() that takes a single argument and assigns a local variable, then call it and capture stderr.\",\n    \"expected_invariant\": \"The first line of the captured output that starts with 'Starting var:' or 'New var:' refers to the function argument, not the local variable assigned inside the function.\",\n    \"oracle\": \"The first variable entry in the output is the function argument.\",\n    \"oracle_evidence\": \"README.md example output shows 'Starting var:.. number = 6' as the first variable line for a function whose first argument is number. tests/test_pysnooper.py test_string_io expects VariableEntry('foo', value_regex=\\\"u?'baba'\\\") before CallEntry and before VariableEntry('x', '7'), confirming the argument appears first.\"\n  },\n  \"test_code\": \"import io\\nimport pysnooper\\n\\ndef test_first_variable_entry_is_argument():\\n    string_io = io.StringIO()\\n\\n    @pysnooper.snoop(string_io)\\n    def my_function(foo):\\n        x = 7\\n        return x\\n\\n    my_function('baba')\\n    output = string_io.getvalue()\\n    lines = [line for line in output.splitlines() if line.strip()]\\n    first_var_line = next(line for line in lines if 'var:' in line)\\n    assert 'foo' in first_var_line\\n    assert 'x' not in first_var_line\"\n}",
+  "status": "HYPOTHESIS",
+  "applicability": "The target context includes pysnooper/tracer.py, pysnooper/utils.py, and tests/test_pysnooper.py. The tracer's get_local_reprs function builds an OrderedDict of local variable representations and sorts them by vars_order, which is code.co_varnames + code.co_cellvars + code.co_freevars + tuple(frame.f_locals.keys()). This ordering is deterministic for a given function and frame. The test can exercise real target code by decorating a function with pysnooper.snoop and capturing output, then asserting that the first variable entry is the function argument, matching the documented behavior in README.md and tests/test_pysnooper.py.",
+  "hypothesis": {
+    "claim": "For a function decorated with @pysnooper.snoop(), the first variable entry in the snoop output is the function's first argument, because get_local_reprs orders variables by code.co_varnames before other locals.",
+    "trigger": "Define a function decorated with @pysnooper.snoop() that takes a single argument and assigns a local variable, then call it and capture stderr.",
+    "expected_invariant": "The first line of the captured output that starts with 'Starting var:' or 'New var:' refers to the function argument, not the local variable assigned inside the function.",
+    "oracle": "The first variable entry in the output is the function argument.",
+    "oracle_evidence": "README.md example output shows 'Starting var:.. number = 6' as the first variable line for a function whose first argument is number. tests/test_pysnooper.py test_string_io expects VariableEntry('foo', value_regex=\"u?'baba'\") before CallEntry and before VariableEntry('x', '7'), confirming the argument appears first."
+  },
+  "test_path": "generated_tests/PySnooper_1/A_attempt_3.py"
+}

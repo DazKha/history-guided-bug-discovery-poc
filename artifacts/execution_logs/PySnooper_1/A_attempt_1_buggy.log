@@ -1,0 +1,40 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_________________ test_invalid_watch_expression_does_not_raise _________________
+
+    def test_invalid_watch_expression_does_not_raise():
+        string_io = io.StringIO()
+
+>       @pysnooper.snoop(string_io, watch=('1 +',))
+
+_generated_eval_A_attempt_1.py:7:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+pysnooper/tracer.py:192: in __init__
+    self.watch = [
+pysnooper/tracer.py:193: in <listcomp>
+    v if isinstance(v, BaseVariable) else CommonVariable(v)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <pysnooper.variables.CommonVariable object at 0x1016bfaf0>
+source = '1 +', exclude = ()
+
+    def __init__(self, source, exclude=()):
+        self.source = source
+        self.exclude = utils.ensure_tuple(exclude)
+>       self.code = compile(source, '<variable>', 'eval')
+E         File "<variable>", line 1
+E           1 +
+E             ^
+E       SyntaxError: unexpected EOF while parsing
+
+pysnooper/variables.py:21: SyntaxError
+=============================== warnings summary ===============================
+pysnooper/variables.py:3
+pysnooper/variables.py:3
+  /Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/pysnooper/variables.py:3: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated since Python 3.3, and in 3.10 it will stop working
+    from collections import Mapping, Sequence
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED _generated_eval_A_attempt_1.py::test_invalid_watch_expression_does_not_raise
+1 failed, 2 warnings in 0.03s

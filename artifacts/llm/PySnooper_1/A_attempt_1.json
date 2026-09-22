@@ -1,0 +1,38 @@
+{
+  "target_id": "PySnooper:1",
+  "condition": "A",
+  "condition_name": "TARGET_ONLY",
+  "attempt": 1,
+  "prompt_sha256": "27e413bff0e52f7da2c9b7cc6577b288794a2f538070eaa3364156d9e16d7f51",
+  "repair_attempts": 0,
+  "parse_error": null,
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 1,
+    "retry_index": 0,
+    "latency_seconds": 2.536,
+    "usage": {
+      "prompt_tokens": 10220,
+      "completion_tokens": 442,
+      "total_tokens": 10662,
+      "prompt_tokens_details": {
+        "cached_tokens": 9984
+      },
+      "prompt_cache_hit_tokens": 9984,
+      "prompt_cache_miss_tokens": 236
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "raw_response": "{\n  \"status\": \"SUPPORTED\",\n  \"applicability\": \"The target is a Python debugging library with a public API and tests. A falsifiable hypothesis can be derived from the documented behavior of the `watch` parameter and the `get_local_reprs` function in `pysnooper/tracer.py`.\",\n  \"hypothesis\": {\n    \"claim\": \"When a watched expression is not a valid Python expression, the tracer silently ignores it rather than raising an exception.\",\n    \"trigger\": \"Call `pysnooper.snoop(watch=('1 +',))` on a function and execute it.\",\n    \"expected_invariant\": \"The function executes normally and produces output without raising an exception.\",\n    \"oracle\": \"The function returns the expected value and the output does not contain a traceback or error message.\",\n    \"oracle_evidence\": \"In `pysnooper/variables.py`, `BaseVariable.__init__` compiles the source expression. If compilation fails, it raises a `SyntaxError`. However, `Tracer.__init__` wraps each watch item in `CommonVariable` or `Exploding`, and `CommonVariable` inherits from `BaseVariable`. The `items` method catches exceptions during evaluation but not during compilation. Therefore, an invalid expression would raise a `SyntaxError` at decoration time, contradicting the claim. The hypothesis is falsifiable: if the claim is true, no exception should occur; if false, a `SyntaxError` is raised.\"\n  },\n  \"test_code\": \"import io\\nimport pysnooper\\n\\ndef test_invalid_watch_expression_does_not_raise():\\n    string_io = io.StringIO()\\n\\n    @pysnooper.snoop(string_io, watch=('1 +',))\\n    def my_function():\\n        return 42\\n\\n    result = my_function()\\n    assert result == 42\\n    output = string_io.getvalue()\\n    assert 'Traceback' not in output\\n    assert 'SyntaxError' not in output\"\n}",
+  "status": "HYPOTHESIS",
+  "applicability": "The target is a Python debugging library with a public API and tests. A falsifiable hypothesis can be derived from the documented behavior of the `watch` parameter and the `get_local_reprs` function in `pysnooper/tracer.py`.",
+  "hypothesis": {
+    "claim": "When a watched expression is not a valid Python expression, the tracer silently ignores it rather than raising an exception.",
+    "trigger": "Call `pysnooper.snoop(watch=('1 +',))` on a function and execute it.",
+    "expected_invariant": "The function executes normally and produces output without raising an exception.",
+    "oracle": "The function returns the expected value and the output does not contain a traceback or error message.",
+    "oracle_evidence": "In `pysnooper/variables.py`, `BaseVariable.__init__` compiles the source expression. If compilation fails, it raises a `SyntaxError`. However, `Tracer.__init__` wraps each watch item in `CommonVariable` or `Exploding`, and `CommonVariable` inherits from `BaseVariable`. The `items` method catches exceptions during evaluation but not during compilation. Therefore, an invalid expression would raise a `SyntaxError` at decoration time, contradicting the claim. The hypothesis is falsifiable: if the claim is true, no exception should occur; if false, a `SyntaxError` is raised."
+  },
+  "test_path": "generated_tests/PySnooper_1/A_attempt_1.py"
+}

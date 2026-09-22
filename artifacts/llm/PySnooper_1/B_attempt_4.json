@@ -1,0 +1,32 @@
+{
+  "target_id": "PySnooper:1",
+  "condition": "B",
+  "condition_name": "NAIVE_RAW_HISTORY",
+  "attempt": 4,
+  "prompt_sha256": "8f905446b1e84ebbd3ac5da0c5f05a83a74534e3c6ea05662489c5ac5ae5b9ad",
+  "repair_attempts": 0,
+  "parse_error": null,
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 9,
+    "retry_index": 0,
+    "latency_seconds": 1.841,
+    "usage": {
+      "prompt_tokens": 11962,
+      "completion_tokens": 151,
+      "total_tokens": 12113,
+      "prompt_tokens_details": {
+        "cached_tokens": 10112
+      },
+      "prompt_cache_hit_tokens": 10112,
+      "prompt_cache_miss_tokens": 1850
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "raw_response": "{\"status\": \"NO_SUPPORTED_HYPOTHESIS\", \"applicability\": \"The target-side context (PySnooper:1) provides only source files and a truncated test file; no bug report, commit subject, or fix summary specific to PySnooper:1 is available. The raw historical evidence references other candidate IDs (PySnooper:2, PySnooper:3, cookiecutter:*) but none correspond to PySnooper:1, and no oracle or expected invariant for PySnooper:1 can be derived from the provided material. Without a supported oracle, no falsifiable hypothesis or meaningful deterministic test can be constructed.\", \"hypothesis\": null, \"test_code\": null}",
+  "status": "NO_SUPPORTED_HYPOTHESIS",
+  "applicability": "The target-side context (PySnooper:1) provides only source files and a truncated test file; no bug report, commit subject, or fix summary specific to PySnooper:1 is available. The raw historical evidence references other candidate IDs (PySnooper:2, PySnooper:3, cookiecutter:*) but none correspond to PySnooper:1, and no oracle or expected invariant for PySnooper:1 can be derived from the provided material. Without a supported oracle, no falsifiable hypothesis or meaningful deterministic test can be constructed.",
+  "hypothesis": null,
+  "test_path": null
+}

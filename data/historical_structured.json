@@ -1,0 +1,308 @@
+[
+  {
+    "history_id": "PySnooper:2",
+    "project": "PySnooper",
+    "bug_id": "2",
+    "buggy_commit_id": "e21a31162f4c54be693d8ca8260e42393b39abd3",
+    "fixed_commit_id": "814abc34a098c1b98cb327105ac396f985d2413e",
+    "Context": {
+      "text": "Historical PySnooper bug 2; changed paths: AUTHORS, MANIFEST.in, README.md, pysnooper/__init__.py, pysnooper/pycompat.py, pysnooper/tracer.py, pysnooper/utils.py, pysnooper/variables.py, setup.py, tests/mini_toolbox/__init__.py.",
+      "provenance": "direct from fix diff"
+    },
+    "Preconditions": {
+      "text": "import io import textwrap import threading import types import os import sys from pysnooper.utils import truncate import pytest import pysnooper from pysnooper.variables import needs_parentheses from .utils import (assert_output, assert_sample_output, VariableEntry, CallEntry, LineEntry, ReturnEntry, OpcodeEntry, ReturnValueEntry, ExceptionEntry) from . import mini_toolbox",
+      "provenance": "inferred from historical regression test"
+    },
+    "Trigger": {
+      "text": "import io import textwrap import threading import types import os import sys from pysnooper.utils import truncate import pytest import pysnooper from pysnooper.variables import needs_parentheses from .utils import (assert_output, assert_sample_output, VariableEntry, CallEntry, LineEntry, ReturnEntry, OpcodeEntry, ReturnValueEntry, ExceptionEntry) from . import mini_toolbox",
+      "provenance": "direct from historical regression test"
+    },
+    "Expected Invariant": {
+      "text": "The behavior asserted by the historical regression test should hold.",
+      "provenance": "historical test oracle"
+    },
+    "Observed Failure": {
+      "text": "The historical regression test was added or changed at fixed revision 814abc34a098 to distinguish the fixed behavior from the buggy revision.",
+      "provenance": "inferred from revision pair"
+    },
+    "Failure Mechanism": {
+      "text": "diff --git a/AUTHORS b/AUTHORS\nindex 506f25b..e6e31e9 100644\n--- a/AUTHORS\n+++ b/AUTHORS\n@@ -15,4 +15,5 @@ Mike Bayer\n Andreas van Cranenburgh\n Hervé Beraud\n Diego Volpatto\n Alexander Bersenev\n+Xiang Gao\ndiff --git a/MANIFEST.in b/MANIFEST.in\nindex 9a1007a..4ac21c3 100644\n--- a/MANIFEST.in\n+++ b/MANIFEST.in\n@@ -1,4 +1,6 @@\n include README.md\n include LICENSE\n include requirements.in\n include requirements.txt\n+recursive-include tests *.txt *.py\n+prune tests/.pytest_cache\ndiff --git a/README.md b/README.md\nindex 9b43596..7584f73 100644\n--- a/README.md\n+++ b/README.md\n@@ -142,16 +142,39 @@ Start all snoop lines with a prefix, to grep for them easily:\n ```python\n @pysnooper.snoop(prefix='ZZZ ')\n ```\n \n-On multi-threaded apps identify which thread are snooped in output::\n+On multi-threaded apps identify which thread are snooped in output:\n \n ```python\n @pysnooper.snoop(thread_info=True)\n ```\n \n PySnooper supports decorating generators.\n \n+You can also customize the repr of an object:\n+\n+```python\n+def large(l):\n+    return isinstance(l, list) and len(l) > 5\n+\n+def print_list_size(l):\n+    return 'list(size={})'.format(len(l))\n+\n+def print_ndarray(a):\n+    return 'ndarray(shape={}, dtype={})'.format(a.shape, a.dtype)\n+\n+@pysnooper.snoop(custom_repr=((large, print_list_size), (numpy.ndarray, print_ndarray)))\n+def sum_to_x(x):\n+    l = list(range(x))\n+    a = numpy.zeros((10,10))\n+    return sum(l)\n+\n+sum_to_x(10000)\n+```\n+\n+You will get `l = list(size=10000)` for the list, and `a = ndarray(shape=(10, 10), dtype=float64)` for the ndarray.\n+The `custom_repr` are matched in order, if one condition matches, no further conditions will be checked.\n \n # Installation #\n \n You can install **PySnooper** by:\n@@ -183,48 +206,12 @@ import pysnooper\n Exclude specific keys/attributes/indices with the `exclude` parameter, e.g. `Attrs('x', exclude=('_foo', '_bar'))`.\n \n Add a slice after `Indices` to only see the values within that slice, e.g. `Indices('z')[-3:]`.\n \n-# Contribute #\n-\n-[Pull requests](https://github.com/cool-RR/PySnooper/pulls) are always welcome!\n-Please, write tests and run them with [Tox](https://tox.readthedocs.io/).\n-\n-Tox installs all dependencies automatically. You only need to install Tox itself:\n-\n-```console\n-$ pip install tox\n-```\n-\n-List all environments `tox` would run:\n-\n ```console\n-$ tox -lv\n+$ export PYSNOOPER_DISABLED=1 # This makes PySnooper not do any snooping\n ```\n \n-If you want to run tests against all target Python versions use [pyenv](\n-https://github.com/pyenv/pyenv) to install them. Otherwise, you can run\n-only linters and the ones you have already installed on your machine:\n-\n-```console\n-# run only some environments\n-$ tox -e flake8,pylint,bandit,py27,py36\n-```\n-\n-Or just install project in developer mode with test dependencies:\n-\n-``` bash\n-$ pip install -e path/to/PySnooper[tests]\n-```\n-\n-And run tests:\n-\n-``` bash\n-$ pytest\n-```\n-\n-Tests should pass before you push your code. They will be run again on Travis CI.\n-\n # License #\n \n Copyright (c) 2019 Ram Rachum and collaborators, released under the MIT license.\n \ndiff --git a/pysnooper/__init__.py b/pysnooper/__init__.py\nindex 749599d..70b4677 100644\n--- a/pysnooper/__init__.py\n+++ b/pysnooper/__init__.py\n@@ -23,8 +23,8 @@ import collections\n \n __VersionInfo = collections.namedtuple('VersionInfo',\n                                        ('major', 'minor', 'micro'))\n \n-__version__ = '0.0.38'\n+__version__ = '0.2.3'\n __version_info__ = __VersionInfo(*(map(int, __versio",
+      "provenance": "inferred from fix diff; not independently validated for the target"
+    },
+    "Oracle": {
+      "text": "import io import textwrap import threading import types import os import sys from pysnooper.utils import truncate import pytest import pysnooper from pysnooper.variables import needs_parentheses from .utils import (assert_output, assert_sample_output, VariableEntry, CallEntry, LineEntry, ReturnEntry, OpcodeEntry, ReturnValueEntry, ExceptionEntry) from . import mini_toolbox",
+      "provenance": "direct from historical regression test"
+    },
+    "Oracle Provenance": {
+      "text": "Historical regression test only; target truth must be established independently.",
+      "provenance": "direct methodological label"
+    },
+    "Test Strategy": {
+      "text": "Run tests/test_pysnooper.py against buggy and fixed revisions without changing the test.",
+      "provenance": "direct from benchmark metadata"
+    },
+    "Evidence References": {
+      "text": "PySnooper/bugs/2/bug.info; PySnooper@814abc34a098c1b98cb327105ac396f985d2413e:tests/test_pysnooper.py; git diff e21a31162f4c..814abc34a098",
+      "provenance": "direct repository references"
+    },
+    "Confidence": {
+      "text": "0.80 for the historical case description; lower for transfer to a new target.",
+      "provenance": "calibrated judgment"
+    }
+  },
+  {
+    "history_id": "PySnooper:3",
+    "project": "PySnooper",
+    "bug_id": "3",
+    "buggy_commit_id": "6e3d797be3fa0a746fb5b1b7c7fea78eb926c208",
+    "fixed_commit_id": "15555ed760000b049aff8fecc79d29339c1224c3",
+    "Context": {
+      "text": "Historical PySnooper bug 3; changed paths: pysnooper/pysnooper.py, tests/test_pysnooper.py.",
+      "provenance": "direct from fix diff"
+    },
+    "Preconditions": {
+      "text": "import io import re import abc from python_toolbox import caching from python_toolbox import sys_tools from python_toolbox import temp_file_tools import pysnooper from .utils import (assert_output, VariableEntry, CallEntry, LineEntry, ReturnEntry, OpcodeEntry, ExceptionEntry) def test_string_io(): string_io = io.StringIO() @pysnooper.snoop(string_io) def my_function(foo): x = 7",
+      "provenance": "inferred from historical regression test"
+    },
+    "Trigger": {
+      "text": "import io import re import abc from python_toolbox import caching from python_toolbox import sys_tools from python_toolbox import temp_file_tools import pysnooper from .utils import (assert_output, VariableEntry, CallEntry, LineEntry, ReturnEntry, OpcodeEntry, ExceptionEntry) def test_string_io(): string_io = io.StringIO() @pysnooper.snoop(string_io) def my_function(foo): x = 7",
+      "provenance": "direct from historical regression test"
+    },
+    "Expected Invariant": {
+      "text": "The behavior asserted by the historical regression test should hold.",
+      "provenance": "historical test oracle"
+    },
+    "Observed Failure": {
+      "text": "The historical regression test was added or changed at fixed revision 15555ed76000 to distinguish the fixed behavior from the buggy revision.",
+      "provenance": "inferred from revision pair"
+    },
+    "Failure Mechanism": {
+      "text": "diff --git a/pysnooper/pysnooper.py b/pysnooper/pysnooper.py\nindex 8d0c6a7..19139d3 100644\n--- a/pysnooper/pysnooper.py\n+++ b/pysnooper/pysnooper.py\n@@ -22,9 +22,9 @@ def get_write_function(output):\n             stderr = sys.stderr\n             stderr.write(s)\n     elif isinstance(output, (pycompat.PathLike, str)):\n         def write(s):\n-            with open(output_path, 'a') as output_file:\n+            with open(output, 'a') as output_file:\n                 output_file.write(s)\n     else:\n         assert isinstance(output, utils.WritableStream)\n         def write(s):\ndiff --git a/tests/test_pysnooper.py b/tests/test_pysnooper.py\nindex 13f0401..27af77d 100644\n--- a/tests/test_pysnooper.py\n+++ b/tests/test_pysnooper.py\n@@ -6,8 +6,9 @@ import re\n import abc\n \n from python_toolbox import caching\n from python_toolbox import sys_tools\n+from python_toolbox import temp_file_tools\n \n import pysnooper\n \n from .utils import (assert_output, VariableEntry, CallEntry, LineEntry,\n@@ -168,4 +169,31 @@ def test_method_and_prefix():\n             ReturnEntry(),\n         ),\n         prefix='ZZZ'\n     )\n+\n+def test_file_output():\n+\n+    with temp_file_tools.create_temp_folder(prefix='pysnooper') as folder:\n+        path = folder / 'foo.log'\n+        @pysnooper.snoop(str(path))\n+        def my_function(foo):\n+            x = 7\n+            y = 8\n+            return y + x\n+        result = my_function('baba')\n+        assert result == 15\n+        output = path.open().read()\n+        assert_output(\n+            output,\n+            (\n+                VariableEntry('foo', value_regex=\"u?'baba'\"),\n+                CallEntry(),\n+                LineEntry('x = 7'),\n+                VariableEntry('x', '7'),\n+                LineEntry('y = 8'),\n+                VariableEntry('y', '8'),\n+                LineEntry('return y + x'),\n+                ReturnEntry('return y + x'),\n+            )\n+        )\n+\n",
+      "provenance": "inferred from fix diff; not independently validated for the target"
+    },
+    "Oracle": {
+      "text": "import io import re import abc from python_toolbox import caching from python_toolbox import sys_tools from python_toolbox import temp_file_tools import pysnooper from .utils import (assert_output, VariableEntry, CallEntry, LineEntry, ReturnEntry, OpcodeEntry, ExceptionEntry) def test_string_io(): string_io = io.StringIO() @pysnooper.snoop(string_io) def my_function(foo): x = 7",
+      "provenance": "direct from historical regression test"
+    },
+    "Oracle Provenance": {
+      "text": "Historical regression test only; target truth must be established independently.",
+      "provenance": "direct methodological label"
+    },
+    "Test Strategy": {
+      "text": "Run tests/test_pysnooper.py against buggy and fixed revisions without changing the test.",
+      "provenance": "direct from benchmark metadata"
+    },
+    "Evidence References": {
+      "text": "PySnooper/bugs/3/bug.info; PySnooper@15555ed760000b049aff8fecc79d29339c1224c3:tests/test_pysnooper.py; git diff 6e3d797be3fa..15555ed76000",
+      "provenance": "direct repository references"
+    },
+    "Confidence": {
+      "text": "0.80 for the historical case description; lower for transfer to a new target.",
+      "provenance": "calibrated judgment"
+    }
+  },
+  {
+    "history_id": "cookiecutter:1",
+    "project": "cookiecutter",
+    "bug_id": "1",
+    "buggy_commit_id": "c15633745df6abdb24e02746b82aadb20b8cdf8c",
+    "fixed_commit_id": "7f6804c4953a18386809f11faf4d86898570debc",
+    "Context": {
+      "text": "Historical cookiecutter bug 1; changed paths: cookiecutter/generate.py, tests/test-generate-context/non_ascii.json, tests/test_generate_context.py.",
+      "provenance": "direct from fix diff"
+    },
+    "Preconditions": {
+      "text": "\"\"\"Verify generate context behaviour and context overwrite priorities.\"\"\" import os import re from collections import OrderedDict import pytest from cookiecutter import generate from cookiecutter.exceptions import ContextDecodingException def context_data(): \"\"\"Generate pytest parametrization variables for test. Return ('input_params, expected_context') tuples. \"\"\" context = ( {'context_file': 'tests/test-generate-context/test.json'}, {'test': {'1': 2, 'some_key': 'some_val'}},",
+      "provenance": "inferred from historical regression test"
+    },
+    "Trigger": {
+      "text": "\"\"\"Verify generate context behaviour and context overwrite priorities.\"\"\" import os import re from collections import OrderedDict import pytest from cookiecutter import generate from cookiecutter.exceptions import ContextDecodingException def context_data(): \"\"\"Generate pytest parametrization variables for test. Return ('input_params, expected_context') tuples. \"\"\" context = ( {'context_file': 'tests/test-generate-context/test.json'}, {'test': {'1': 2, 'some_key': 'some_val'}},",
+      "provenance": "direct from historical regression test"
+    },
+    "Expected Invariant": {
+      "text": "The behavior asserted by the historical regression test should hold.",
+      "provenance": "historical test oracle"
+    },
+    "Observed Failure": {
+      "text": "The historical regression test was added or changed at fixed revision 7f6804c4953a to distinguish the fixed behavior from the buggy revision.",
+      "provenance": "inferred from revision pair"
+    },
+    "Failure Mechanism": {
+      "text": "diff --git a/cookiecutter/generate.py b/cookiecutter/generate.py\nindex 37365a4..c526b97 100644\n--- a/cookiecutter/generate.py\n+++ b/cookiecutter/generate.py\n@@ -81,9 +81,9 @@ def generate_context(\n     \"\"\"\n     context = OrderedDict([])\n \n     try:\n-        with open(context_file) as file_handle:\n+        with open(context_file, encoding='utf-8') as file_handle:\n             obj = json.load(file_handle, object_pairs_hook=OrderedDict)\n     except ValueError as e:\n         # JSON decoding error.  Let's throw a new exception that is more\n         # friendly for the developer or user.\ndiff --git a/tests/test-generate-context/non_ascii.json b/tests/test-generate-context/non_ascii.json\nnew file mode 100644\nindex 0000000..af0edf6\n--- /dev/null\n+++ b/tests/test-generate-context/non_ascii.json\n@@ -0,0 +1,3 @@\n+{\n+    \"full_name\": \"éèà\"\n+}\ndiff --git a/tests/test_generate_context.py b/tests/test_generate_context.py\nindex 26e7d4d..69d0148 100644\n--- a/tests/test_generate_context.py\n+++ b/tests/test_generate_context.py\n@@ -107,8 +107,19 @@ def test_default_context_replacement_in_generate_context():\n \n     assert generated_context == expected_context\n \n \n+def test_generate_context_decodes_non_ascii_chars():\n+    \"\"\"Verify `generate_context` correctly decodes non-ascii chars.\"\"\"\n+    expected_context = {'non_ascii': OrderedDict([('full_name', 'éèà'),])}\n+\n+    generated_context = generate.generate_context(\n+        context_file='tests/test-generate-context/non_ascii.json'\n+    )\n+\n+    assert generated_context == expected_context\n+\n+\n @pytest.fixture\n def template_context():\n     \"\"\"Fixture. Populates template content for future tests.\"\"\"\n     return OrderedDict(\n",
+      "provenance": "inferred from fix diff; not independently validated for the target"
+    },
+    "Oracle": {
+      "text": "\"\"\"Verify generate context behaviour and context overwrite priorities.\"\"\" import os import re from collections import OrderedDict import pytest from cookiecutter import generate from cookiecutter.exceptions import ContextDecodingException def context_data(): \"\"\"Generate pytest parametrization variables for test. Return ('input_params, expected_context') tuples. \"\"\" context = ( {'context_file': 'tests/test-generate-context/test.json'}, {'test': {'1': 2, 'some_key': 'some_val'}},",
+      "provenance": "direct from historical regression test"
+    },
+    "Oracle Provenance": {
+      "text": "Historical regression test only; target truth must be established independently.",
+      "provenance": "direct methodological label"
+    },
+    "Test Strategy": {
+      "text": "Run tests/test_generate_context.py against buggy and fixed revisions without changing the test.",
+      "provenance": "direct from benchmark metadata"
+    },
+    "Evidence References": {
+      "text": "cookiecutter/bugs/1/bug.info; cookiecutter@7f6804c4953a18386809f11faf4d86898570debc:tests/test_generate_context.py; git diff c15633745df6..7f6804c4953a",
+      "provenance": "direct repository references"
+    },
+    "Confidence": {
+      "text": "0.80 for the historical case description; lower for transfer to a new target.",
+      "provenance": "calibrated judgment"
+    }
+  },
+  {
+    "history_id": "cookiecutter:2",
+    "project": "cookiecutter",
+    "bug_id": "2",
+    "buggy_commit_id": "d7e7b28811e474e14d1bed747115e47dcdd15ba3",
+    "fixed_commit_id": "90434ff4ea4477941444f1e83313beb414838535",
+    "Context": {
+      "text": "Historical cookiecutter bug 2; changed paths: cookiecutter/hooks.py, tests/test_hooks.py.",
+      "provenance": "direct from fix diff"
+    },
+    "Preconditions": {
+      "text": "\"\"\"Tests for `cookiecutter.hooks` module.\"\"\" import os import stat import sys import textwrap import pytest from cookiecutter import hooks, utils, exceptions def make_test_repo(name, multiple_hooks=False): \"\"\"Create test repository for test setup methods.\"\"\" hook_dir = os.path.join(name, 'hooks') template = os.path.join(name, 'input{{hooks}}') os.mkdir(name) os.mkdir(hook_dir) os.mkdir(template)",
+      "provenance": "inferred from historical regression test"
+    },
+    "Trigger": {
+      "text": "\"\"\"Tests for `cookiecutter.hooks` module.\"\"\" import os import stat import sys import textwrap import pytest from cookiecutter import hooks, utils, exceptions def make_test_repo(name, multiple_hooks=False): \"\"\"Create test repository for test setup methods.\"\"\" hook_dir = os.path.join(name, 'hooks') template = os.path.join(name, 'input{{hooks}}') os.mkdir(name) os.mkdir(hook_dir) os.mkdir(template)",
+      "provenance": "direct from historical regression test"
+    },
+    "Expected Invariant": {
+      "text": "The behavior asserted by the historical regression test should hold.",
+      "provenance": "historical test oracle"
+    },
+    "Observed Failure": {
+      "text": "The historical regression test was added or changed at fixed revision 90434ff4ea44 to distinguish the fixed behavior from the buggy revision.",
+      "provenance": "inferred from revision pair"
+    },
+    "Failure Mechanism": {
+      "text": "diff --git a/cookiecutter/hooks.py b/cookiecutter/hooks.py\nindex 20ccae2..3c73f74 100644\n--- a/cookiecutter/hooks.py\n+++ b/cookiecutter/hooks.py\n@@ -53,13 +53,16 @@ def find_hook(hook_name, hooks_dir='hooks'):\n     if not os.path.isdir(hooks_dir):\n         logger.debug('No hooks/dir in template_dir')\n         return None\n \n+    scripts = []\n     for hook_file in os.listdir(hooks_dir):\n         if valid_hook(hook_file, hook_name):\n-            return os.path.abspath(os.path.join(hooks_dir, hook_file))\n+            scripts.append(os.path.abspath(os.path.join(hooks_dir, hook_file)))\n \n-    return None\n+    if len(scripts) == 0:\n+        return None\n+    return scripts\n \n \n def run_script(script_path, cwd='.'):\n     \"\"\"Execute a script from a working directory.\n@@ -118,10 +121,11 @@ def run_hook(hook_name, project_dir, context):\n     :param hook_name: The hook to execute.\n     :param project_dir: The directory to execute the script from.\n     :param context: Cookiecutter project context.\n     \"\"\"\n-    script = find_hook(hook_name)\n-    if script is None:\n+    scripts = find_hook(hook_name)\n+    if not scripts:\n         logger.debug('No %s hook found', hook_name)\n         return\n     logger.debug('Running hook %s', hook_name)\n-    run_script_with_context(script, project_dir, context)\n+    for script in scripts:\n+        run_script_with_context(script, project_dir, context)\ndiff --git a/tests/test_hooks.py b/tests/test_hooks.py\nindex be4038f..bd374ad 100644\n--- a/tests/test_hooks.py\n+++ b/tests/test_hooks.py\n@@ -8,9 +8,9 @@ import pytest\n \n from cookiecutter import hooks, utils, exceptions\n \n \n-def make_test_repo(name):\n+def make_test_repo(name, multiple_hooks=False):\n     \"\"\"Create test repository for test setup methods.\"\"\"\n     hook_dir = os.path.join(name, 'hooks')\n     template = os.path.join(name, 'input{{hooks}}')\n     os.mkdir(name)\n@@ -46,8 +46,28 @@ def make_test_repo(name):\n             f.write(\"touch 'shell_post.txt'\\n\")\n         # Set the execute bit\n         os.chmod(filename, os.stat(filename).st_mode | stat.S_IXUSR)\n \n+    # Adding an additional pre script\n+    if multiple_hooks:\n+        if sys.platform.startswith('win'):\n+            pre = 'pre_gen_project.bat'\n+            with open(os.path.join(hook_dir, pre), 'w') as f:\n+                f.write(\"@echo off\\n\")\n+                f.write(\"\\n\")\n+                f.write(\"echo post generation hook\\n\")\n+                f.write(\"echo. >shell_pre.txt\\n\")\n+        else:\n+            pre = 'pre_gen_project.sh'\n+            filename = os.path.join(hook_dir, pre)\n+            with open(filename, 'w') as f:\n+                f.write(\"#!/bin/bash\\n\")\n+                f.write(\"\\n\")\n+                f.write(\"echo 'post generation hook';\\n\")\n+                f.write(\"touch 'shell_pre.txt'\\n\")\n+            # Set the execute bit\n+            os.chmod(filename, os.stat(filename).st_mode | stat.S_IXUSR)\n+\n     return post\n \n \n class TestFindHooks(object):\n@@ -67,13 +87,13 @@ class TestFindHooks(object):\n         \"\"\"Finds the specified hook.\"\"\"\n         with utils.work_in(self.repo_path):\n             expected_pre = os.path.abspath('hooks/pre_gen_project.py')\n             actual_hook_path = hooks.find_hook('pre_gen_project')\n-            assert expected_pre == actual_hook_path\n+            assert expected_pre == actual_hook_path[0]\n \n             expected_post = os.path.abspath('hooks/{}'.format(self.post_hook))\n             actual_hook_path = hooks.find_hook('post_gen_project')\n-            asser",
+      "provenance": "inferred from fix diff; not independently validated for the target"
+    },
+    "Oracle": {
+      "text": "\"\"\"Tests for `cookiecutter.hooks` module.\"\"\" import os import stat import sys import textwrap import pytest from cookiecutter import hooks, utils, exceptions def make_test_repo(name, multiple_hooks=False): \"\"\"Create test repository for test setup methods.\"\"\" hook_dir = os.path.join(name, 'hooks') template = os.path.join(name, 'input{{hooks}}') os.mkdir(name) os.mkdir(hook_dir) os.mkdir(template)",
+      "provenance": "direct from historical regression test"
+    },
+    "Oracle Provenance": {
+      "text": "Historical regression test only; target truth must be established independently.",
+      "provenance": "direct methodological label"
+    },
+    "Test Strategy": {
+      "text": "Run tests/test_hooks.py against buggy and fixed revisions without changing the test.",
+      "provenance": "direct from benchmark metadata"
+    },
+    "Evidence References": {
+      "text": "cookiecutter/bugs/2/bug.info; cookiecutter@90434ff4ea4477941444f1e83313beb414838535:tests/test_hooks.py; git diff d7e7b28811e4..90434ff4ea44",
+      "provenance": "direct repository references"
+    },
+    "Confidence": {
+      "text": "0.80 for the historical case description; lower for transfer to a new target.",
+      "provenance": "calibrated judgment"
+    }
+  },
+  {
+    "history_id": "cookiecutter:3",
+    "project": "cookiecutter",
+    "bug_id": "3",
+    "buggy_commit_id": "5c282f020a8db7e5e7c4e7b51b010556ca31fb7f",
+    "fixed_commit_id": "7129d474206761a6156925db78eee4b62a0e3944",
+    "Context": {
+      "text": "Historical cookiecutter bug 3; changed paths: cookiecutter/prompt.py, tests/test_read_user_choice.py.",
+      "provenance": "direct from fix diff"
+    },
+    "Preconditions": {
+      "text": "import click import pytest from cookiecutter.prompt import read_user_choice OPTIONS = ['hello', 'world', 'foo', 'bar'] EXPECTED_PROMPT = \"\"\"Select varname: 1 - hello 2 - world 3 - foo 4 - bar Choose from 1, 2, 3, 4\"\"\" @pytest.mark.parametrize('user_choice, expected_value', enumerate(OPTIONS, 1)) def test_click_invocation(mocker, user_choice, expected_value): choice = mocker.patch('click.Choice') choice.return_value = click.Choice(OPTIONS)",
+      "provenance": "inferred from historical regression test"
+    },
+    "Trigger": {
+      "text": "import click import pytest from cookiecutter.prompt import read_user_choice OPTIONS = ['hello', 'world', 'foo', 'bar'] EXPECTED_PROMPT = \"\"\"Select varname: 1 - hello 2 - world 3 - foo 4 - bar Choose from 1, 2, 3, 4\"\"\" @pytest.mark.parametrize('user_choice, expected_value', enumerate(OPTIONS, 1)) def test_click_invocation(mocker, user_choice, expected_value): choice = mocker.patch('click.Choice') choice.return_value = click.Choice(OPTIONS)",
+      "provenance": "direct from historical regression test"
+    },
+    "Expected Invariant": {
+      "text": "The behavior asserted by the historical regression test should hold.",
+      "provenance": "historical test oracle"
+    },
+    "Observed Failure": {
+      "text": "The historical regression test was added or changed at fixed revision 7129d4742067 to distinguish the fixed behavior from the buggy revision.",
+      "provenance": "inferred from revision pair"
+    },
+    "Failure Mechanism": {
+      "text": "diff --git a/cookiecutter/prompt.py b/cookiecutter/prompt.py\nindex 45a065b..da4ada2 100644\n--- a/cookiecutter/prompt.py\n+++ b/cookiecutter/prompt.py\n@@ -87,9 +87,9 @@ def read_user_choice(var_name, options):\n         u'Choose from {}'.format(u', '.join(choices))\n     ))\n \n     user_choice = click.prompt(\n-        prompt, type=click.Choice(choices), default=default\n+        prompt, type=click.Choice(choices), default=default, show_choices=False\n     )\n     return choice_map[user_choice]\n \n \ndiff --git a/tests/test_read_user_choice.py b/tests/test_read_user_choice.py\nindex 0f9e003..0e81c2d 100644\n--- a/tests/test_read_user_choice.py\n+++ b/tests/test_read_user_choice.py\n@@ -28,9 +28,10 @@ def test_click_invocation(mocker, user_choice, expected_value):\n \n     prompt.assert_called_once_with(\n         EXPECTED_PROMPT,\n         type=click.Choice(OPTIONS),\n-        default='1'\n+        default='1',\n+        show_choices=False\n     )\n \n \n def test_raise_if_options_is_not_a_non_empty_list():\n",
+      "provenance": "inferred from fix diff; not independently validated for the target"
+    },
+    "Oracle": {
+      "text": "import click import pytest from cookiecutter.prompt import read_user_choice OPTIONS = ['hello', 'world', 'foo', 'bar'] EXPECTED_PROMPT = \"\"\"Select varname: 1 - hello 2 - world 3 - foo 4 - bar Choose from 1, 2, 3, 4\"\"\" @pytest.mark.parametrize('user_choice, expected_value', enumerate(OPTIONS, 1)) def test_click_invocation(mocker, user_choice, expected_value): choice = mocker.patch('click.Choice') choice.return_value = click.Choice(OPTIONS)",
+      "provenance": "direct from historical regression test"
+    },
+    "Oracle Provenance": {
+      "text": "Historical regression test only; target truth must be established independently.",
+      "provenance": "direct methodological label"
+    },
+    "Test Strategy": {
+      "text": "Run tests/test_read_user_choice.py against buggy and fixed revisions without changing the test.",
+      "provenance": "direct from benchmark metadata"
+    },
+    "Evidence References": {
+      "text": "cookiecutter/bugs/3/bug.info; cookiecutter@7129d474206761a6156925db78eee4b62a0e3944:tests/test_read_user_choice.py; git diff 5c282f020a8d..7129d4742067",
+      "provenance": "direct repository references"
+    },
+    "Confidence": {
+      "text": "0.80 for the historical case description; lower for transfer to a new target.",
+      "provenance": "calibrated judgment"
+    }
+  },
+  {
+    "history_id": "cookiecutter:4",
+    "project": "cookiecutter",
+    "bug_id": "4",
+    "buggy_commit_id": "9568ab6ecd2d6836646006c59473c4a4ac0dee04",
+    "fixed_commit_id": "457a1a4e862aab4102b644ff1d2b2e2b5a766b3c",
+    "Context": {
+      "text": "Historical cookiecutter bug 4; changed paths: cookiecutter/exceptions.py, cookiecutter/generate.py, cookiecutter/hooks.py, tests/test_hooks.py.",
+      "provenance": "direct from fix diff"
+    },
+    "Preconditions": {
+      "text": "\"\"\" test_hooks ------------ Tests for `cookiecutter.hooks` module. \"\"\" import sys import os import stat import pytest from cookiecutter import hooks, utils, exceptions def make_test_repo(name): \"\"\"Helper function which is called in the test setup methods.\"\"\" hook_dir = os.path.join(name, 'hooks') template = os.path.join(name, 'input{{hooks}}')",
+      "provenance": "inferred from historical regression test"
+    },
+    "Trigger": {
+      "text": "\"\"\" test_hooks ------------ Tests for `cookiecutter.hooks` module. \"\"\" import sys import os import stat import pytest from cookiecutter import hooks, utils, exceptions def make_test_repo(name): \"\"\"Helper function which is called in the test setup methods.\"\"\" hook_dir = os.path.join(name, 'hooks') template = os.path.join(name, 'input{{hooks}}')",
+      "provenance": "direct from historical regression test"
+    },
+    "Expected Invariant": {
+      "text": "The behavior asserted by the historical regression test should hold.",
+      "provenance": "historical test oracle"
+    },
+    "Observed Failure": {
+      "text": "The historical regression test was added or changed at fixed revision 457a1a4e862a to distinguish the fixed behavior from the buggy revision.",
+      "provenance": "inferred from revision pair"
+    },
+    "Failure Mechanism": {
+      "text": "diff --git a/cookiecutter/exceptions.py b/cookiecutter/exceptions.py\nindex 0ad6b58..415f99e 100755\n--- a/cookiecutter/exceptions.py\n+++ b/cookiecutter/exceptions.py\n@@ -80,4 +80,10 @@ class InvalidModeException(CookiecutterException):\n     \"\"\"\n     Raised when cookiecutter is called with both `no_input==True` and\n     `replay==True` at the same time.\n     \"\"\"\n+\n+\n+class FailedHookException(CookiecutterException):\n+    \"\"\"\n+    Raised when a hook script fails\n+    \"\"\"\ndiff --git a/cookiecutter/generate.py b/cookiecutter/generate.py\nindex a38ef26..d69f1de 100755\n--- a/cookiecutter/generate.py\n+++ b/cookiecutter/generate.py\n@@ -23,13 +23,14 @@ from binaryornot.check import is_binary\n \n from .exceptions import (\n     NonTemplatedInputDirException,\n     ContextDecodingException,\n+    FailedHookException,\n     OutputDirExistsException\n )\n from .find import find_template\n from .utils import make_sure_path_exists, work_in\n-from .hooks import run_hook, EXIT_SUCCESS\n+from .hooks import run_hook\n \n \n def copy_without_render(path, context):\n     \"\"\"\n@@ -256,9 +257,12 @@ def generate_files(repo_dir, context=None, output_dir='.',\n     logging.debug('project_dir is {0}'.format(project_dir))\n \n     # run pre-gen hook from repo_dir\n     with work_in(repo_dir):\n-        if run_hook('pre_gen_project', project_dir, context) != EXIT_SUCCESS:\n+        try:\n+            run_hook('pre_gen_project', project_dir, context)\n+        except FailedHookException:\n+            shutil.rmtree(project_dir, ignore_errors=True)\n             logging.error(\"Stopping generation because pre_gen_project\"\n                           \" hook script didn't exit sucessfully\")\n             return\n \ndiff --git a/cookiecutter/hooks.py b/cookiecutter/hooks.py\nindex 550d6de..81045d1 100755\n--- a/cookiecutter/hooks.py\n+++ b/cookiecutter/hooks.py\n@@ -17,8 +17,9 @@ import tempfile\n \n from jinja2 import Template\n \n from cookiecutter import utils\n+from .exceptions import FailedHookException\n \n \n _HOOKS = [\n     'pre_gen_project',\n@@ -68,9 +69,12 @@ def run_script(script_path, cwd='.'):\n         script_command,\n         shell=run_thru_shell,\n         cwd=cwd\n     )\n-    return proc.wait()\n+    exit_status = proc.wait()\n+    if exit_status != EXIT_SUCCESS:\n+        raise FailedHookException(\n+            \"Hook script failed (exit status: %d)\" % exit_status)\n \n \n def run_script_with_context(script_path, cwd, context):\n     \"\"\"\n@@ -90,9 +94,9 @@ def run_script_with_context(script_path, cwd, context):\n         suffix=extension\n     ) as temp:\n         temp.write(Template(contents).render(**context))\n \n-    return run_script(temp.name, cwd)\n+    run_script(temp.name, cwd)\n \n \n def run_hook(hook_name, project_dir, context):\n     \"\"\"\n@@ -104,6 +108,6 @@ def run_hook(hook_name, project_dir, context):\n     \"\"\"\n     script = find_hooks().get(hook_name)\n     if script is None:\n         logging.debug('No hooks found')\n-        return EXIT_SUCCESS\n-    return run_script_with_context(script, project_dir, context)\n+        return\n+    run_script_with_context(script, project_dir, context)\ndiff --git a/tests/test_hooks.py b/tests/test_hooks.py\nindex 8df394f..e7f7ee1 100755\n--- a/tests/test_hooks.py\n+++ b/tests/test_hooks.py\n@@ -10,10 +10,11 @@ Tests for `cookiecutter.hooks` module.\n \n import sys\n import os\n import stat\n+import pytest\n \n-from cookiecutter import hooks, utils\n+from cookiecutter import hooks, utils, exceptions\n \n \n def make_test_repo(name):\n     \"\"\"Helper function which is called in the test setup",
+      "provenance": "inferred from fix diff; not independently validated for the target"
+    },
+    "Oracle": {
+      "text": "\"\"\" test_hooks ------------ Tests for `cookiecutter.hooks` module. \"\"\" import sys import os import stat import pytest from cookiecutter import hooks, utils, exceptions def make_test_repo(name): \"\"\"Helper function which is called in the test setup methods.\"\"\" hook_dir = os.path.join(name, 'hooks') template = os.path.join(name, 'input{{hooks}}')",
+      "provenance": "direct from historical regression test"
+    },
+    "Oracle Provenance": {
+      "text": "Historical regression test only; target truth must be established independently.",
+      "provenance": "direct methodological label"
+    },
+    "Test Strategy": {
+      "text": "Run tests/test_hooks.py against buggy and fixed revisions without changing the test.",
+      "provenance": "direct from benchmark metadata"
+    },
+    "Evidence References": {
+      "text": "cookiecutter/bugs/4/bug.info; cookiecutter@457a1a4e862aab4102b644ff1d2b2e2b5a766b3c:tests/test_hooks.py; git diff 9568ab6ecd2d..457a1a4e862a",
+      "provenance": "direct repository references"
+    },
+    "Confidence": {
+      "text": "0.80 for the historical case description; lower for transfer to a new target.",
+      "provenance": "calibrated judgment"
+    }
+  }
+]
