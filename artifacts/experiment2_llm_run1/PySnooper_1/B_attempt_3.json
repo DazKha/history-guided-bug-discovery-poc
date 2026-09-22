@@ -1,0 +1,45 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "B",
+  "condition_name": "NAIVE_RAW_HISTORY",
+  "attempt": 3,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_raw.json"
+  ],
+  "hypothesis": "When a Tracer is used as a context manager (with pysnooper.snoop(...):) and the same Tracer instance is reused across multiple with blocks, the second __enter__ call will fail with AttributeError because __exit__ pops the original_trace_functions stack and the thread_local attribute is not re-initialized.",
+  "trigger": "Create a single Tracer via pysnooper.snoop(string_io), then use it in two sequential with blocks.",
+  "potential_failure": "The second with block raises AttributeError: 'threading.local' object has no attribute 'original_trace_functions'.",
+  "oracle": {
+    "expected_behavior": "A single Tracer instance should be reusable across multiple with blocks, as demonstrated by test_with_block which reuses one snoop instance for multiple decorated functions and with blocks.",
+    "target_evidence": "pysnooper/tracer.py __enter__ uses self.thread_local.__dict__.setdefault('original_trace_functions', []) and __exit__ uses self.thread_local.original_trace_functions. tests/test_pysnooper.py::test_with_block explicitly reuses a single snoop instance across multiple with blocks and decorated functions.",
+    "historical_evidence": "PySnooper:3 fix diff shows a similar bug where a variable name mismatch (output_path vs output) caused a runtime failure in the file-output path; this suggests the codebase has had attribute/name errors in Tracer-related paths.",
+    "confidence": 0.6
+  },
+  "test_code": "import io\nimport pysnooper\n\n\ndef test_reuse_tracer_across_with_blocks():\n    string_io = io.StringIO()\n    snoop = pysnooper.snoop(string_io)\n\n    def foo(x):\n        with snoop:\n            y = x + 1\n        return y\n\n    def bar(x):\n        with snoop:\n            z = x * 2\n        return z\n\n    assert foo(1) == 2\n    assert bar(3) == 6\n    output = string_io.getvalue()\n    assert 'y = x + 1' in output\n    assert 'z = x * 2' in output\n",
+  "test_file_path": "generated_tests/experiment2/PySnooper_1/B_attempt_3.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 8,
+    "retry_index": 0,
+    "latency_seconds": 3.077,
+    "usage": {
+      "prompt_tokens": 19664,
+      "completion_tokens": 550,
+      "total_tokens": 20214,
+      "prompt_tokens_details": {
+        "cached_tokens": 256
+      },
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 19408
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2/PySnooper_1/B_attempt_3.py",
+  "wall_clock_seconds": 3.08
+}

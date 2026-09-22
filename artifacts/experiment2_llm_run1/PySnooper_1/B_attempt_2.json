@@ -1,0 +1,45 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "B",
+  "condition_name": "NAIVE_RAW_HISTORY",
+  "attempt": 2,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_raw.json"
+  ],
+  "hypothesis": "When a Tracer is used as a context manager (with pysnooper.snoop(...):) and the same Tracer instance is reused for multiple with-blocks, the second and subsequent with-blocks fail to trace because __exit__ pops the original trace function stack but __enter__ does not re-add the calling frame to target_frames correctly, or the frame_to_local_reprs state is not properly reset, causing missing trace output.",
+  "trigger": "Create a single Tracer instance, use it in two sequential with-blocks in the same function, and verify that both blocks produce trace output.",
+  "potential_failure": "The second with-block produces no trace output or incomplete output because the tracer's internal state (target_frames, frame_to_local_reprs) is not properly reset between uses.",
+  "oracle": {
+    "expected_behavior": "Both with-blocks should produce trace output showing the lines executed within each block, as demonstrated by test_with_block which uses a single snoop instance across multiple with-blocks and decorated functions.",
+    "target_evidence": "tests/test_pysnooper.py::test_with_block explicitly tests 'that a single Tracer can handle many mixed uses' with multiple with-blocks and decorated functions, expecting trace output from each usage. The Tracer.__enter__ and __exit__ methods manage target_frames and frame_to_local_reprs state.",
+    "historical_evidence": "PySnooper:3 fix diff shows a bug where 'output_path' was used instead of 'output' in get_write_function, causing file output to fail. This suggests state/variable handling bugs in the tracer are plausible. The regression test test_file_output verifies file output works correctly.",
+    "confidence": 0.4
+  },
+  "test_code": "import io\nimport pysnooper\n\n\ndef test_reuse_tracer_multiple_with_blocks():\n    string_io = io.StringIO()\n    snoop = pysnooper.snoop(string_io)\n\n    def foo():\n        with snoop:\n            x = 1\n            y = 2\n        with snoop:\n            a = 3\n            b = 4\n        return x + y + a + b\n\n    result = foo()\n    assert result == 10\n    output = string_io.getvalue()\n    # Both with-blocks should produce trace output\n    assert 'x = 1' in output, 'First with-block should be traced'\n    assert 'y = 2' in output, 'First with-block should be traced'\n    assert 'a = 3' in output, 'Second with-block should be traced'\n    assert 'b = 4' in output, 'Second with-block should be traced'\n",
+  "test_file_path": "generated_tests/experiment2/PySnooper_1/B_attempt_2.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 7,
+    "retry_index": 0,
+    "latency_seconds": 3.108,
+    "usage": {
+      "prompt_tokens": 19664,
+      "completion_tokens": 653,
+      "total_tokens": 20317,
+      "prompt_tokens_details": {
+        "cached_tokens": 256
+      },
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 19408
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2/PySnooper_1/B_attempt_2.py",
+  "wall_clock_seconds": 3.11
+}

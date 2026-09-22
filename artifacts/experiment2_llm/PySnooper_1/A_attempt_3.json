@@ -1,0 +1,44 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "A",
+  "condition_name": "TARGET_ONLY",
+  "attempt": 3,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt"
+  ],
+  "hypothesis": "When a Tracer is used as a context manager inside a generator function, the generator wrapper's `with self:` block exits and restores the trace function before the generator yields, so the generator's own frame is not traced during the yield/resume boundary; the output should still contain the generator function's call/line/return entries.",
+  "trigger": "Decorate a generator function with `@pysnooper.snoop(string_io)` and iterate it to completion, then inspect the captured output for the generator function's `call`, `line`, and `return` entries.",
+  "potential_failure": "The generator wrapper may fail to trace the generator function's own frame, producing missing or malformed call/line/return entries for the generator body.",
+  "oracle": {
+    "expected_behavior": "The captured output for a decorated generator function should include the generator function's call entry, line entries for its body, and a return entry, analogous to the ordinary `test_generator` test.",
+    "target_evidence": "`pysnooper/tracer.py` defines `generator_wrapper` which wraps each `gen.send`/`gen.throw` call in `with self:`; `Tracer.__enter__` sets `calling_frame.f_trace = self.trace` and `sys.settrace(self.trace)`, while `__exit__` restores the previous trace function. The ordinary test `tests/test_pysnooper.py::test_generator` asserts that generator functions decorated with `@pysnooper.snoop(string_io)` produce call/line/return output.",
+    "historical_evidence": "",
+    "confidence": 0.55
+  },
+  "test_code": "import io\nimport pysnooper\n\n\ndef test_generator_context_manager_traces_generator_body():\n    string_io = io.StringIO()\n\n    @pysnooper.snoop(string_io)\n    def gen(x):\n        y = x + 1\n        yield y\n        z = y + 1\n        yield z\n\n    g = gen(1)\n    assert next(g) == 2\n    assert next(g) == 3\n\n    output = string_io.getvalue()\n    assert 'call' in output\n    assert 'line' in output\n    assert 'return' in output\n    assert 'y = x + 1' in output\n    assert 'z = y + 1' in output\n",
+  "test_file_path": "generated_tests/experiment2/PySnooper_1/A_attempt_3.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 3,
+    "retry_index": 0,
+    "latency_seconds": 3.075,
+    "usage": {
+      "prompt_tokens": 15319,
+      "completion_tokens": 590,
+      "total_tokens": 15909,
+      "prompt_tokens_details": {
+        "cached_tokens": 256
+      },
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 15063
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2/PySnooper_1/A_attempt_3.py",
+  "wall_clock_seconds": 3.081
+}

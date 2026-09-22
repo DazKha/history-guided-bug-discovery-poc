@@ -1,0 +1,52 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_________________ test_utf8_source_with_non_ascii_is_preserved _________________
+
+tmp_path = PosixPath('/private/var/folders/1j/l08d1p2s6ls9235bnggg20rc0000gn/T/pytest-of-minhkha/pytest-136/test_utf8_source_with_non_asci0')
+
+    def test_utf8_source_with_non_ascii_is_preserved(tmp_path):
+        # Ensure the process default encoding is not UTF-8, mimicking a C locale.
+        # This is the precondition under which the buggy implicit decoding fails.
+        module_name = 'pysnooper_utf8_source_probe'
+        source = textwrap.dedent(u'''\
+            import pysnooper
+
+            @pysnooper.snoop()
+            def f():
+                x = 'h\u00e9llo'
+                return x
+        ''')
+        module_path = tmp_path / (module_name + '.py')
+        module_path.write_bytes(source.encode('utf-8'))
+
+        sys.path.insert(0, str(tmp_path))
+        try:
+            module = __import__(module_name)
+        finally:
+            sys.path.remove(str(tmp_path))
+
+        string_io = io.StringIO()
+        # Re-decorate with a StringIO so we can inspect the output deterministically.
+        decorated = pysnooper.snoop(string_io)(module.f)
+
+        result = decorated()
+        assert result == 'h\u00e9llo'
+
+        output = string_io.getvalue()
+        # The source line containing the non-ASCII literal must be echoed verbatim.
+>       assert "x = 'h\u00e9llo'" in output
+E       assert "x = 'h\xe9llo'" in "Starting var:.. args = ()\\nStarting var:.. kwargs = {}\\nStarting var:.. function = <function f at 0x1061169d0>\\nStart... **kwargs)\\n06:25:13.024663 return     215                 return function(*args, **kwargs)\\nReturn value:.. 'h\xe9llo'\\n"
+
+_generated_eval_C_attempt_5.py:41: AssertionError
+----------------------------- Captured stderr call -----------------------------
+    06:25:13.024508 call         4 def f():\n    06:25:13.024597 line         5     x = 'h\xe9llo'\n    New var:....... x = 'h\xe9llo'\n    06:25:13.024623 line         6     return x\n    06:25:13.024637 return       6     return x\n    Return value:.. 'h\xe9llo'
+=============================== warnings summary ===============================
+pysnooper/variables.py:3
+pysnooper/variables.py:3
+  /Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/pysnooper/variables.py:3: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated since Python 3.3, and in 3.10 it will stop working
+    from collections import Mapping, Sequence
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED _generated_eval_C_attempt_5.py::test_utf8_source_with_non_ascii_is_preserved
+1 failed, 2 warnings in 0.02s

@@ -1,0 +1,44 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "A",
+  "condition_name": "TARGET_ONLY",
+  "attempt": 1,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt"
+  ],
+  "hypothesis": "When a Tracer is used as a context manager inside a generator function, the generator's frame is added to self.target_frames on __enter__ but is never removed on __exit__ (because __exit__ discards the caller's frame, which is the generator frame only if the with block is directly in the generator body). If the with block is inside a nested function called by the generator, the generator frame remains in target_frames, causing the tracer to continue tracing the generator's subsequent lines even after the with block has exited.",
+  "trigger": "Define a generator function that calls a helper function containing a `with pysnooper.snoop(string_io):` block. After the with block exits, the generator yields a value. The tracer should not emit any output for lines executed after the with block in the generator, but due to the stale target_frames entry it will.",
+  "potential_failure": "The tracer incorrectly traces lines in the generator frame after the with block has exited, producing extra output lines that should not appear.",
+  "oracle": {
+    "expected_behavior": "After the with block exits, no further tracing output should be produced for the generator's frame. The output should only contain entries for the lines executed inside the with block.",
+    "target_evidence": "In tracer.py, __enter__ adds calling_frame to self.target_frames, and __exit__ discards calling_frame (the frame of the code calling __exit__, i.e., the frame containing the with statement). If the with statement is in a helper function, the generator frame is never added to target_frames, so it should not be traced. However, the trace function checks `frame in self.target_frames`; if the generator frame was added by a previous __enter__ (e.g., if the with block is directly in the generator), it would be removed by __exit__. The bug arises when the with block is in a nested function: the generator frame is not the calling frame, so it is not added, but the trace function may still trace it if it was added earlier. This test probes the cleanup logic.",
+    "historical_evidence": "",
+    "confidence": 0.6
+  },
+  "test_code": "import io\nimport pysnooper\n\ndef test_generator_with_block_in_helper():\n    string_io = io.StringIO()\n\n    def helper():\n        with pysnooper.snoop(string_io):\n            x = 1\n\n    def gen():\n        helper()\n        yield 42\n\n    g = gen()\n    next(g)\n    output = string_io.getvalue()\n    # The generator frame should not be traced after the with block exits.\n    # If it is, we will see lines from the generator (e.g., 'yield 42') in the output.\n    assert 'yield 42' not in output, f\"Unexpected tracing of generator after with block: {output!r}\"\n",
+  "test_file_path": "generated_tests/experiment2/PySnooper_1/A_attempt_1.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 1,
+    "retry_index": 0,
+    "latency_seconds": 3.628,
+    "usage": {
+      "prompt_tokens": 15272,
+      "completion_tokens": 693,
+      "total_tokens": 15965,
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      },
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 15272
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2/PySnooper_1/A_attempt_1.py",
+  "wall_clock_seconds": 3.63
+}

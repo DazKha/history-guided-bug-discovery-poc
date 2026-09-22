@@ -1,0 +1,45 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "B",
+  "condition_name": "NAIVE_RAW_HISTORY",
+  "attempt": 2,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_raw.json"
+  ],
+  "hypothesis": "The `overwrite=True` option of `pysnooper.snoop` does not truncate the output file on the first write; instead, because `FileWriter.write` opens the file with mode 'a' (append) and only sets `self.overwrite = False` after writing, the first write appends to the existing file content rather than overwriting it, so pre-existing content remains in the log file.",
+  "trigger": "Create a temporary file containing the text 'lala', decorate a function with `@pysnooper.snoop(str(path), overwrite=True)`, call the function, then read the file and assert that the pre-existing 'lala' content is gone.",
+  "potential_failure": "The file still starts with 'lala' (or contains it), meaning `overwrite=True` failed to truncate the file on the first write.",
+  "oracle": {
+    "expected_behavior": "When `overwrite=True` is passed to `pysnooper.snoop` with a file path, the first write should open the file in 'w' mode, truncating any existing content, so the resulting log file must not contain the pre-existing text.",
+    "target_evidence": "In `pysnooper/tracer.py`, `FileWriter.write` is defined as `with open(self.path, 'w' if self.overwrite else 'a') as output_file: output_file.write(s); self.overwrite = False`. The intent is clearly that the first write uses 'w' (truncate) and subsequent writes use 'a' (append). The ordinary test `test_overwrite` in `tests/test_pysnooper.py` asserts `'lala' not in output` after calling the decorated function twice with `overwrite=True`, confirming the intended behavior.",
+    "historical_evidence": "The PySnooper:3 historical bug report and fix diff show a related file-output bug where `open(output_path, 'a')` used an undefined variable instead of `open(output, 'a')`, and the regression test `test_file_output` was added. This historical evidence points to the file-output path being fragile and worth probing, but the specific overwrite/truncation invariant is established by the target source and the ordinary `test_overwrite` test.",
+    "confidence": 0.75
+  },
+  "test_code": "import io\nimport os\nimport tempfile\n\nimport pysnooper\n\n\ndef test_overwrite_truncates_existing_file():\n    with tempfile.TemporaryDirectory() as folder:\n        path = os.path.join(folder, 'foo.log')\n        with open(path, 'w') as f:\n            f.write('lala')\n\n        @pysnooper.snoop(path, overwrite=True)\n        def my_function(foo):\n            x = 7\n            y = 8\n            return y + x\n\n        result = my_function('baba')\n        assert result == 15\n\n        with open(path) as f:\n            output = f.read()\n\n        assert 'lala' not in output\n        assert 'x = 7' in output\n        assert 'y = 8' in output\n        assert 'return y + x' in output\n",
+  "test_file_path": "generated_tests/experiment2/PySnooper_1/B_attempt_2.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 7,
+    "retry_index": 0,
+    "latency_seconds": 3.558,
+    "usage": {
+      "prompt_tokens": 19711,
+      "completion_tokens": 764,
+      "total_tokens": 20475,
+      "prompt_tokens_details": {
+        "cached_tokens": 256
+      },
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 19455
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2/PySnooper_1/B_attempt_2.py",
+  "wall_clock_seconds": 3.561
+}

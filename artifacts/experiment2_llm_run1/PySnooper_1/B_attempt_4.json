@@ -1,0 +1,45 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "B",
+  "condition_name": "NAIVE_RAW_HISTORY",
+  "attempt": 4,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_raw.json"
+  ],
+  "hypothesis": "When pysnooper.snoop() is used as a context manager (with block) and the decorated/wrapped code raises an exception, the Tracer.__exit__ method fails to restore the original sys.gettrace() value because it pops from self.thread_local.original_trace_functions, but the trace function may have been overwritten by nested snoop usage or the stack may be empty, causing sys.gettrace() to remain set to the Tracer.trace method after the with block exits.",
+  "trigger": "Use pysnooper.snoop() as a context manager around code that raises an exception, then check sys.gettrace() after the with block.",
+  "potential_failure": "sys.gettrace() returns the Tracer.trace bound method instead of the original trace function (None) after the with block exits due to an exception, leaving tracing active and potentially causing performance issues or incorrect behavior in subsequent code.",
+  "oracle": {
+    "expected_behavior": "After exiting a with pysnooper.snoop(): block, sys.gettrace() should be restored to its original value (None in a normal pytest run), regardless of whether an exception occurred inside the block.",
+    "target_evidence": "In pysnooper/tracer.py, Tracer.__enter__ appends sys.gettrace() to self.thread_local.original_trace_functions and calls sys.settrace(self.trace). Tracer.__exit__ pops from self.thread_local.original_trace_functions and calls sys.settrace(stack.pop()). The test_generator test in tests/test_pysnooper.py checks that original_tracer_active() is True after generator operations, showing the intent to restore the original trace function. However, the __exit__ implementation assumes the stack is non-empty and correctly ordered, which may fail if an exception occurs or if nested usage corrupts the stack.",
+    "historical_evidence": "PySnooper:3 fix diff shows a bug where a variable name was wrong (output_path vs output) in get_write_function, indicating that file output and trace restoration logic are error-prone areas. The regression test test_file_output was added to verify file output works. This suggests that trace state management is a known fragile area.",
+    "confidence": 0.6
+  },
+  "test_code": "import sys\nimport pytest\nimport pysnooper\n\n\ndef test_trace_restored_after_exception_in_with_block():\n    original_trace = sys.gettrace()\n    assert original_trace is None\n\n    with pytest.raises(ValueError):\n        with pysnooper.snoop():\n            raise ValueError('boom')\n\n    assert sys.gettrace() is original_trace\n",
+  "test_file_path": "generated_tests/experiment2/PySnooper_1/B_attempt_4.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 9,
+    "retry_index": 0,
+    "latency_seconds": 3.27,
+    "usage": {
+      "prompt_tokens": 19664,
+      "completion_tokens": 632,
+      "total_tokens": 20296,
+      "prompt_tokens_details": {
+        "cached_tokens": 256
+      },
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 19408
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2/PySnooper_1/B_attempt_4.py",
+  "wall_clock_seconds": 3.273
+}

@@ -1,0 +1,2080 @@
+TARGET CONTEXT FOR GENERATION
+This is the buggy checkout only. The context contains ordinary source, docs, and ordinary tests.
+Execution environment visible to the tester: Python 3.9.18; LC_ALL=C; PYTHONUTF8=0; PYTHONCOERCECLOCALE=0; pytest.
+Do not use benchmark metadata, Git history, a fixed checkout, or a hidden regression test.
+The target issue, target fix, target regression test, and changed-file metadata are not included.
+
+===== README.md =====
+# PySnooper - Never use print for debugging again #
+
+[![Travis CI](https://img.shields.io/travis/cool-RR/PySnooper/master.svg)](https://travis-ci.org/cool-RR/PySnooper)
+
+**PySnooper** is a poor man's debugger.
+
+You're trying to figure out why your Python code isn't doing what you think it should be doing. You'd love to use a full-fledged debugger with breakpoints and watches, but you can't be bothered to set one up right now.
+
+You want to know which lines are running and which aren't, and what the values of the local variables are.
+
+Most people would use `print` lines, in strategic locations, some of them showing the values of variables.
+
+**PySnooper** lets you do the same, except instead of carefully crafting the right `print` lines, you just add one decorator line to the function you're interested in. You'll get a play-by-play log of your function, including which lines ran and   when, and exactly when local variables were changed.
+
+What makes **PySnooper** stand out from all other code intelligence tools? You can use it in your shitty, sprawling enterprise codebase without having to do any setup. Just slap the decorator on, as shown below, and redirect the output to a dedicated log file by specifying its path as the first argument.
+
+# Example #
+
+We're writing a function that converts a number to binary, by returning a list of bits. Let's snoop on it by adding the `@pysnooper.snoop()` decorator:
+
+```python
+import pysnooper
+
+@pysnooper.snoop()
+def number_to_bits(number):
+    if number:
+        bits = []
+        while number:
+            number, remainder = divmod(number, 2)
+            bits.insert(0, remainder)
+        return bits
+    else:
+        return [0]
+
+number_to_bits(6)
+```
+The output to stderr is:
+
+```
+Starting var:.. number = 6
+15:29:11.327032 call         4 def number_to_bits(number):
+15:29:11.327032 line         5     if number:
+15:29:11.327032 line         6         bits = []
+New var:....... bits = []
+15:29:11.327032 line         7         while number:
+15:29:11.327032 line         8             number, remainder = divmod(number, 2)
+New var:....... remainder = 0
+Modified var:.. number = 3
+15:29:11.327032 line         9             bits.insert(0, remainder)
+Modified var:.. bits = [0]
+15:29:11.327032 line         7         while number:
+15:29:11.327032 line         8             number, remainder = divmod(number, 2)
+Modified var:.. number = 1
+Modified var:.. remainder = 1
+15:29:11.327032 line         9             bits.insert(0, remainder)
+Modified var:.. bits = [1, 0]
+15:29:11.327032 line         7         while number:
+15:29:11.327032 line         8             number, remainder = divmod(number, 2)
+Modified var:.. number = 0
+15:29:11.327032 line         9             bits.insert(0, remainder)
+Modified var:.. bits = [1, 1, 0]
+15:29:11.327032 line         7         while number:
+15:29:11.327032 line        10         return bits
+15:29:11.327032 return      10         return bits
+Return value:.. [1, 1, 0]
+```
+
+Or if you don't want to trace an entire function, you can wrap the relevant part in a `with` block:
+
+```python
+import pysnooper
+import random
+
+def foo():
+    lst = []
+    for i in range(10):
+        lst.append(random.randrange(1, 1000))
+
+    with pysnooper.snoop():
+        lower = min(lst)
+        upper = max(lst)
+        mid = (lower + upper) / 2
+        print(lower, mid, upper)
+
+foo()
+```
+
+which outputs something like:
+
+```
+New var:....... i = 9
+New var:....... lst = [681, 267, 74, 832, 284, 678, ...]
+09:37:35.881721 line        10         lower = min(lst)
+New var:....... lower = 74
+09:37:35.882137 line        11         upper = max(lst)
+New var:....... upper = 832
+09:37:35.882304 line        12         mid = (lower + upper) / 2
+74 453.0 832
+New var:....... mid = 453.0
+09:37:35.882486 line        13         print(lower, mid, upper)
+```
+
+# Features #
+
+If stderr is not easily accessible for you, you can redirect the output to a file:
+
+```python
+@pysnooper.snoop('/my/log/file.log')
+```
+
+You can also pass a stream or a callable instead, and they'll be used.
+
+See values of some expressions that aren't local variables:
+
+```python
+@pysnooper.snoop(watch=('foo.bar', 'self.x["whatever"]'))
+```
+
+Expand values to see all their attributes or items of lists/dictionaries:
+
+```python
+@pysnooper.snoop(watch_explode=('foo', 'self'))
+```
+
+This will output lines like:
+
+```
+Modified var:.. foo[2] = 'whatever'
+New var:....... self.baz = 8
+```
+
+(see [Advanced Usage](#advanced-usage) for more control)
+
+Show snoop lines for functions that your function calls:
+
+```python
+@pysnooper.snoop(depth=2)
+```
+
+Start all snoop lines with a prefix, to grep for them easily:
+
+```python
+@pysnooper.snoop(prefix='ZZZ ')
+```
+
+On multi-threaded apps identify which thread are snooped in output::
+
+```python
+@pysnooper.snoop(thread_info=True)
+```
+
+PySnooper supports decorating generators.
+
+
+# Installation #
+
+You can install **PySnooper** by:
+
+* pip:
+```console
+$ pip install pysnooper
+```
+
+* conda with conda-forge channel:
+```console
+$ conda install -c conda-forge pysnooper
+```
+
+# Advanced Usage #
+
+`watch_explode` will automatically guess how to expand the expression passed to it based on its class. You can be more specific by using one of the following classes:
+
+```python
+import pysnooper
+
+@pysnooper.snoop(watch=(
+    pysnooper.Attrs('x'),    # attributes
+    pysnooper.Keys('y'),     # mapping (e.g. dict) items
+    pysnooper.Indices('z'),  # sequence (e.g. list/tuple) items
+))
+```
+
+Exclude specific keys/attributes/indices with the `exclude` parameter, e.g. `Attrs('x', exclude=('_foo', '_bar'))`.
+
+Add a slice after `Indices` to only see the values within that slice, e.g. `Indices('z')[-3:]`.
+
+# Contribute #
+
+[Pull requests](https://github.com/cool-RR/PySnooper/pulls) are always welcome!
+Please, write tests and run them with [Tox](https://tox.readthedocs.io/).
+
+Tox installs all dependencies automatically. You only need to install Tox itself:
+
+```console
+$ pip install tox
+```
+
+List all environments `tox` would run:
+
+```console
+$ tox -lv
+```
+
+If you want to run tests against all target Python versions use [pyenv](
+https://github.com/pyenv/pyenv) to install them. Otherwise, you can run
+only linters and the ones you have already installed on your machine:
+
+```console
+# run only some environments
+$ tox -e flake8,pylint,bandit,py27,py36
+```
+
+Or just install project in developer mode with test dependencies:
+
+``` bash
+$ pip install -e path/to/PySnooper[tests]
+```
+
+And run tests:
+
+``` bash
+$ pytest
+```
+
+Tests should pass before you push your code. They will be run again on Travis CI.
+
+# License #
+
+Copyright (c) 2019 Ram Rachum and collaborators, released under the MIT license.
+
+I provide [Development services in Python and Django](https://chipmunkdev.com
+) and I [give Python workshops](http://pythonworkshops.co/) to teach people
+Python and related topics.
+
+# Media Coverage #
+
+[Hacker News thread](https://news.ycombinator.com/item?id=19717786)
+and [/r/Python Reddit thread](https://www.reddit.com/r/Python/comments/bg0ida/pysnooper_never_use_print_for_debugging_again/) (22 April 2019)
+
+===== setup.py =====
+# Copyright 2019 Ram Rachum and collaborators.
+# This program is distributed under the MIT license.
+import setuptools
+import re
+
+
+def read_file(filename):
+    with open(filename) as file:
+        return file.read()
+
+version = re.search("__version__ = '([0-9.]*)'",
+                    read_file('pysnooper/__init__.py')).group(1)
+
+setuptools.setup(
+    name='PySnooper',
+    version=version,
+    author='Ram Rachum',
+    author_email='ram@rachum.com',
+    description="A poor man's debugger for Python.",
+    long_description=read_file('README.md'),
+    long_description_content_type='text/markdown',
+    url='https://github.com/cool-RR/PySnooper',
+    packages=setuptools.find_packages(exclude=['tests']),
+    install_requires=read_file('requirements.in'),
+    extras_require={
+        'tests': {
+            'pytest',
+            'python-toolbox',
+        },
+    },
+    classifiers=[
+        'Environment :: Console',
+        'Intended Audience :: Developers',
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: Implementation :: CPython',
+        'Programming Language :: Python :: Implementation :: PyPy',
+        'License :: OSI Approved :: MIT License',
+        'Operating System :: OS Independent',
+        'Topic :: Software Development :: Debuggers',
+    ],
+)
+
+===== pysnooper/tracer.py =====
+# Copyright 2019 Ram Rachum and collaborators.
+# This program is distributed under the MIT license.
+
+import functools
+import inspect
+import opcode
+import sys
+import re
+import collections
+import datetime as datetime_module
+import itertools
+import threading
+import traceback
+
+from .variables import CommonVariable, Exploding, BaseVariable
+from . import utils, pycompat
+
+
+ipython_filename_pattern = re.compile('^<ipython-input-([0-9]+)-.*>$')
+
+
+def get_local_reprs(frame, watch=()):
+    code = frame.f_code
+    vars_order = code.co_varnames + code.co_cellvars + code.co_freevars + tuple(frame.f_locals.keys())
+
+    result_items = [(key, utils.get_shortish_repr(value)) for key, value in frame.f_locals.items()]
+    result_items.sort(key=lambda key_value: vars_order.index(key_value[0]))
+    result = collections.OrderedDict(result_items)
+
+    for variable in watch:
+        result.update(sorted(variable.items(frame)))
+    return result
+
+
+class UnavailableSource(object):
+    def __getitem__(self, i):
+        return u'SOURCE IS UNAVAILABLE'
+
+
+source_cache = {}
+
+
+def get_source_from_frame(frame):
+    globs = frame.f_globals or {}
+    module_name = globs.get('__name__')
+    file_name = frame.f_code.co_filename
+    cache_key = (module_name, file_name)
+    try:
+        return source_cache[cache_key]
+    except KeyError:
+        pass
+    loader = globs.get('__loader__')
+
+    source = None
+    if hasattr(loader, 'get_source'):
+        try:
+            source = loader.get_source(module_name)
+        except ImportError:
+            pass
+        if source is not None:
+            source = source.splitlines()
+    if source is None:
+        ipython_filename_match = ipython_filename_pattern.match(file_name)
+        if ipython_filename_match:
+            entry_number = int(ipython_filename_match.group(1))
+            try:
+                import IPython
+                ipython_shell = IPython.get_ipython()
+                ((_, _, source_chunk),) = ipython_shell.history_manager. \
+                                  get_range(0, entry_number, entry_number + 1)
+                source = source_chunk.splitlines()
+            except Exception:
+                pass
+        else:
+            try:
+                with open(file_name, 'rb') as fp:
+                    source = fp.read().splitlines()
+            except utils.file_reading_errors:
+                pass
+    if source is None:
+        source = UnavailableSource()
+
+    # If we just read the source from a file, or if the loader did not
+    # apply tokenize.detect_encoding to decode the source into a
+    # string, then we should do that ourselves.
+    if isinstance(source[0], bytes):
+        encoding = 'ascii'
+        for line in source[:2]:
+            # File coding may be specified. Match pattern from PEP-263
+            # (https://www.python.org/dev/peps/pep-0263/)
+            match = re.search(br'coding[:=]\s*([-\w.]+)', line)
+            if match:
+                encoding = match.group(1).decode('ascii')
+                break
+        source = [pycompat.text_type(sline, encoding, 'replace') for sline in
+                  source]
+
+    source_cache[cache_key] = source
+    return source
+
+
+def get_write_function(output, overwrite):
+    is_path = isinstance(output, (pycompat.PathLike, str))
+    if overwrite and not is_path:
+        raise Exception('`overwrite=True` can only be used when writing '
+                        'content to file.')
+    if output is None:
+        def write(s):
+            stderr = sys.stderr
+            try:
+                stderr.write(s)
+            except UnicodeEncodeError:
+                # God damn Python 2
+                stderr.write(utils.shitcode(s))
+    elif is_path:
+        return FileWriter(output, overwrite).write
+    elif callable(output):
+        write = output
+    else:
+        assert isinstance(output, utils.WritableStream)
+
+        def write(s):
+            output.write(s)
+    return write
+
+
+class FileWriter(object):
+    def __init__(self, path, overwrite):
+        self.path = pycompat.text_type(path)
+        self.overwrite = overwrite
+
+    def write(self, s):
+        with open(self.path, 'w' if self.overwrite else 'a') as output_file:
+            output_file.write(s)
+        self.overwrite = False
+
+
+thread_global = threading.local()
+
+
+class Tracer:
+    '''
+    Snoop on the function, writing everything it's doing to stderr.
+
+    This is useful for debugging.
+
+    When you decorate a function with `@pysnooper.snoop()`
+    or wrap a block of code in `with pysnooper.snoop():`, you'll get a log of
+    every line that ran in the function and a play-by-play of every local
+    variable that changed.
+
+    If stderr is not easily accessible for you, you can redirect the output to
+    a file::
+
+        @pysnooper.snoop('/my/log/file.log')
+
+    See values of some expressions that aren't local variables::
+
+        @pysnooper.snoop(watch=('foo.bar', 'self.x["whatever"]'))
+
+    Expand values to see all their attributes or items of lists/dictionaries:
+
+        @pysnooper.snoop(watch_explode=('foo', 'self'))
+
+    (see Advanced Usage in the README for more control)
+
+    Show snoop lines for functions that your function calls::
+
+        @pysnooper.snoop(depth=2)
+
+    Start all snoop lines with a prefix, to grep for them easily::
+
+        @pysnooper.snoop(prefix='ZZZ ')
+
+    On multi-threaded apps identify which thread are snooped in output::
+
+        @pysnooper.snoop(thread_info=True)
+
+    '''
+    def __init__(
+            self,
+            output=None,
+            watch=(),
+            watch_explode=(),
+            depth=1,
+            prefix='',
+            overwrite=False,
+            thread_info=False,
+    ):
+        self._write = get_write_function(output, overwrite)
+
+        self.watch = [
+            v if isinstance(v, BaseVariable) else CommonVariable(v)
+            for v in utils.ensure_tuple(watch)
+         ] + [
+             v if isinstance(v, BaseVariable) else Exploding(v)
+             for v in utils.ensure_tuple(watch_explode)
+        ]
+        self.frame_to_local_reprs = {}
+        self.depth = depth
+        self.prefix = prefix
+        self.thread_info = thread_info
+        self.thread_info_padding = 0
+        assert self.depth >= 1
+        self.target_codes = set()
+        self.target_frames = set()
+        self.thread_local = threading.local()
+
+    def __call__(self, function):
+        self.target_codes.add(function.__code__)
+
+        @functools.wraps(function)
+        def simple_wrapper(*args, **kwargs):
+            with self:
+                return function(*args, **kwargs)
+
+        @functools.wraps(function)
+        def generator_wrapper(*args, **kwargs):
+            gen = function(*args, **kwargs)
+            method, incoming = gen.send, None
+            while True:
+                with self:
+                    try:
+                        outgoing = method(incoming)
+                    except StopIteration:
+                        return
+                try:
+                    method, incoming = gen.send, (yield outgoing)
+                except Exception as e:
+                    method, incoming = gen.throw, e
+
+        if pycompat.iscoroutinefunction(function):
+            # return decorate(function, coroutine_wrapper)
+            raise NotImplementedError
+        elif inspect.isgeneratorfunction(function):
+            return generator_wrapper
+        else:
+            return simple_wrapper
+
+    def write(self, s):
+        s = u'{self.prefix}{s}\n'.format(**locals())
+        self._write(s)
+
+    def __enter__(self):
+        calling_frame = inspect.currentframe().f_back
+        if not self._is_internal_frame(calling_frame):
+            calling_frame.f_trace = self.trace
+            self.target_frames.add(calling_frame)
+
+        stack = self.thread_local.__dict__.setdefault('original_trace_functions', [])
+        stack.append(sys.gettrace())
+        sys.settrace(self.trace)
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        stack = self.thread_local.original_trace_functions
+        sys.settrace(stack.pop())
+        calling_frame = inspect.currentframe().f_back
+        self.target_frames.discard(calling_frame)
+        self.frame_to_local_reprs.pop(calling_frame, None)
+
+    def _is_internal_frame(self, frame):
+        return frame.f_code.co_filename == Tracer.__enter__.__code__.co_filename
+
+    def set_thread_info_padding(self, thread_info):
+        current_thread_len = len(thread_info)
+        self.thread_info_padding = max(self.thread_info_padding,
+                                       current_thread_len)
+        return thread_info.ljust(self.thread_info_padding)
+
+
+    def trace(self, frame, event, arg):
+
+        ### Checking whether we should trace this line: #######################
+        #                                                                     #
+        # We should trace this line either if it's in the decorated function,
+        # or the user asked to go a few levels deeper and we're within that
+        # number of levels deeper.
+
+        if not (frame.f_code in self.target_codes or frame in self.target_frames):
+            if self.depth == 1:
+                # We did the most common and quickest check above, because the
+                # trace function runs so incredibly often, therefore it's
+                # crucial to hyper-optimize it for the common case.
+                return None
+            elif self._is_internal_frame(frame):
+                return None
+            else:
+                _frame_candidate = frame
+                for i in range(1, self.depth):
+                    _frame_candidate = _frame_candidate.f_back
+                    if _frame_candidate is None:
+                        return None
+                    elif _frame_candidate.f_code in self.target_codes or _frame_candidate in self.target_frames:
+                        break
+                else:
+                    return None
+
+        thread_global.__dict__.setdefault('depth', -1)
+        if event == 'call':
+            thread_global.depth += 1
+        indent = ' ' * 4 * thread_global.depth
+
+        #                                                                     #
+        ### Finished checking whether we should trace this line. ##############
+
+        ### Reporting newish and modified variables: ##########################
+        #                                                                     #
+        old_local_reprs = self.frame_to_local_reprs.get(frame, {})
+        self.frame_to_local_reprs[frame] = local_reprs = \
+                                       get_local_reprs(frame, watch=self.watch)
+
+        newish_string = ('Starting var:.. ' if event == 'call' else
+                                                            'New var:....... ')
+
+        for name, value_repr in local_reprs.items():
+            if name not in old_local_reprs:
+                self.write('{indent}{newish_string}{name} = {value_repr}'.format(
+                                                                       **locals()))
+            elif old_local_reprs[name] != value_repr:
+                self.write('{indent}Modified var:.. {name} = {value_repr}'.format(
+                                                                   **locals()))
+
+        #                                                                     #
+        ### Finished newish and modified variables. ###########################
+
+        now_string = datetime_module.datetime.now().time().isoformat()
+        line_no = frame.f_lineno
+        source_line = get_source_from_frame(frame)[line_no - 1]
+        thread_info = ""
+        if self.thread_info:
+            current_thread = threading.current_thread()
+            thread_info = "{ident}-{name} ".format(
+                ident=current_thread.ident, name=current_thread.getName())
+        thread_info = self.set_thread_info_padding(thread_info)
+
+        ### Dealing with misplaced function definition: #######################
+        #                                                                     #
+        if event == 'call' and source_line.lstrip().startswith('@'):
+            # If a function decorator is found, skip lines until an actual
+            # function definition is found.
+            for candidate_line_no in itertools.count(line_no):
+                try:
+                    candidate_source_line = \
+                            get_source_from_frame(frame)[candidate_line_no - 1]
+                except IndexError:
+                    # End of source file reached without finding a function
+                    # definition. Fall back to original source line.
+                    break
+
+                if candidate_source_line.lstrip().startswith('def'):
+                    # Found the def line!
+                    line_no = candidate_line_no
+                    source_line = candidate_source_line
+                    break
+        #                                                                     #
+        ### Finished dealing with misplaced function definition. ##############
+
+        # If a call ends due to an exception, we still get a 'return' event
+        # with arg = None. This seems to be the only way to tell the difference
+        # https://stackoverflow.com/a/12800909/2482744
+        code_byte = frame.f_code.co_code[frame.f_lasti]
+        if not isinstance(code_byte, int):
+            code_byte = ord(code_byte)
+        ended_by_exception = (
+                event == 'return'
+                and arg is None
+                and (opcode.opname[code_byte]
+                     not in ('RETURN_VALUE', 'YIELD_VALUE'))
+        )
+
+        if ended_by_exception:
+            self.write('{indent}Call ended by exception'.
+                       format(**locals()))
+        else:
+            self.write(u'{indent}{now_string} {thread_info}{event:9} '
+                       u'{line_no:4} {source_line}'.format(**locals()))
+
+        if event == 'return':
+            del self.frame_to_local_reprs[frame]
+            thread_global.depth -= 1
+
+            if not ended_by_exception:
+                return_value_repr = utils.get_shortish_repr(arg)
+                self.write('{indent}Return value:.. {return_value_repr}'.
+                           format(**locals()))
+
+        if event == 'exception':
+            exception = '\n'.join(traceback.format_exception_only(*arg[:2])).strip()
+            exception = utils.truncate(exception, utils.MAX_EXCEPTION_LENGTH)
+            self.write('{indent}{exception}'.
+                       format(**locals()))
+
+        return self.trace
+
+===== pysnooper/pycompat.py =====
+# Copyright 2019 Ram Rachum and collaborators.
+# This program is distributed under the MIT license.
+'''Python 2/3 compatibility'''
+
+import abc
+import os
+import inspect
+import sys
+
+PY3 = (sys.version_info[0] == 3)
+
+if hasattr(abc, 'ABC'):
+    ABC = abc.ABC
+else:
+    class ABC(object):
+        """Helper class that provides a standard way to create an ABC using
+        inheritance.
+        """
+        __metaclass__ = abc.ABCMeta
+        __slots__ = ()
+
+
+if hasattr(os, 'PathLike'):
+    PathLike = os.PathLike
+else:
+    class PathLike(ABC):
+        """Abstract base class for implementing the file system path protocol."""
+
+        @abc.abstractmethod
+        def __fspath__(self):
+            """Return the file system path representation of the object."""
+            raise NotImplementedError
+
+        @classmethod
+        def __subclasshook__(cls, subclass):
+            return (
+                hasattr(subclass, '__fspath__') or
+                # Make a concession for older `pathlib` versions:g
+                (hasattr(subclass, 'open') and
+                 'path' in subclass.__name__.lower())
+            )
+
+
+try:
+    iscoroutinefunction = inspect.iscoroutinefunction
+except AttributeError:
+    iscoroutinefunction = lambda whatever: False # Lolz
+
+
+if PY3:
+    string_types = (str,)
+    text_type = str
+else:
+    string_types = (basestring,)
+    text_type = unicode
+
+===== pysnooper/utils.py =====
+# Copyright 2019 Ram Rachum and collaborators.
+# This program is distributed under the MIT license.
+
+import abc
+
+import sys
+from .pycompat import ABC, string_types
+
+MAX_VARIABLE_LENGTH = 100
+MAX_EXCEPTION_LENGTH = 200
+
+def _check_methods(C, *methods):
+    mro = C.__mro__
+    for method in methods:
+        for B in mro:
+            if method in B.__dict__:
+                if B.__dict__[method] is None:
+                    return NotImplemented
+                break
+        else:
+            return NotImplemented
+    return True
+
+
+class WritableStream(ABC):
+    @abc.abstractmethod
+    def write(self, s):
+        pass
+
+    @classmethod
+    def __subclasshook__(cls, C):
+        if cls is WritableStream:
+            return _check_methods(C, 'write')
+        return NotImplemented
+
+
+
+file_reading_errors = (
+    IOError,
+    OSError,
+    ValueError # IronPython weirdness.
+)
+
+
+
+def shitcode(s):
+    return ''.join(
+        (c if (0 < ord(c) < 256) else '?') for c in s
+    )
+
+
+def get_shortish_repr(item):
+    try:
+        r = repr(item)
+    except Exception:
+        r = 'REPR FAILED'
+    r = r.replace('\r', '').replace('\n', '')
+    r = truncate(r, MAX_VARIABLE_LENGTH)
+    return r
+
+
+def truncate(string, max_length):
+    if len(string) > max_length:
+        left = (max_length - 3) // 2
+        right = max_length - 3 - left
+        string = u'{}...{}'.format(string[:left], string[-right:])
+    return string
+
+
+def ensure_tuple(x):
+    if isinstance(x, string_types):
+        x = (x,)
+    return tuple(x)
+
+
+
+
+===== pysnooper/variables.py =====
+import itertools
+import abc
+from collections import Mapping, Sequence
+from copy import deepcopy
+
+from . import utils
+from . import pycompat
+
+
+def needs_parentheses(source):
+    def code(s):
+        return compile(s, '<variable>', 'eval').co_code
+
+    return code('{}.x'.format(source)) != code('({}).x'.format(source))
+
+
+class BaseVariable(pycompat.ABC):
+    def __init__(self, source, exclude=()):
+        self.source = source
+        self.exclude = utils.ensure_tuple(exclude)
+        self.code = compile(source, '<variable>', 'eval')
+        if needs_parentheses(source):
+            self.unambiguous_source = '({})'.format(source)
+        else:
+            self.unambiguous_source = source
+
+    def items(self, frame):
+        try:
+            main_value = eval(self.code, frame.f_globals or {}, frame.f_locals)
+        except Exception:
+            return ()
+        return self._items(main_value)
+
+    @abc.abstractmethod
+    def _items(self, key):
+        raise NotImplementedError
+
+
+class CommonVariable(BaseVariable):
+    def _items(self, main_value):
+        result = [(self.source, utils.get_shortish_repr(main_value))]
+        for key in self._safe_keys(main_value):
+            try:
+                if key in self.exclude:
+                    continue
+                value = self._get_value(main_value, key)
+            except Exception:
+                continue
+            result.append((
+                '{}{}'.format(self.unambiguous_source, self._format_key(key)),
+                utils.get_shortish_repr(value)
+            ))
+        return result
+
+    def _safe_keys(self, main_value):
+        try:
+            for key in self._keys(main_value):
+                yield key
+        except Exception:
+            pass
+
+    def _keys(self, main_value):
+        return ()
+
+    def _format_key(self, key):
+        raise NotImplementedError
+
+    def _get_value(self, main_value, key):
+        raise NotImplementedError
+
+
+class Attrs(CommonVariable):
+    def _keys(self, main_value):
+        return itertools.chain(
+            getattr(main_value, '__dict__', ()),
+            getattr(main_value, '__slots__', ())
+        )
+
+    def _format_key(self, key):
+        return '.' + key
+
+    def _get_value(self, main_value, key):
+        return getattr(main_value, key)
+
+
+class Keys(CommonVariable):
+    def _keys(self, main_value):
+        return main_value.keys()
+
+    def _format_key(self, key):
+        return '[{}]'.format(utils.get_shortish_repr(key))
+
+    def _get_value(self, main_value, key):
+        return main_value[key]
+
+
+class Indices(Keys):
+    _slice = slice(None)
+
+    def _keys(self, main_value):
+        return range(len(main_value))[self._slice]
+
+    def __getitem__(self, item):
+        assert isinstance(item, slice)
+        result = deepcopy(self)
+        result._slice = item
+        return result
+
+
+class Exploding(BaseVariable):
+    def _items(self, main_value):
+        if isinstance(main_value, Mapping):
+            cls = Keys
+        elif isinstance(main_value, Sequence):
+            cls = Indices
+        else:
+            cls = Attrs
+
+        return cls(self.source, self.exclude)._items(main_value)
+
+===== tests/test_pysnooper.py =====
+# Copyright 2019 Ram Rachum and collaborators.
+# This program is distributed under the MIT license.
+
+import io
+import textwrap
+import threading
+import types
+import sys
+
+from pysnooper.utils import truncate
+from python_toolbox import sys_tools, temp_file_tools
+import pytest
+
+import pysnooper
+from pysnooper.variables import needs_parentheses
+from .utils import (assert_output, assert_sample_output, VariableEntry,
+                    CallEntry, LineEntry, ReturnEntry, OpcodeEntry,
+                    ReturnValueEntry, ExceptionEntry)
+
+
+def test_string_io():
+    string_io = io.StringIO()
+
+    @pysnooper.snoop(string_io)
+    def my_function(foo):
+        x = 7
+        y = 8
+        return y + x
+
+    result = my_function('baba')
+    assert result == 15
+    output = string_io.getvalue()
+    assert_output(
+        output,
+        (
+            VariableEntry('foo', value_regex="u?'baba'"),
+            CallEntry('def my_function(foo):'),
+            LineEntry('x = 7'),
+            VariableEntry('x', '7'),
+            LineEntry('y = 8'),
+            VariableEntry('y', '8'),
+            LineEntry('return y + x'),
+            ReturnEntry('return y + x'),
+            ReturnValueEntry('15'),
+        )
+    )
+
+
+def test_thread_info():
+
+    @pysnooper.snoop(thread_info=True)
+    def my_function(foo):
+        x = 7
+        y = 8
+        return y + x
+
+    with sys_tools.OutputCapturer(stdout=False,
+                                  stderr=True) as output_capturer:
+        result = my_function('baba')
+    assert result == 15
+    output = output_capturer.string_io.getvalue()
+    assert_output(
+        output,
+        (
+            VariableEntry('foo', value_regex="u?'baba'"),
+            CallEntry('def my_function(foo):'),
+            LineEntry('x = 7'),
+            VariableEntry('x', '7'),
+            LineEntry('y = 8'),
+            VariableEntry('y', '8'),
+            LineEntry('return y + x'),
+            ReturnEntry('return y + x'),
+            ReturnValueEntry('15'),
+        )
+    )
+
+
+def test_multi_thread_info():
+
+    @pysnooper.snoop(thread_info=True)
+    def my_function(foo):
+        x = 7
+        y = 8
+        return y + x
+
+    with sys_tools.OutputCapturer(stdout=False,
+                                  stderr=True) as output_capturer:
+        my_function('baba')
+        t1 = threading.Thread(target=my_function, name="test123",args=['bubu'])
+        t1.start()
+        t1.join()
+        t1 = threading.Thread(target=my_function, name="bibi",args=['bibi'])
+        t1.start()
+        t1.join()
+    output = output_capturer.string_io.getvalue()
+    calls = [line for line in output.split("\n") if "call" in line]
+    main_thread = calls[0]
+    assert len(main_thread) == len(calls[1])
+    assert len(main_thread) == len(calls[2])
+    main_thread_call_str = main_thread.find("call")
+    assert main_thread_call_str == calls[1].find("call")
+    assert main_thread_call_str == calls[2].find("call")
+    thread_info_regex = '([0-9]+-{name}+[ ]+)'
+    assert_output(
+        output,
+        (
+            VariableEntry('foo', value_regex="u?'baba'"),
+            CallEntry('def my_function(foo):',
+                      thread_info_regex=thread_info_regex.format(
+                          name="MainThread")),
+            LineEntry('x = 7',
+                      thread_info_regex=thread_info_regex.format(
+                          name="MainThread")),
+            VariableEntry('x', '7'),
+            LineEntry('y = 8',
+                      thread_info_regex=thread_info_regex.format(
+                          name="MainThread")),
+            VariableEntry('y', '8'),
+            LineEntry('return y + x',
+                      thread_info_regex=thread_info_regex.format(
+                          name="MainThread")),
+            ReturnEntry('return y + x'),
+            ReturnValueEntry('15'),
+            VariableEntry('foo', value_regex="u?'bubu'"),
+            CallEntry('def my_function(foo):',
+                      thread_info_regex=thread_info_regex.format(
+                          name="test123")),
+            LineEntry('x = 7',
+                      thread_info_regex=thread_info_regex.format(
+                          name="test123")),
+            VariableEntry('x', '7'),
+            LineEntry('y = 8',
+                      thread_info_regex=thread_info_regex.format(
+                          name="test123")),
+            VariableEntry('y', '8'),
+            LineEntry('return y + x',
+                      thread_info_regex=thread_info_regex.format(
+                          name="test123")),
+            ReturnEntry('return y + x'),
+            ReturnValueEntry('15'),
+            VariableEntry('foo', value_regex="u?'bibi'"),
+            CallEntry('def my_function(foo):',
+                      thread_info_regex=thread_info_regex.format(name='bibi')),
+            LineEntry('x = 7',
+                      thread_info_regex=thread_info_regex.format(name='bibi')),
+            VariableEntry('x', '7'),
+            LineEntry('y = 8',
+                      thread_info_regex=thread_info_regex.format(name='bibi')),
+            VariableEntry('y', '8'),
+            LineEntry('return y + x',
+                      thread_info_regex=thread_info_regex.format(name='bibi')),
+            ReturnEntry('return y + x'),
+            ReturnValueEntry('15'),
+        )
+    )
+
+
+def test_callable():
+    string_io = io.StringIO()
+
+    def write(msg):
+        string_io.write(msg)
+
+    @pysnooper.snoop(write)
+    def my_function(foo):
+        x = 7
+        y = 8
+        return y + x
+
+    result = my_function('baba')
+    assert result == 15
+    output = string_io.getvalue()
+    assert_output(
+        output,
+        (
+            VariableEntry('foo', value_regex="u?'baba'"),
+            CallEntry('def my_function(foo):'),
+            LineEntry('x = 7'),
+            VariableEntry('x', '7'),
+            LineEntry('y = 8'),
+            VariableEntry('y', '8'),
+            LineEntry('return y + x'),
+            ReturnEntry('return y + x'),
+            ReturnValueEntry('15'),
+        )
+    )
+
+
+
+def test_watch():
+
+    class Foo(object):
+        def __init__(self):
+            self.x = 2
+
+        def square(self):
+            self.x **= 2
+
+    @pysnooper.snoop(watch=(
+            'foo.x',
+            'io.__name__',
+            'len(foo.__dict__["x"] * "abc")',
+    ))
+    def my_function():
+        foo = Foo()
+        for i in range(2):
+            foo.square()
+
+    with sys_tools.OutputCapturer(stdout=False,
+                                  stderr=True) as output_capturer:
+        result = my_function()
+    assert result is None
+    output = output_capturer.string_io.getvalue()
+    assert_output(
+        output,
+        (
+            VariableEntry('Foo'),
+            VariableEntry('io.__name__', "'io'"),
+            CallEntry('def my_function():'),
+            LineEntry('foo = Foo()'),
+            VariableEntry('foo'),
+            VariableEntry('foo.x', '2'),
+            VariableEntry('len(foo.__dict__["x"] * "abc")', '6'),
+            LineEntry(),
+            VariableEntry('i', '0'),
+            LineEntry(),
+            VariableEntry('foo.x', '4'),
+            VariableEntry('len(foo.__dict__["x"] * "abc")', '12'),
+            LineEntry(),
+            VariableEntry('i', '1'),
+            LineEntry(),
+            VariableEntry('foo.x', '16'),
+            VariableEntry('len(foo.__dict__["x"] * "abc")', '48'),
+            LineEntry(),
+            ReturnEntry(),
+            ReturnValueEntry('None')
+        )
+    )
+
+
+def test_watch_explode():
+    class Foo:
+        def __init__(self, x, y):
+            self.x = x
+            self.y = y
+
+
+    @pysnooper.snoop(watch_explode=('_d', '_point', 'lst + []'))
+    def my_function():
+        _d = {'a': 1, 'b': 2, 'c': 'ignore'}
+        _point = Foo(x=3, y=4)
+        lst = [7, 8, 9]
+        lst.append(10)
+
+    with sys_tools.OutputCapturer(stdout=False,
+                                  stderr=True) as output_capturer:
+        result = my_function()
+    assert result is None
+    output = output_capturer.string_io.getvalue()
+    assert_output(
+        output,
+        (
+            VariableEntry('Foo'),
+            CallEntry('def my_function():'),
+            LineEntry(),
+            VariableEntry('_d'),
+            VariableEntry("_d['a']", '1'),
+            VariableEntry("_d['b']", '2'),
+            VariableEntry("_d['c']", "'ignore'"),
+            LineEntry(),
+            VariableEntry('_point'),
+            VariableEntry('_point.x', '3'),
+            VariableEntry('_point.y', '4'),
+            LineEntry(),
+            VariableEntry('lst'),
+            VariableEntry('(lst + [])[0]', '7'),
+            VariableEntry('(lst + [])[1]', '8'),
+            VariableEntry('(lst + [])[2]', '9'),
+            VariableEntry('lst + []'),
+            LineEntry(),
+            VariableEntry('lst'),
+            VariableEntry('(lst + [])[3]', '10'),
+            VariableEntry('lst + []'),
+            ReturnEntry(),
+            ReturnValueEntry('None')
+        )
+    )
+
+
+def test_variables_classes():
+    class WithSlots(object):
+        __slots__ = ('x', 'y')
+
+        def __init__(self):
+            self.x = 3
+            self.y = 4
+
+    @pysnooper.snoop(watch=(
+            pysnooper.Keys('_d', exclude='c'),
+            pysnooper.Attrs('_d'),  # doesn't have attributes
+            pysnooper.Attrs('_s'),
+            pysnooper.Indices('_lst')[-3:],
+    ))
+    def my_function():
+        _d = {'a': 1, 'b': 2, 'c': 'ignore'}
+        _s = WithSlots()
+        _lst = list(range(1000))
+
+    with sys_tools.OutputCapturer(stdout=False,
+                                  stderr=True) as output_capturer:
+        result = my_function()
+    assert result is None
+    output = output_capturer.string_io.getvalue()
+    assert_output(
+        output,
+        (
+            VariableEntry('WithSlots'),
+            CallEntry('def my_function():'),
+            LineEntry(),
+            VariableEntry('_d'),
+            VariableEntry("_d['a']", '1'),
+            VariableEntry("_d['b']", '2'),
+            LineEntry(),
+            VariableEntry('_s'),
+            VariableEntry('_s.x', '3'),
+            VariableEntry('_s.y', '4'),
+            LineEntry(),
+            VariableEntry('_lst'),
+            VariableEntry('_lst[997]', '997'),
+            VariableEntry('_lst[998]', '998'),
+            VariableEntry('_lst[999]', '999'),
+            ReturnEntry(),
+            ReturnValueEntry('None')
+        )
+    )
+
+
+
+def test_single_watch_no_comma():
+
+    class Foo(object):
+        def __init__(self):
+            self.x = 2
+
+        def square(self):
+            self.x **= 2
+
+    @pysnooper.snoop(watch='foo')
+    def my_function():
+        foo = Foo()
+        for i in range(2):
+            foo.square()
+
+    with sys_tools.OutputCapturer(stdout=False,
+                                  stderr=True) as output_capturer:
+        result = my_function()
+    assert result is None
+    output = output_capturer.string_io.getvalue()
+    assert_output(
+        output,
+        (
+            VariableEntry('Foo'),
+            CallEntry('def my_function():'),
+            LineEntry('foo = Foo()'),
+            VariableEntry('foo'),
+            LineEntry(),
+            VariableEntry('i', '0'),
+            LineEntry(),
+            LineEntry(),
+            VariableEntry('i', '1'),
+            LineEntry(),
+            LineEntry(),
+            ReturnEntry(),
+            ReturnValueEntry('None')
+        )
+    )
+
+
+def test_long_variable():
+    @pysnooper.snoop()
+    def my_function():
+        foo = list(range(1000))
+        return foo
+
+    with sys_tools.OutputCapturer(stdout=False,
+                                  stderr=True) as output_capturer:
+        result = my_function()
+    assert result == list(range(1000))
+    output = output_capturer.string_io.getvalue()
+    regex = r'^\[0, 1, 2, .*\.\.\..*, 997, 998, 999\]$'
+    assert_output(
+        output,
+        (
+            CallEntry('def my_function():'),
+            LineEntry('foo = list(range(1000))'),
+            VariableEntry('foo', value_regex=regex),
+            LineEntry(),
+            ReturnEntry(),
+            ReturnValueEntry(value_regex=regex)
+        )
+    )
+
+
+def test_repr_exception():
+    class Bad(object):
+        def __repr__(self):
+            1 / 0
+
+    @pysnooper.snoop()
+    def my_function():
+        bad = Bad()
+
+    with sys_tools.OutputCapturer(stdout=False,
+                                  stderr=True) as output_capturer:
+        result = my_function()
+    assert result is None
+    output = output_capturer.string_io.getvalue()
+    assert_output(
+        output,
+        (
+            VariableEntry('Bad'),
+            CallEntry('def my_function():'),
+            LineEntry('bad = Bad()'),
+            VariableEntry('bad', value='REPR FAILED'),
+            ReturnEntry(),
+            ReturnValueEntry('None')
+        )
+    )
+
+
+def test_depth():
+    string_io = io.StringIO()
+
+    def f4(x4):
+        result4 = x4 * 2
+        return result4
+
+    def f3(x3):
+        result3 = f4(x3)
+        return result3
+
+    def f2(x2):
+        result2 = f3(x2)
+        return result2
+
+    @pysnooper.snoop(string_io, depth=3)
+    def f1(x1):
+        result1 = f2(x1)
+        return result1
+
+    result = f1(10)
+    assert result == 20
+    output = string_io.getvalue()
+    assert_output(
+        output,
+        (
+            VariableEntry(),
+            VariableEntry(),
+            CallEntry('def f1(x1):'),
+            LineEntry(),
+
+            VariableEntry(),
+            VariableEntry(),
+            CallEntry('def f2(x2):'),
+            LineEntry(),
+
+            VariableEntry(),
+            VariableEntry(),
+            CallEntry('def f3(x3):'),
+            LineEntry(),
+
+            VariableEntry(),
+            LineEntry(),
+            ReturnEntry(),
+            ReturnValueEntry('20'),
+
+            VariableEntry(),
+            LineEntry(),
+            ReturnEntry(),
+            ReturnValueEntry('20'),
+
+            VariableEntry(),
+            LineEntry(),
+            ReturnEntry(),
+            ReturnValueEntry('20'),
+        )
+    )
+
+
+def test_method_and_prefix():
+    class Baz(object):
+        def __init__(self):
+            self.x = 2
+
+        @pysnooper.snoop(watch=('self.x',), prefix='ZZZ')
+        def square(self):
+            foo = 7
+            self.x **= 2
+            return self
+
+    baz = Baz()
+
+    with sys_tools.OutputCapturer(stdout=False,
+                                  stderr=True) as output_capturer:
+        result = baz.square()
+    assert result is baz
+    assert result.x == 4
+    output = output_capturer.string_io.getvalue()
+    assert_output(
+        output,
+        (
+            VariableEntry('self', prefix='ZZZ'),
+            VariableEntry('self.x', '2', prefix='ZZZ'),
+            CallEntry('def square(self):', prefix='ZZZ'),
+            LineEntry('foo = 7', prefix='ZZZ'),
+            VariableEntry('foo', '7', prefix='ZZZ'),
+            LineEntry('self.x **= 2', prefix='ZZZ'),
+            VariableEntry('self.x', '4', prefix='ZZZ'),
+            LineEntry(prefix='ZZZ'),
+            ReturnEntry(prefix='ZZZ'),
+            ReturnValueEntry(prefix='ZZZ'),
+        ),
+        prefix='ZZZ'
+    )
+
+
+def test_file_output():
+    with temp_file_tools.create_temp_folder(prefix='pysnooper') as folder:
+        path = folder / 'foo.log'
+
+        @pysnooper.snoop(path)
+        def my_function(_foo):
+            x = 7
+            y = 8
+            return y + x
+
+        result = my_function('baba')
+        assert result == 15
+        with path.open() as output_file:
+            output = output_file.read()
+        assert_output(
+            output,
+            (
+                VariableEntry('_foo', value_regex="u?'baba'"),
+                CallEntry('def my_function(_foo):'),
+                LineEntry('x = 7'),
+                VariableEntry('x', '7'),
+                LineEntry('y = 8'),
+                VariableEntry('y', '8'),
+                LineEntry('return y + x'),
+                ReturnEntry('return y + x'),
+                ReturnValueEntry('15'),
+            )
+        )
+
+
+def test_confusing_decorator_lines():
+    string_io = io.StringIO()
+
+    def empty_decorator(function):
+        return function
+
+    @empty_decorator
+    @pysnooper.snoop(string_io,
+                     depth=2)  # Multi-line decorator for extra confusion!
+    @empty_decorator
+    @empty_decorator
+    def my_function(foo):
+        x = lambda bar: 7
+        y = 8
+        return y + x(foo)
+
+    result = my_function('baba')
+    assert result == 15
+    output = string_io.getvalue()
+    assert_output(
+        output,
+        (
+            VariableEntry('foo', value_regex="u?'baba'"),
+            CallEntry('def my_function(foo):'),
+            LineEntry(),
+            VariableEntry(),
+            LineEntry(),
+            VariableEntry(),
+            LineEntry(),
+            # inside lambda
+            VariableEntry('bar', value_regex="u?'baba'"),
+            CallEntry('x = lambda bar: 7'),
+            LineEntry(),
+            ReturnEntry(),
+            ReturnValueEntry('7'),
+            # back in my_function
+            ReturnEntry(),
+            ReturnValueEntry('15'),
+        )
+    )
+
+
+def test_lambda():
+    string_io = io.StringIO()
+    my_function = pysnooper.snoop(string_io)(lambda x: x ** 2)
+    result = my_function(7)
+    assert result == 49
+    output = string_io.getvalue()
+    assert_output(
+        output,
+        (
+            VariableEntry('x', '7'),
+            CallEntry(source_regex='^my_function = pysnooper.*'),
+            LineEntry(source_regex='^my_function = pysnooper.*'),
+            ReturnEntry(source_regex='^my_function = pysnooper.*'),
+            ReturnValueEntry('49'),
+        )
+    )
+
+
+def test_unavailable_source():
+    with temp_file_tools.create_temp_folder(prefix='pysnooper') as folder, \
+            sys_tools.TempSysPathAdder(str(folder)):
+        module_name = 'iaerojajsijf'
+        python_file_path = folder / ('%s.py' % (module_name,))
+        content = textwrap.dedent(u'''
+            import pysnooper
+            @pysnooper.snoop()
+            def f(x):
+                return x
+        ''')
+        with python_file_path.open('w') as python_file:
+            python_file.write(content)
+        module = __import__(module_name)
+        python_file_path.unlink()
+        with sys_tools.OutputCapturer(stdout=False,
+                                      stderr=True) as output_capturer:
+            result = getattr(module, 'f')(7)
+        assert result == 7
+        output = output_capturer.output
+        assert_output(
+            output,
+            (
+                VariableEntry(stage='starting'),
+                CallEntry('SOURCE IS UNAVAILABLE'),
+                LineEntry('SOURCE IS UNAVAILABLE'),
+                ReturnEntry('SOURCE IS UNAVAILABLE'),
+                ReturnValueEntry('7'),
+            )
+        )
+
+
+def test_no_overwrite_by_default():
+    with temp_file_tools.create_temp_folder(prefix='pysnooper') as folder:
+        path = folder / 'foo.log'
+        with path.open('w') as output_file:
+            output_file.write(u'lala')
+        @pysnooper.snoop(str(path))
+        def my_function(foo):
+            x = 7
+            y = 8
+            return y + x
+        result = my_function('baba')
+        assert result == 15
+        with path.open() as output_file:
+            output = output_file.read()
+        assert output.startswith('lala')
+        shortened_output = output[4:]
+        assert_output(
+            shortened_output,
+            (
+                VariableEntry('foo', value_regex="u?'baba'"),
+                CallEntry('def my_function(foo):'),
+                LineEntry('x = 7'),
+                VariableEntry('x', '7'),
+                LineEntry('y = 8'),
+                VariableEntry('y', '8'),
+                LineEntry('return y + x'),
+                ReturnEntry('return y + x'),
+                ReturnValueEntry('15'),
+            )
+        )
+
+
+def test_overwrite():
+    with temp_file_tools.create_temp_folder(prefix='pysnooper') as folder:
+        path = folder / 'foo.log'
+        with path.open('w') as output_file:
+            output_file.write(u'lala')
+        @pysnooper.snoop(str(path), overwrite=True)
+        def my_function(foo):
+            x = 7
+            y = 8
+            return y + x
+        result = my_function('baba')
+        result = my_function('baba')
+        assert result == 15
+        with path.open() as output_file:
+            output = output_file.read()
+        assert 'lala' not in output
+        assert_output(
+            output,
+            (
+                VariableEntry('foo', value_regex="u?'baba'"),
+                CallEntry('def my_function(foo):'),
+                LineEntry('x = 7'),
+                VariableEntry('x', '7'),
+                LineEntry('y = 8'),
+                VariableEntry('y', '8'),
+                LineEntry('return y + x'),
+                ReturnEntry('return y + x'),
+                ReturnValueEntry('15'),
+
+                VariableEntry('foo', value_regex="u?'baba'"),
+                CallEntry('def my_function(foo):'),
+                LineEntry('x = 7'),
+                VariableEntry('x', '7'),
+                LineEntry('y = 8'),
+                VariableEntry('y', '8'),
+                LineEntry('return y + x'),
+                ReturnEntry('return y + x'),
+                ReturnValueEntry('15'),
+            )
+        )
+
+
+def test_error_in_overwrite_argument():
+    with temp_file_tools.create_temp_folder(prefix='pysnooper') as folder:
+        with pytest.raises(Exception, match='can only be used when writing'):
+            @pysnooper.snoop(overwrite=True)
+            def my_function(foo):
+                x = 7
+                y = 8
+                return y + x
+
+
+def test_needs_parentheses():
+    assert not needs_parentheses('x')
+    assert not needs_parentheses('x.y')
+    assert not needs_parentheses('x.y.z')
+    assert not needs_parentheses('x.y.z[0]')
+    assert not needs_parentheses('x.y.z[0]()')
+    assert not needs_parentheses('x.y.z[0]()(3, 4 * 5)')
+    assert not needs_parentheses('foo(x)')
+    assert not needs_parentheses('foo(x+y)')
+    assert not needs_parentheses('(x+y)')
+    assert not needs_parentheses('[x+1 for x in ()]')
+    assert needs_parentheses('x + y')
+    assert needs_parentheses('x * y')
+    assert needs_parentheses('x and y')
+    assert needs_parentheses('x if z else y')
+
+
+def test_with_block():
+    # Testing that a single Tracer can handle many mixed uses
+    snoop = pysnooper.snoop()
+
+    def foo(x):
+        if x == 0:
+            bar1(x)
+            qux()
+            return
+
+        with snoop:
+            # There should be line entries for these three lines,
+            # no line entries for anything else in this function,
+            # but calls to all bar functions should be traced
+            foo(x - 1)
+            bar2(x)
+            qux()
+        int(4)
+        bar3(9)
+        return x
+
+    @snoop
+    def bar1(_x):
+        qux()
+
+    @snoop
+    def bar2(_x):
+        qux()
+
+    @snoop
+    def bar3(_x):
+        qux()
+
+    def qux():
+        return 9  # not traced, mustn't show up
+
+    with sys_tools.OutputCapturer(stdout=False,
+                                  stderr=True) as output_capturer:
+        result = foo(2)
+    assert result == 2
+    output = output_capturer.string_io.getvalue()
+    assert_output(
+        output,
+        (
+            # In first with
+            VariableEntry('x', '2'),
+            VariableEntry('bar1'),
+            VariableEntry('bar2'),
+            VariableEntry('bar3'),
+            VariableEntry('foo'),
+            VariableEntry('qux'),
+            VariableEntry('snoop'),
+            LineEntry('foo(x - 1)'),
+
+            # In with in recursive call
+            VariableEntry('x', '1'),
+            VariableEntry('bar1'),
+            VariableEntry('bar2'),
+            VariableEntry('bar3'),
+            VariableEntry('foo'),
+            VariableEntry('qux'),
+            VariableEntry('snoop'),
+            LineEntry('foo(x - 1)'),
+
+            # Call to bar1 from if block outside with
+            VariableEntry('_x', '0'),
+            VariableEntry('qux'),
+            CallEntry('def bar1(_x):'),
+            LineEntry('qux()'),
+            ReturnEntry('qux()'),
+            ReturnValueEntry('None'),
+
+            # In with in recursive call
+            LineEntry('bar2(x)'),
+
+            # Call to bar2 from within with
+            VariableEntry('_x', '1'),
+            VariableEntry('qux'),
+            CallEntry('def bar2(_x):'),
+            LineEntry('qux()'),
+            ReturnEntry('qux()'),
+            ReturnValueEntry('None'),
+
+            # In with in recursive call
+            LineEntry('qux()'),
+
+            # Call to bar3 from after with
+            VariableEntry('_x', '9'),
+            VariableEntry('qux'),
+            CallEntry('def bar3(_x):'),
+            LineEntry('qux()'),
+            ReturnEntry('qux()'),
+            ReturnValueEntry('None'),
+
+            # -- Similar to previous few sections,
+            # -- but from first call to foo
+
+            # In with in first call
+            LineEntry('bar2(x)'),
+
+            # Call to bar2 from within with
+            VariableEntry('_x', '2'),
+            VariableEntry('qux'),
+            CallEntry('def bar2(_x):'),
+            LineEntry('qux()'),
+            ReturnEntry('qux()'),
+            ReturnValueEntry('None'),
+
+            # In with in first call
+            LineEntry('qux()'),
+
+            # Call to bar3 from after with
+            VariableEntry('_x', '9'),
+            VariableEntry('qux'),
+            CallEntry('def bar3(_x):'),
+            LineEntry('qux()'),
+            ReturnEntry('qux()'),
+            ReturnValueEntry('None'),
+        ),
+    )
+
+
+def test_with_block_depth():
+    string_io = io.StringIO()
+
+    def f4(x4):
+        result4 = x4 * 2
+        return result4
+
+    def f3(x3):
+        result3 = f4(x3)
+        return result3
+
+    def f2(x2):
+        result2 = f3(x2)
+        return result2
+
+    def f1(x1):
+        str(3)
+        with pysnooper.snoop(string_io, depth=3):
+            result1 = f2(x1)
+        return result1
+
+    result = f1(10)
+    assert result == 20
+    output = string_io.getvalue()
+    assert_output(
+        output,
+        (
+            VariableEntry(),
+            VariableEntry(),
+            VariableEntry(),
+            LineEntry('result1 = f2(x1)'),
+
+            VariableEntry(),
+            VariableEntry(),
+            CallEntry('def f2(x2):'),
+            LineEntry(),
+
+            VariableEntry(),
+            VariableEntry(),
+            CallEntry('def f3(x3):'),
+            LineEntry(),
+
+            VariableEntry(),
+            LineEntry(),
+            ReturnEntry(),
+            ReturnValueEntry('20'),
+
+            VariableEntry(),
+            LineEntry(),
+            ReturnEntry(),
+            ReturnValueEntry('20'),
+        )
+    )
+
+def test_cellvars():
+    string_io = io.StringIO()
+
+    def f2(a):
+        def f3(a):
+            x = 0
+            x += 1
+            def f4(a):
+                y = x
+                return 42
+            return f4(a)
+        return f3(a)
+
+    def f1(a):
+        with pysnooper.snoop(string_io, depth=4):
+            result1 = f2(a)
+        return result1
+
+    result = f1(42)
+    assert result == 42
+    output = string_io.getvalue()
+    assert_output(
+        output,
+        (
+            VariableEntry(),
+            VariableEntry(),
+            VariableEntry(),
+            LineEntry('result1 = f2(a)'),
+
+            VariableEntry(),
+            CallEntry('def f2(a):'),
+            LineEntry(),
+            VariableEntry(),
+            LineEntry(),
+
+            VariableEntry("a"),
+            CallEntry('def f3(a):'),
+            LineEntry(),
+            VariableEntry("x"),
+            LineEntry(),
+            VariableEntry("x"),
+            LineEntry(),
+            VariableEntry(),
+
+            LineEntry(),
+            VariableEntry(),
+            VariableEntry("x"),
+            CallEntry('def f4(a):'),
+            LineEntry(),
+            VariableEntry(),
+            LineEntry(),
+
+            ReturnEntry(),
+            ReturnValueEntry(),
+            ReturnEntry(),
+            ReturnValueEntry(),
+            ReturnEntry(),
+            ReturnValueEntry(),
+        )
+    )
+
+def test_var_order():
+    string_io = io.StringIO()
+
+    def f(one, two, three, four):
+        five = None
+        six = None
+        seven = None
+
+        five, six, seven = 5, 6, 7
+
+    with pysnooper.snoop(string_io, depth=2):
+        result = f(1, 2, 3, 4)
+
+    output = string_io.getvalue()
+    assert_output(
+        output,
+        (
+            VariableEntry(),
+            VariableEntry(),
+
+            LineEntry('result = f(1, 2, 3, 4)'),
+            VariableEntry("one", "1"),
+            VariableEntry("two", "2"),
+            VariableEntry("three", "3"),
+            VariableEntry("four", "4"),
+
+            CallEntry('def f(one, two, three, four):'),
+            LineEntry(),
+            VariableEntry("five"),
+            LineEntry(),
+            VariableEntry("six"),
+            LineEntry(),
+            VariableEntry("seven"),
+            LineEntry(),
+            VariableEntry("five", "5"),
+            VariableEntry("six", "6"),
+            VariableEntry("seven", "7"),
+            ReturnEntry(),
+            ReturnValueEntry(),
+        )
+    )
+
+
+
+def test_truncate():
+    max_length = 20
+    for i in range(max_length * 2):
+        string = i * 'a'
+        truncated = truncate(string, max_length)
+        if len(string) <= max_length:
+            assert string == truncated
+        else:
+            assert truncated == 'aaaaaaaa...aaaaaaaaa'
+            assert len(truncated) == max_length
+
+
+def test_indentation():
+    from .samples import indentation, recursion
+    assert_sample_output(indentation)
+    assert_sample_output(recursion)
+
+
+def test_exception():
+    from .samples import exception
+    assert_sample_output(exception)
+
+
+def test_generator():
+    string_io = io.StringIO()
+    original_tracer = sys.gettrace()
+    original_tracer_active = lambda: (sys.gettrace() is original_tracer)
+
+
+    @pysnooper.snoop(string_io)
+    def f(x1):
+        assert not original_tracer_active()
+        x2 = (yield x1)
+        assert not original_tracer_active()
+        x3 = 'foo'
+        assert not original_tracer_active()
+        x4 = (yield 2)
+        assert not original_tracer_active()
+        return
+
+
+    assert original_tracer_active()
+    generator = f(0)
+    assert original_tracer_active()
+    first_item = next(generator)
+    assert original_tracer_active()
+    assert first_item == 0
+    second_item = generator.send('blabla')
+    assert original_tracer_active()
+    assert second_item == 2
+    with pytest.raises(StopIteration) as exc_info:
+        generator.send('looloo')
+    assert original_tracer_active()
+
+    output = string_io.getvalue()
+    assert_output(
+        output,
+        (
+            VariableEntry('x1', '0'),
+            VariableEntry(),
+            CallEntry(),
+            LineEntry(),
+            VariableEntry(),
+            VariableEntry(),
+            LineEntry(),
+            ReturnEntry(),
+            ReturnValueEntry('0'),
+
+            # Pause and resume:
+
+            VariableEntry('x1', '0'),
+            VariableEntry(),
+            VariableEntry(),
+            VariableEntry(),
+            CallEntry(),
+            VariableEntry('x2', "'blabla'"),
+            LineEntry(),
+            LineEntry(),
+            VariableEntry('x3', "'foo'"),
+            LineEntry(),
+            LineEntry(),
+            ReturnEntry(),
+            ReturnValueEntry('2'),
+
+            # Pause and resume:
+
+            VariableEntry('x1', '0'),
+            VariableEntry(),
+            VariableEntry(),
+            VariableEntry(),
+            VariableEntry(),
+            VariableEntry(),
+            CallEntry(),
+            VariableEntry('x4', "'looloo'"),
+            LineEntry(),
+            LineEntry(),
+            ReturnEntry(),
+            ReturnValueEntry(None),
+
+        )
+    )
+
+
+

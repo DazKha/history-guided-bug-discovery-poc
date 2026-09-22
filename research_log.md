@@ -66,3 +66,17 @@ No generated test was an F2P discovery. The harness regression itself is a separ
 - C: all five attempts returned `NO_SUPPORTED_HYPOTHESIS` with `NOT_APPLICABLE`; classified as conservative `APPLICABILITY` rejection.
 
 The small result does not establish superiority. It demonstrates that the real buggy/fixed harness, leakage-separated context, three-condition runner, and unchanged-test evaluator work, while this one-target run did not produce a verified generated discovery for any condition.
+
+## 2026-09-23 — Experiment 1 audit and Experiment 2 transfer-feasibility rerun
+
+The audit was completed before changing the first experiment. It found that the target was `PySnooper:1`, whose hidden defect is locale-dependent implicit encoding in `pysnooper/tracer.py`; `cookiecutter:1` was the only clearly strong transfer case in the original six-case pool. Experiment 1’s raw representation omitted `evidence.fix_diff`, B inherited the common abstention rule, C’s fields were generic, and the target locale facts were absent from the prompt. Evidence and conclusions are in `results/experiment1_audit.md`.
+
+The evaluator then ranked transfer candidates by mechanism, trigger, invariant, and behavioral context. The chosen subset was `cookiecutter:1` plus the weaker same-domain `PySnooper:3`, recorded in `data/transfer_case_candidates.json`. The generation/evaluator boundary is recorded in `data/target_leakage_manifest.json`; `scripts/run_experiment2.py` does not import or read evaluator-only truth.
+
+Experiment 2 used a bounded target context assembled from ordinary buggy-checkout source/docs/tests and visible runtime facts (`Python 3.9.18`, `LC_ALL=C`, `PYTHONUTF8=0`, `PYTHONCOERCECLOCALE=0`). B received full raw fix diffs/regression evidence. C received concise structured units with Context, Preconditions, Trigger, Expected Invariant, Observed Failure, Failure Mechanism, Oracle, Oracle Provenance, Test Strategy, Evidence References, and Confidence, plus an explicit SUPPORTED/WEAK/NOT_APPLICABLE applicability decision. The A/B/C prompt distinction is implemented in `scripts/run_experiment2.py`.
+
+The first 15-call exploratory pass is preserved under `artifacts/experiment2_llm_run1/` and `generated_tests/experiment2_run1/`. It exposed an output-contract problem: two C encoding tests failed with the intended `UnicodeEncodeError` on buggy and passed on fixed, but did not fail at an assertion. The final 15-call pass added the same assertion-level exception-handling requirement to all conditions and was evaluated as the reported result. This change was applied uniformly before the final rerun; no test was edited after seeing its buggy/fixed outcome.
+
+Final Experiment 2 raw counts: A had 5/5 tests, 0 mechanism matches, 0 F2P, 5 P2P; B had 4/5 tests, 0 mechanism matches, 0 F2P, 4 P2P, and one model/JSON error; C had 3/5 tests, 2 mechanism matches, 0 F2P, 2 P2P, 1 F2F, and two model/JSON errors. The final run made 15 DeepSeek calls, used 203,970 prompt tokens and 8,239 completion tokens where reported, and consumed approximately 64.8 seconds of generation wall time; B/F execution logs are under `artifacts/execution_logs/experiment2_PySnooper_1/`.
+
+No final generated test achieved assertion-level F2P. The result is a negative discovery result with limited positive signal in C’s mechanism targeting, not evidence of architecture superiority. The remaining bottleneck is executable target-side oracle construction and robust test generation.

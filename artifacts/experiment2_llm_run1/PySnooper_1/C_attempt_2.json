@@ -1,0 +1,56 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "C",
+  "condition_name": "STRUCTURED_APPLICABILITY_AWARE",
+  "attempt": 2,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "hypothesis": "When a decorated function is called with a non-ASCII string argument, PySnooper's default stderr output path can raise UnicodeEncodeError because the default write function writes directly to sys.stderr without encoding fallback, causing the decorated function call to fail instead of returning its normal result.",
+  "trigger": "Decorate a function that accepts a non-ASCII string argument with @pysnooper.snoop() using default output, then call it with a non-ASCII string such as 'caf\\u00e9' under a non-UTF-8 stderr encoding.",
+  "potential_failure": "The decorated function raises UnicodeEncodeError while PySnooper is writing the variable representation to stderr, so the function does not return its expected result.",
+  "oracle": {
+    "expected_behavior": "The decorated function should return its normal result even when its arguments contain non-ASCII characters, and PySnooper should not crash while writing trace output.",
+    "target_evidence": "pysnooper/tracer.py get_write_function defines the default output=None branch as writing directly to sys.stderr and only catches UnicodeEncodeError in the Python 2 fallback path; pysnooper/utils.py provides shitcode for non-ASCII fallback; README documents default stderr output and non-ASCII variable values are part of ordinary tracing.",
+    "historical_evidence": "cookiecutter:1 shows locale-dependent implicit text encoding can corrupt or fail on non-ASCII data; PySnooper:3 shows file-output path handling is a known fragile area, but neither directly establishes the target stderr encoding behavior.",
+    "confidence": 0.55
+  },
+  "test_code": "import io\nimport sys\n\nimport pysnooper\n\n\ndef test_non_ascii_argument_with_default_stderr_output():\n    original_stderr = sys.stderr\n    fake_stderr = io.TextIOWrapper(io.BytesIO(), encoding='ascii')\n    sys.stderr = fake_stderr\n    try:\n        @pysnooper.snoop()\n        def my_function(value):\n            return value\n\n        result = my_function('caf\\u00e9')\n        assert result == 'caf\\u00e9'\n    finally:\n        sys.stderr = original_stderr\n",
+  "test_file_path": "generated_tests/experiment2/PySnooper_1/C_attempt_2.py",
+  "applicability_decisions": [
+    {
+      "history_id": "cookiecutter:1",
+      "decision": "WEAK",
+      "reason": "The historical unit concerns locale-dependent implicit text decoding when reading a JSON context file, not writing trace output to stderr. The shared theme is non-ASCII data under a non-UTF-8 default encoding, which is relevant to PySnooper's default stderr write path, but the context, preconditions, and failure mechanism differ. Target-side evidence supports probing encoding behavior, but the historical unit alone does not establish the target bug."
+    },
+    {
+      "history_id": "PySnooper:3",
+      "decision": "WEAK",
+      "reason": "The historical unit is in the same project and concerns file-output path handling, which is adjacent to PySnooper's output-writing code. However, its failure mechanism is a path variable mismatch, not an encoding failure, and the target context already contains ordinary tests for file output. It suggests output handling is fragile but does not directly support the non-ASCII stderr hypothesis."
+    }
+  ],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 12,
+    "retry_index": 0,
+    "latency_seconds": 3.818,
+    "usage": {
+      "prompt_tokens": 16130,
+      "completion_tokens": 784,
+      "total_tokens": 16914,
+      "prompt_tokens_details": {
+        "cached_tokens": 256
+      },
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 15874
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2/PySnooper_1/C_attempt_2.py",
+  "wall_clock_seconds": 3.819
+}

@@ -4,7 +4,7 @@
 
 Given the same target repository and LLM budget, does structured historical bug knowledge with applicability filtering produce more grounded and verifiable discoveries than target-only exploration or raw historical bug evidence?
 
-## What was executed
+## Experiment 1 (original run, now audited)
 
 This PoC used the official [BugsInPy repository](https://github.com/soarsmu/BugsInPy), one held-out real target (`PySnooper:1`), and six historical bugs from two projects. The target’s real buggy/fixed revisions were executed before the LLM study. The final matrix had five attempts for each of:
 
@@ -12,7 +12,7 @@ This PoC used the official [BugsInPy repository](https://github.com/soarsmu/Bugs
 - B — the same target context plus raw historical evidence
 - C — the same target context plus the same historical IDs represented as structured Bug Knowledge Units and bounded applicability decisions
 
-Historical cases were retrospectively selected to test transfer feasibility; this experiment does not validate autonomous retrieval.
+Historical cases were retrospectively selected to test transfer feasibility; this experiment does not validate autonomous retrieval. The original run is retained as the frozen baseline and is audited in `results/experiment1_audit.md`.
 
 ## Harness evidence
 
@@ -22,15 +22,15 @@ Python 3.13 was not usable for this historical revision because it removed `coll
 
 ## Leakage controls
 
-Generation saw only `data/target_context/PySnooper-1.txt` for the target. It did not see the target issue, fixed revision, fix diff, regression test, BugsInPy metadata, or changed-file metadata. Evaluator-only target truth is in `data/evaluator_truth/`. Historical raw and structured records are separate and share exactly the same six candidate IDs.
+For Experiment 1, generation saw only `data/target_context/PySnooper-1.txt` for the target. For Experiment 2, the stricter split is recorded in `data/target_leakage_manifest.json`: generation saw `data/experiment2_target_context/PySnooper-1.txt` and the selected history representation, while evaluator-only truth, the fixed checkout, target fix, and hidden regression remained separate under `data/evaluator_truth/` and the fixed workspace. Experiment 2 B/C share exactly `cookiecutter:1` and `PySnooper:3`.
 
 The structured representation contains Context, Preconditions, Trigger, Expected Invariant, Observed Failure, Failure Mechanism, Oracle, Oracle Provenance, Test Strategy, Evidence References, and Confidence. Direct versus inferred provenance is recorded per field.
 
 ## DeepSeek configuration
 
-The client follows the official [DeepSeek Chat Completions API](https://api-docs.deepseek.com/api/create-chat-completion/) and disables default reasoning using the documented [Thinking Mode](https://api-docs.deepseek.com/guides/thinking_mode/) switch. Configuration: model `deepseek-flash`, JSON output, `thinking.type=disabled`, temperature `0.2`, max output `1800`, bounded retries, and at most one repair attempt. API keys are read from `DEEPSEEK_API_KEY` and never logged.
+The client follows the official [DeepSeek Chat Completions API](https://api-docs.deepseek.com/api/create-chat-completion/) and disables default reasoning using the documented [Thinking Mode](https://api-docs.deepseek.com/guides/thinking_mode/) switch. Configuration: model `deepseek-flash`, JSON output, `thinking.type=disabled`, temperature `0.2`, max output `1800` for Experiment 1 and `2200` for Experiment 2, bounded retries, and at most one repair attempt. API keys are read from `DEEPSEEK_API_KEY` and never logged.
 
-## Results
+## Experiment 1 results
 
 | Condition | Attempts | Tests generated | No supported hypothesis | F2P | P2P | F2F | P2F | Mechanical |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -45,6 +45,22 @@ The strongest success signal, F2P (meaningful FAIL on buggy and PASS on fixed), 
 In A/1, DeepSeek proposed that an invalid watched expression should be ignored and generated a real pytest. Both revisions raised `SyntaxError`, so the evaluator classified it mechanical and excluded it from discovery counts. A/2–A/4 were executable but passed on both revisions. The unchanged tests and logs are retained under `generated_tests/PySnooper_1/` and `artifacts/execution_logs/PySnooper_1/`.
 
 The benchmark sanity test is intentionally separate: `tests/test_chinese.py::test_chinese` gives buggy FAIL/fixed PASS and proves the evaluator can observe a real revision-specific semantic difference. It is not counted as an LLM discovery because it is evaluator-only.
+
+## Experiment 2: transfer-feasibility rerun
+
+The audit found that Experiment 1 was not a clean transfer test: B did not receive the raw fix diff containing the strongest signal, B inherited C’s abstention instruction, C’s fields were generic, and target locale facts were omitted. Experiment 2 therefore used the smallest selected subset with one strong mechanism match (`cookiecutter:1`) and one weaker same-domain analogue (`PySnooper:3`). The evaluator selection is recorded in `data/transfer_case_candidates.json`.
+
+This is a retrospectively selected transfer-feasibility experiment. It evaluates whether the mechanism can transfer when suitable history is available. It does not evaluate autonomous retrieval quality.
+
+| Condition | Attempts | Hypotheses/tests | Mechanism matches | F2P | P2P | F2F | Mechanical | Model errors/no-support |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| A target-only | 5 | 5/5 | 0 | 0 | 5 | 0 | 0 | 0/0 |
+| B naive raw history | 5 | 4/4 | 0 | 0 | 4 | 0 | 0 | 1/0 |
+| C structured + applicability | 5 | 3/3 | 2 | 0 | 2 | 1 | 0 | 2/0 |
+
+No final generated test achieved F2P. C did produce more mechanism-aligned hypotheses, but its executable outputs were either P2P or F2F. An earlier exploratory pass produced a buggy-exception/fixed-pass encoding probe, but it was not counted because the expected target exception escaped instead of producing an assertion-level failure. That run is preserved under `artifacts/experiment2_llm_run1/`.
+
+Detailed evidence is in [`results/experiment2_results.csv`](results/experiment2_results.csv), [`results/experiment2_failure_analysis.md`](results/experiment2_failure_analysis.md), [`results/experiment2_case_study.md`](results/experiment2_case_study.md), and [`results/experiment2_comparison_with_experiment1.md`](results/experiment2_comparison_with_experiment1.md).
 
 ## Reproduction
 
@@ -67,10 +83,17 @@ python3 scripts/prepare_data.py
 export DEEPSEEK_API_KEY='set this in your shell; do not write it to files'
 python3 -m scripts.run_experiment --attempts 3 --conditions A,B,C
 python3 -m scripts.evaluate_generated_tests
+
+# Experiment 2 preparation, generation, and exact B/F evaluation
+python3 scripts/prepare_experiment2.py
+export DEEPSEEK_API_KEY='set this in your shell; do not write it to files'
+python3 scripts/run_experiment2.py --attempts 5
+python3 scripts/evaluate_experiment2.py
+python3 scripts/write_experiment2_reports.py
 ```
 
-The checked-in `data/`, `generated_tests/`, `artifacts/`, and `results/` files are the outputs from the completed run. `data/case_manifest.json` contains the exact revisions, split, runtime, and model configuration.
+The checked-in `data/`, `generated_tests/`, `artifacts/`, and `results/` files are the outputs from the completed runs. `data/case_manifest.json` describes Experiment 1; `data/target_leakage_manifest.json` describes the Experiment 2 agent/evaluator split and configuration. The API key is intentionally not part of the reproduction files.
 
 ## Limitations and conclusion
 
-This is one target, five attempts per condition, and a retrospective historical subset. It cannot support statistical significance, recall claims, or autonomous-retrieval claims. The negative result is still informative: in this setting, structured applicability-aware history did not produce a verified discovery, but it did avoid generating unsupported tests by returning `NO_SUPPORTED_HYPOTHESIS`. The next study should add more held-out targets and pre-register historical retrieval instead of selecting transferable cases retrospectively.
+This is one target, five attempts per condition, and a retrospective historical subset. It cannot support statistical significance, recall claims, or autonomous-retrieval claims. The final Experiment 2 result is negative on verified discovery: all conditions had zero F2P. It does provide limited transfer-feasibility signal because C had 2/5 mechanism-matching hypotheses versus 0/5 for A and 0/4 executable B attempts, but executable oracle/test construction did not verify the hidden bug. The next study should add more held-out targets, pre-register retrieval, and require assertion-level handling of predicted semantic exceptions before counting discovery.

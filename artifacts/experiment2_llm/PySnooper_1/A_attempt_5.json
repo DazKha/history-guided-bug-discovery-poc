@@ -1,0 +1,44 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "A",
+  "condition_name": "TARGET_ONLY",
+  "attempt": 5,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt"
+  ],
+  "hypothesis": "When a generator function decorated with @pysnooper.snoop() is garbage-collected before being fully exhausted, the generator_wrapper's `with self:` block is never exited, so the original sys trace function is not restored and the Tracer's target_frames/frame_to_local_reprs state is left inconsistent.",
+  "trigger": "Decorate a generator function with pysnooper.snoop(), create the generator, advance it once with next(), then delete the generator and force garbage collection. Check sys.gettrace() afterwards.",
+  "potential_failure": "sys.gettrace() remains set to the Tracer.trace bound method instead of the original trace function (None), because generator_wrapper only exits its `with self` context when the generator is resumed or closed, not when it is garbage-collected.",
+  "oracle": {
+    "expected_behavior": "After a snooped generator is garbage-collected without being exhausted, sys.gettrace() should be restored to the original trace function (None in a normal pytest run), matching the invariant asserted in test_generator for normal generator completion.",
+    "target_evidence": "pysnooper/tracer.py generator_wrapper uses `with self:` around each `method(incoming)` call; Tracer.__enter__ calls sys.settrace(self.trace) and __exit__ restores the previous trace. tests/test_pysnooper.py::test_generator asserts `original_tracer_active()` after each generator interaction, establishing that the trace function must be restored when the generator is not actively executing.",
+    "historical_evidence": "",
+    "confidence": 0.55
+  },
+  "test_code": "import gc\nimport sys\n\nimport pysnooper\n\n\ndef test_generator_gc_restores_trace():\n    original_tracer = sys.gettrace()\n\n    @pysnooper.snoop()\n    def f(x1):\n        x2 = (yield x1)\n        x3 = 'foo'\n        x4 = (yield 2)\n        return\n\n    assert sys.gettrace() is original_tracer\n    generator = f(0)\n    assert sys.gettrace() is original_tracer\n    first_item = next(generator)\n    assert first_item == 0\n    assert sys.gettrace() is original_tracer\n\n    del generator\n    gc.collect()\n\n    assert sys.gettrace() is original_tracer\n",
+  "test_file_path": "generated_tests/experiment2/PySnooper_1/A_attempt_5.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 5,
+    "retry_index": 0,
+    "latency_seconds": 3.098,
+    "usage": {
+      "prompt_tokens": 15319,
+      "completion_tokens": 579,
+      "total_tokens": 15898,
+      "prompt_tokens_details": {
+        "cached_tokens": 256
+      },
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 15063
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2/PySnooper_1/A_attempt_5.py",
+  "wall_clock_seconds": 3.1
+}

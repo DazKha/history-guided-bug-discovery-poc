@@ -1,0 +1,12 @@
+{
+  "conditions": [
+    "A",
+    "B",
+    "C"
+  ],
+  "attempts": 5,
+  "model": "deepseek-flash",
+  "temperature": 0.2,
+  "max_tokens": 2200,
+  "records": 15
+}

@@ -27,8 +27,8 @@ pysnooper/tracer.py:242: in write
     self._write(s)
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-self = <pysnooper.tracer.FileWriter object at 0x101923df0>
-s = "00:38:03.614336 line        30             x = '\u5931\u8d25'\\n"
+self = <pysnooper.tracer.FileWriter object at 0x103cdbdf0>
+s = "06:24:15.628022 line        30             x = '\u5931\u8d25'\\n"
 
     def write(self, s):
         with open(self.path, 'w' if self.overwrite else 'a') as output_file:

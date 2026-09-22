@@ -1,0 +1,56 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "C",
+  "condition_name": "STRUCTURED_APPLICABILITY_AWARE",
+  "attempt": 4,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "hypothesis": "PySnooper's get_source_from_frame decodes source files using the platform default encoding when no PEP-263 coding declaration is present, so a UTF-8 source file containing non-ASCII characters will be mis-decoded (mojibake) under a non-UTF-8 locale such as LC_ALL=C, causing the traced source line to differ from the actual source text.",
+  "trigger": "Create a temporary module file encoded as UTF-8 whose function body contains a non-ASCII string literal (e.g. 'héllo') with no coding declaration, import it, and run a @pysnooper.snoop() decorated function under LC_ALL=C so the default locale encoding is ASCII.",
+  "potential_failure": "get_source_from_frame opens the file in binary mode and decodes bytes with encoding='ascii' (the fallback when no coding comment is found), so the non-ASCII bytes are replaced with U+FFFD; the emitted trace line shows 'h\\ufffdllo' instead of 'héllo', and the source line no longer matches the real source.",
+  "oracle": {
+    "expected_behavior": "The trace output for the line containing the non-ASCII literal must contain the exact Unicode text 'héllo' as written in the UTF-8 source file, independent of the process locale.",
+    "target_evidence": "pysnooper/tracer.py get_source_from_frame: when source is read as bytes it sets encoding='ascii' and only overrides it if a PEP-263 coding comment is found in the first two lines; otherwise it decodes with pycompat.text_type(sline, encoding, 'replace'). The README documents that snoop output shows the actual source line, and ordinary tests (e.g. test_string_io, test_file_output) assert exact source-line text in the trace, establishing that source lines must faithfully reflect the file.",
+    "historical_evidence": "cookiecutter:1 shows the same class of locale-dependent implicit text decoding bug (implicit open using platform default encoding) fixed by making the encoding explicit UTF-8; PySnooper:3 is a weaker file-output path bug that only partially transfers.",
+    "confidence": 0.72
+  },
+  "test_code": "import io\nimport os\nimport sys\nimport textwrap\nimport tempfile\n\nimport pysnooper\n\n\ndef test_utf8_source_line_preserved_under_c_locale():\n    # Force a non-UTF-8 default locale so implicit decoding would fail.\n    old_lc_all = os.environ.get('LC_ALL')\n    old_lang = os.environ.get('LANG')\n    os.environ['LC_ALL'] = 'C'\n    os.environ['LANG'] = 'C'\n    try:\n        with tempfile.TemporaryDirectory() as folder:\n            module_name = 'pysnooper_utf8_source_probe'\n            module_path = os.path.join(folder, module_name + '.py')\n            source = textwrap.dedent(u'''\\\n                import pysnooper\n\n                @pysnooper.snoop()\n                def f():\n                    x = 'h\\u00e9llo'\n                    return x\n            ''')\n            with open(module_path, 'w', encoding='utf-8') as fh:\n                fh.write(source)\n\n            sys.path.insert(0, folder)\n            try:\n                module = __import__(module_name)\n            finally:\n                sys.path.remove(folder)\n\n            string_io = io.StringIO()\n            # Re-decorate with a StringIO so we can inspect the trace.\n            traced = pysnooper.snoop(string_io)(module.f.__wrapped__ if hasattr(module.f, '__wrapped__') else module.f)\n            result = traced()\n            assert result == u'h\\u00e9llo'\n\n            output = string_io.getvalue()\n            assert u\"x = 'h\\u00e9llo'\" in output, (\n                'Expected the UTF-8 source line to be preserved in the trace, '\n                'but got:\\n' + output\n            )\n            assert u'\\ufffd' not in output, (\n                'Source line was mis-decoded (replacement character present):\\n'\n                + output\n            )\n    finally:\n        if old_lc_all is None:\n            os.environ.pop('LC_ALL', None)\n        else:\n            os.environ['LC_ALL'] = old_lc_all\n        if old_lang is None:\n            os.environ.pop('LANG', None)\n        else:\n            os.environ['LANG'] = old_lang\n",
+  "test_file_path": "generated_tests/experiment2/PySnooper_1/C_attempt_4.py",
+  "applicability_decisions": [
+    {
+      "history_id": "cookiecutter:1",
+      "decision": "SUPPORTED",
+      "reason": "Same failure mechanism class: implicit/locale-dependent text decoding of a UTF-8 file. Target's get_source_from_frame explicitly falls back to encoding='ascii' when no PEP-263 coding comment is present, which is exactly the locale-independent-decoding invariant violated. Target-side oracle is strong: ordinary tests assert exact source-line text in trace output, so a non-ASCII source line must appear verbatim."
+    },
+    {
+      "history_id": "PySnooper:3",
+      "decision": "WEAK",
+      "reason": "Same repository and same file-output/tracing area, but the historical mechanism is a path-variable mismatch in the file writer, not an encoding bug. It suggests probing file output but does not establish the encoding invariant; transfer_to_target is low (0.45). Not used as the primary oracle."
+    }
+  ],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 14,
+    "retry_index": 0,
+    "latency_seconds": 5.55,
+    "usage": {
+      "prompt_tokens": 16130,
+      "completion_tokens": 1275,
+      "total_tokens": 17405,
+      "prompt_tokens_details": {
+        "cached_tokens": 256
+      },
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 15874
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2/PySnooper_1/C_attempt_4.py",
+  "wall_clock_seconds": 5.553
+}

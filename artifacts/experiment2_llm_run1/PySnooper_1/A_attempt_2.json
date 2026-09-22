@@ -1,0 +1,44 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "A",
+  "condition_name": "TARGET_ONLY",
+  "attempt": 2,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt"
+  ],
+  "hypothesis": "When a Tracer is used as a context manager (with pysnooper.snoop(...):) and the wrapped block raises an exception, the Tracer.__exit__ method fails to restore the previous sys.settrace value because it accesses self.thread_local.original_trace_functions, which is only set on the Tracer instance's thread-local object during __enter__; however, if the Tracer instance is reused across threads or if __enter__ was not called on the same thread, this attribute may be missing, causing an AttributeError. More concretely, the bug is that __exit__ does not handle the case where the original trace function stack is empty or missing, leading to an AttributeError when the context manager is used improperly or when an exception occurs before __enter__ completes. But the strongest falsifiable claim from the source is: Tracer.__exit__ assumes self.thread_local.original_trace_functions exists, but if the Tracer is used as a context manager and an exception is raised inside the with block, the __exit__ method should still restore the original trace function; however, due to the way thread_local is used, if the Tracer instance is shared across threads, the original_trace_functions list may be empty on the thread that did not call __enter__, causing an IndexError when popping. This is a real bug: using a single Tracer instance as a context manager in multiple threads concurrently can cause an IndexError in __exit__ because the thread-local stack is empty for threads that did not enter the context. The test will create a Tracer, use it in a with block in the main thread, and simultaneously in another thread, and assert that no exception is raised and the original trace function is restored.",
+  "trigger": "Create a single pysnooper.snoop() Tracer instance. In the main thread, enter the with block, and inside it start a new thread that also tries to enter the same Tracer instance as a context manager. The new thread's __enter__ will append to its own thread-local stack, but the main thread's __exit__ will pop from the main thread's stack. However, the bug is that if the new thread's __enter__ is called, it sets sys.settrace to the tracer's trace function, and when the new thread exits, it pops its own stack. The main thread's __exit__ should work fine. The actual bug is that if the Tracer instance is used as a context manager in a thread that did not call __enter__ (e.g., if __exit__ is called manually or if the context manager is used in a different thread), it will fail. But a more direct trigger: use the Tracer as a context manager, and inside the with block, raise an exception. The __exit__ method should restore the original trace function. However, the code in __exit__ does: stack = self.thread_local.original_trace_functions; sys.settrace(stack.pop()). If the Tracer instance is used as a context manager in a thread, and then the same Tracer instance is used as a context manager in a different thread, the second thread's __enter__ will set its own thread-local stack, but the first thread's __exit__ will try to pop from its own stack, which is fine. The bug is that if the Tracer instance is used as a context manager and the with block is exited in a different thread than it was entered, the thread-local stack will be empty, causing an IndexError. This is a real scenario in asynchronous or multi-threaded code. The test will enter the with block in the main thread, then exit it in a new thread by calling __exit__ manually, and assert that the original trace function is restored without error.",
+  "potential_failure": "An IndexError or AttributeError is raised when exiting the context manager in a different thread than it was entered, because the thread-local stack is empty. This means the original trace function is not restored, and the exception propagates, potentially leaving the tracing state corrupted.",
+  "oracle": {
+    "expected_behavior": "The Tracer context manager should correctly restore the previous sys.settrace value even if __exit__ is called from a different thread than __enter__, or at least raise a clear error. However, the intended behavior is that the context manager is thread-local and should not be used across threads. The test will assert that using the Tracer as a context manager in a single thread works correctly and restores the trace function, and that using it in multiple threads concurrently does not raise an exception. The specific assertion is that after the with block, sys.gettrace() is the same as before.",
+    "target_evidence": "In pysnooper/tracer.py, Tracer.__enter__ does: stack = self.thread_local.__dict__.setdefault('original_trace_functions', []); stack.append(sys.gettrace()); sys.settrace(self.trace). Tracer.__exit__ does: stack = self.thread_local.original_trace_functions; sys.settrace(stack.pop()). This assumes that __exit__ is called in the same thread as __enter__, because thread_local is per-thread. If __exit__ is called in a different thread, self.thread_local.original_trace_functions will not exist, causing an AttributeError. The ordinary tests do not cover this cross-thread usage. The README mentions thread_info but not cross-thread context manager usage.",
+    "historical_evidence": "",
+    "confidence": 0.7
+  },
+  "test_code": "import sys\nimport threading\nimport pytest\nimport pysnooper\n\n\ndef test_cross_thread_context_manager_exit():\n    # Save the original trace function\n    original_trace = sys.gettrace()\n\n    # Create a Tracer instance\n    tracer = pysnooper.snoop()\n\n    # Enter the context manager in the main thread\n    tracer.__enter__()\n\n    # Verify that the trace function has been set\n    assert sys.gettrace() is not original_trace\n\n    # Now exit the context manager in a different thread\n    exception_holder = []\n\n    def exit_in_thread():\n        try:\n            tracer.__exit__(None, None, None)\n        except Exception as e:\n            exception_holder.append(e)\n\n    t = threading.Thread(target=exit_in_thread)\n    t.start()\n    t.join()\n\n    # The original trace function should be restored in the main thread\n    # But since __exit__ was called in a different thread, it will fail\n    # and the main thread's trace function will not be restored.\n    # We assert that no exception was raised in the other thread.\n    assert not exception_holder, f\"Exception raised in other thread: {exception_holder}\"\n\n    # Also assert that the original trace function is restored in the main thread\n    assert sys.gettrace() is original_trace\n\n    # Clean up: if the test fails, restore the original trace function\n    sys.settrace(original_trace)\n",
+  "test_file_path": "generated_tests/experiment2/PySnooper_1/A_attempt_2.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 2,
+    "retry_index": 0,
+    "latency_seconds": 7.558,
+    "usage": {
+      "prompt_tokens": 15272,
+      "completion_tokens": 1560,
+      "total_tokens": 16832,
+      "prompt_tokens_details": {
+        "cached_tokens": 256
+      },
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 15016
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2/PySnooper_1/A_attempt_2.py",
+  "wall_clock_seconds": 7.561
+}

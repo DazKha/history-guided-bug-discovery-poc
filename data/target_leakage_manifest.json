@@ -1,0 +1,44 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "agent_visible": {
+    "target_context": "data/experiment2_target_context/PySnooper-1.txt",
+    "historical_raw": "data/experiment2_historical_raw.json",
+    "historical_structured": "data/experiment2_historical_structured.json",
+    "buggy_checkout": "workspace/harness-pysnooper-buggy/PySnooper",
+    "ordinary_runtime": {
+      "python": "3.9.18",
+      "LC_ALL": "C",
+      "PYTHONUTF8": "0",
+      "PYTHONCOERCECLOCALE": "0"
+    }
+  },
+  "evaluator_only": {
+    "truth_file": "data/evaluator_truth/experiment2_PySnooper-1.json",
+    "fixed_checkout": "workspace/harness-pysnooper-fixed/PySnooper",
+    "target_issue_report": "vendor/BugsInPy/projects/PySnooper/bugs/1/bug.info",
+    "target_fix_diff": "vendor/BugsInPy/projects/PySnooper/bugs/1/bug_patch.txt",
+    "target_regression_test": "workspace/harness-pysnooper-fixed/PySnooper/tests/test_chinese.py",
+    "changed_file_metadata": "fixed revision diff --name-only"
+  },
+  "selected_history_ids": [
+    "cookiecutter:1",
+    "PySnooper:3"
+  ],
+  "historical_selection_note": "Historical cases were retrospectively selected to test transfer feasibility; this experiment does not validate autonomous retrieval.",
+  "fairness": {
+    "attempts_per_condition": 5,
+    "max_repairs": 1,
+    "same_target_context": true,
+    "same_model": true,
+    "same_generation_budget": true,
+    "same_execution_environment": true
+  },
+  "model": {
+    "name": "deepseek-flash",
+    "endpoint": "https://api.deepseek.com/chat/completions",
+    "temperature": 0.2,
+    "max_tokens": 2200,
+    "thinking": "disabled"
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "A",
+  "condition_name": "TARGET_ONLY",
+  "attempt": 4,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt"
+  ],
+  "hypothesis": "When a generator function decorated with @pysnooper.snoop() is closed early via generator.close(), the tracer's __exit__ is not invoked, so sys.settrace is not restored to its original value.",
+  "trigger": "Decorate a generator function with pysnooper.snoop(), start it with next(), then call generator.close() and check sys.gettrace().",
+  "potential_failure": "sys.gettrace() remains set to the Tracer.trace method instead of the original trace function (None), leaking the trace function globally.",
+  "oracle": {
+    "expected_behavior": "After generator.close(), sys.gettrace() should equal the original trace function captured before starting the generator.",
+    "target_evidence": "pysnooper/tracer.py generator_wrapper uses `with self:` around each `method(incoming)` call; when the generator is closed, GeneratorExit is thrown at the yield point, which is outside the `with self:` block, so __exit__ is never called and sys.settrace is not restored. The existing test_generator only tests normal exhaustion via StopIteration, not early close.",
+    "historical_evidence": "",
+    "confidence": 0.7
+  },
+  "test_code": "import sys\nimport pysnooper\n\n\ndef test_generator_close_restores_trace():\n    original_trace = sys.gettrace()\n\n    @pysnooper.snoop()\n    def gen():\n        yield 1\n        yield 2\n\n    g = gen()\n    assert next(g) == 1\n    g.close()\n    assert sys.gettrace() is original_trace\n",
+  "test_file_path": "generated_tests/experiment2/PySnooper_1/A_attempt_4.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 4,
+    "retry_index": 0,
+    "latency_seconds": 2.141,
+    "usage": {
+      "prompt_tokens": 15272,
+      "completion_tokens": 416,
+      "total_tokens": 15688,
+      "prompt_tokens_details": {
+        "cached_tokens": 256
+      },
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 15016
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2/PySnooper_1/A_attempt_4.py",
+  "wall_clock_seconds": 2.143
+}

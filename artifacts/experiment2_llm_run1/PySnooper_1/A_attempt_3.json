@@ -1,0 +1,44 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "A",
+  "condition_name": "TARGET_ONLY",
+  "attempt": 3,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt"
+  ],
+  "hypothesis": "When a generator function decorated with @pysnooper.snoop() is closed early via GeneratorExit (e.g., by breaking out of a for loop), the tracer's generator_wrapper does not restore the original sys.gettrace() trace function, leaving PySnooper's trace function installed globally.",
+  "trigger": "Decorate a generator function with pysnooper.snoop(io.StringIO()), start iterating it, then break out of the loop so the generator is garbage-collected/closed. After that, check sys.gettrace().",
+  "potential_failure": "sys.gettrace() remains the Tracer.trace bound method instead of the original trace function (None), because generator_wrapper's `with self:` block is exited via GeneratorExit without the wrapper catching it and restoring the trace stack.",
+  "oracle": {
+    "expected_behavior": "After a snooped generator is closed early, sys.gettrace() should be restored to its original value (None in a normal pytest run), matching the behavior asserted in test_generator for normal generator completion.",
+    "target_evidence": "tests/test_pysnooper.py::test_generator explicitly asserts `original_tracer_active()` (i.e., sys.gettrace() is the original tracer) after each generator interaction, including after StopIteration. The generator_wrapper in pysnooper/tracer.py uses `with self:` around `method(incoming)` but does not handle GeneratorExit, so an early close bypasses the normal `__exit__` restoration path.",
+    "historical_evidence": "",
+    "confidence": 0.55
+  },
+  "test_code": "import io\nimport sys\nimport gc\n\nimport pysnooper\n\n\ndef test_generator_early_close_restores_trace():\n    string_io = io.StringIO()\n    original_tracer = sys.gettrace()\n\n    @pysnooper.snoop(string_io)\n    def f():\n        yield 1\n        yield 2\n        yield 3\n\n    gen = f()\n    assert next(gen) == 1\n    gen.close()\n    gc.collect()\n\n    assert sys.gettrace() is original_tracer\n",
+  "test_file_path": "generated_tests/experiment2/PySnooper_1/A_attempt_3.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 3,
+    "retry_index": 0,
+    "latency_seconds": 3.349,
+    "usage": {
+      "prompt_tokens": 15272,
+      "completion_tokens": 532,
+      "total_tokens": 15804,
+      "prompt_tokens_details": {
+        "cached_tokens": 256
+      },
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 15016
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2/PySnooper_1/A_attempt_3.py",
+  "wall_clock_seconds": 3.351
+}

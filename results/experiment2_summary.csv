@@ -1,0 +1,4 @@
+condition,condition_name,attempts,hypotheses_generated,supported_hypotheses,executable_tests,meaningful_failures_on_buggy,F2P,F2F,P2P,P2F,MECHANICAL_FAILURE,NO_SUPPORTED_HYPOTHESIS,false_or_unverified_reports,mechanism_match_yes,oracle_supported_yes,repair_attempts,llm_calls,prompt_tokens,completion_tokens,wall_clock_seconds
+A,TARGET_ONLY,5,5,5,5,0,0,0,5,0,0,0,5,0,5,0,5,76595,3007,15.35
+B,NAIVE_RAW_HISTORY,5,4,4,4,0,0,0,4,0,0,0,4,0,4,0,5,78844,2419,22.512
+C,STRUCTURED_APPLICABILITY_AWARE,5,3,3,3,1,0,1,2,0,0,0,3,2,3,0,5,48531,2813,26.94

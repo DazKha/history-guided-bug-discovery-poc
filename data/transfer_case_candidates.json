@@ -1,0 +1,59 @@
+{
+  "selection_policy": "Retrospective evaluator comparison by mechanism, trigger, invariant, and behavioral context; not lexical similarity.",
+  "candidates": [
+    {
+      "rank": 1,
+      "target_bug": "PySnooper:1",
+      "historical_bugs": [
+        "cookiecutter:1"
+      ],
+      "shared_mechanism": "Implicit locale-dependent text decoding replaced by explicit UTF-8.",
+      "why_transfer_is_plausible": "Both involve real file I/O with non-ASCII data; the historical fix and regression directly expose the explicit-encoding invariant.",
+      "setup_difficulty": "low; target harness already verified",
+      "leakage_risks": [
+        "Do not expose target Chinese regression, target diff, or target changed-file metadata to generation."
+      ]
+    },
+    {
+      "rank": 2,
+      "target_bug": "PySnooper:1",
+      "historical_bugs": [
+        "cookiecutter:1",
+        "PySnooper:3"
+      ],
+      "shared_mechanism": "Primary explicit-encoding transfer plus a partial file-output-path analogue.",
+      "why_transfer_is_plausible": "The first case provides the mechanism signal; the second is in the same target project and reinforces testing public path output while remaining a distractor/weak analogue.",
+      "setup_difficulty": "low; target harness already verified",
+      "leakage_risks": [
+        "The PySnooper project identity is visible through ordinary source context; the target bug ID and hidden test remain evaluator-only."
+      ]
+    },
+    {
+      "rank": 3,
+      "target_bug": "PySnooper:1",
+      "historical_bugs": [
+        "PySnooper:2",
+        "PySnooper:3",
+        "cookiecutter:1",
+        "cookiecutter:2",
+        "cookiecutter:3",
+        "cookiecutter:4"
+      ],
+      "shared_mechanism": "Mixed historical pool with one strong, one partial, and four unrelated cases.",
+      "why_transfer_is_plausible": "Contains a transferable case but introduces substantial distraction and was the original Exp1 selection.",
+      "setup_difficulty": "low",
+      "leakage_risks": [
+        "History dilution can be mistaken for lack of transfer."
+      ]
+    }
+  ],
+  "chosen_candidate": {
+    "rank": 2,
+    "target_bug": "PySnooper:1",
+    "historical_bugs": [
+      "cookiecutter:1",
+      "PySnooper:3"
+    ],
+    "reason": "Smallest two-case subset satisfying the requested transfer-feasibility design: one strong mechanism match and one partial same-domain analogue, with exact equality of B/C history."
+  }
+}

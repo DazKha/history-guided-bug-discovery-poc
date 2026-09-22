@@ -1,0 +1,45 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "B",
+  "condition_name": "NAIVE_RAW_HISTORY",
+  "attempt": 1,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_raw.json"
+  ],
+  "hypothesis": "When a Tracer is used as a context manager (with pysnooper.snoop(...):) and the same Tracer instance is reused across multiple with-blocks, the second __exit__ will raise an AttributeError because self.thread_local.original_trace_functions is not initialized on the main thread's thread_local object when __enter__ is called from a frame that _is_internal_frame considers internal.",
+  "trigger": "Create a single Tracer via pysnooper.snoop(string_io), then use it in two sequential with-blocks in the same thread, calling a function inside each block.",
+  "potential_failure": "The second with-block's __exit__ raises AttributeError: 'thread_local' object has no attribute 'original_trace_functions', or the trace function is not properly restored, causing incorrect output or a crash.",
+  "oracle": {
+    "expected_behavior": "Using a single Tracer instance in multiple sequential with-blocks should work correctly: each block should trace its body, and after the second block exits, sys.gettrace() should be restored to its original value.",
+    "target_evidence": "pysnooper/tracer.py __enter__ uses self.thread_local.__dict__.setdefault('original_trace_functions', []) and __exit__ uses self.thread_local.original_trace_functions; tests/test_pysnooper.py test_with_block reuses a single snoop instance across mixed uses, demonstrating that reuse is an intended supported pattern.",
+    "historical_evidence": "PySnooper:3 fix diff shows a bug where a wrong variable name (output_path) was used in get_write_function; this indicates the codebase has had variable-name/attribute bugs in tracer.py, supporting the plausibility of an attribute-access bug in the same module.",
+    "confidence": 0.35
+  },
+  "test_code": "import io\nimport sys\n\nimport pysnooper\n\n\ndef test_reuse_tracer_across_with_blocks():\n    string_io = io.StringIO()\n    snoop = pysnooper.snoop(string_io)\n\n    original_trace = sys.gettrace()\n\n    def inner(x):\n        y = x + 1\n        return y\n\n    with snoop:\n        a = inner(1)\n\n    assert a == 2\n    assert sys.gettrace() is original_trace\n\n    with snoop:\n        b = inner(2)\n\n    assert b == 3\n    assert sys.gettrace() is original_trace\n\n    output = string_io.getvalue()\n    assert 'y = x + 1' in output\n    assert output.count('y = x + 1') >= 2\n",
+  "test_file_path": "generated_tests/experiment2/PySnooper_1/B_attempt_1.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 6,
+    "retry_index": 0,
+    "latency_seconds": 3.236,
+    "usage": {
+      "prompt_tokens": 19664,
+      "completion_tokens": 649,
+      "total_tokens": 20313,
+      "prompt_tokens_details": {
+        "cached_tokens": 256
+      },
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 19408
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2/PySnooper_1/B_attempt_1.py",
+  "wall_clock_seconds": 3.238
+}

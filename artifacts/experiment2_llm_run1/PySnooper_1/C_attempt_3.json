@@ -1,0 +1,56 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "C",
+  "condition_name": "STRUCTURED_APPLICABILITY_AWARE",
+  "attempt": 3,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "hypothesis": "When a decorated function raises an exception, PySnooper's tracer writes an 'exception' event line but does not write a 'Call ended by exception' line, even though the source code contains a branch intended to report that condition.",
+  "trigger": "Decorate a function that raises ValueError with @pysnooper.snoop(string_io), call it inside pytest.raises(ValueError), and inspect the captured output.",
+  "potential_failure": "The output will contain the exception line but will not contain 'Call ended by exception', indicating that the ended_by_exception detection logic is not reached or not functioning as intended.",
+  "oracle": {
+    "expected_behavior": "The trace output for a function that raises an exception should include a line indicating that the call ended by exception, as suggested by the explicit branch in Tracer.trace that writes 'Call ended by exception'.",
+    "target_evidence": "pysnooper/tracer.py contains an explicit branch: if ended_by_exception: self.write('{indent}Call ended by exception'.format(**locals())). The comment above it explains that a 'return' event with arg=None is used to detect exceptions. This is target-side source evidence of intended behavior.",
+    "historical_evidence": "",
+    "confidence": 0.6
+  },
+  "test_code": "import io\nimport pytest\nimport pysnooper\n\n\ndef test_exception_ended_by_exception_line():\n    string_io = io.StringIO()\n\n    @pysnooper.snoop(string_io)\n    def my_function():\n        raise ValueError('boom')\n\n    with pytest.raises(ValueError):\n        my_function()\n\n    output = string_io.getvalue()\n    assert 'Call ended by exception' in output\n",
+  "test_file_path": "generated_tests/experiment2/PySnooper_1/C_attempt_3.py",
+  "applicability_decisions": [
+    {
+      "history_id": "cookiecutter:1",
+      "decision": "NOT_APPLICABLE",
+      "reason": "The historical bug concerns locale-dependent implicit text encoding when reading a JSON context file. PySnooper's target context does not involve reading JSON context files or locale-dependent decoding of user data. The failure mechanism (implicit open encoding) is not present in the target's relevant code paths."
+    },
+    {
+      "history_id": "PySnooper:3",
+      "decision": "WEAK",
+      "reason": "The historical bug is about file output path handling in PySnooper, which is related to the target's file-output feature. However, the target context already includes ordinary tests for file output (test_file_output, test_no_overwrite_by_default, test_overwrite) that appear to cover the path variable behavior. The historical evidence does not establish a specific target-side bug beyond what ordinary tests already exercise, and the transfer confidence is low (0.45)."
+    }
+  ],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 13,
+    "retry_index": 0,
+    "latency_seconds": 3.374,
+    "usage": {
+      "prompt_tokens": 16130,
+      "completion_tokens": 664,
+      "total_tokens": 16794,
+      "prompt_tokens_details": {
+        "cached_tokens": 256
+      },
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 15874
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2/PySnooper_1/C_attempt_3.py",
+  "wall_clock_seconds": 3.376
+}

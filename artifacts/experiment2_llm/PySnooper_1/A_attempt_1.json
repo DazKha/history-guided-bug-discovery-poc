@@ -1,0 +1,44 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "A",
+  "condition_name": "TARGET_ONLY",
+  "attempt": 1,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt"
+  ],
+  "hypothesis": "When a function decorated with @pysnooper.snoop() is called from a thread other than the one that created the Tracer, the trace function raises AttributeError because thread_global.depth is not initialized in the new thread.",
+  "trigger": "Create a Tracer instance in the main thread, then call the decorated function from a new thread.",
+  "potential_failure": "The trace function accesses thread_global.depth without initialization in the new thread, causing an AttributeError that propagates and prevents the decorated function from executing correctly.",
+  "oracle": {
+    "expected_behavior": "The decorated function should execute successfully in the new thread and return the expected result without raising an exception.",
+    "target_evidence": "In pysnooper/tracer.py, the trace method uses thread_global.depth without initializing it for new threads. The line 'thread_global.__dict__.setdefault('depth', -1)' only sets the default if the attribute is missing, but then immediately increments it with 'thread_global.depth += 1'. In a new thread, thread_global is a fresh threading.local() instance, so depth is not set, leading to AttributeError when accessed.",
+    "historical_evidence": "",
+    "confidence": 0.9
+  },
+  "test_code": "import threading\nimport io\nimport pysnooper\n\ndef test_thread_safety():\n    string_io = io.StringIO()\n    \n    @pysnooper.snoop(string_io)\n    def my_function(x):\n        return x * 2\n    \n    result = []\n    exception = []\n    \n    def target():\n        try:\n            result.append(my_function(5))\n        except Exception as e:\n            exception.append(e)\n    \n    t = threading.Thread(target=target)\n    t.start()\n    t.join()\n    \n    assert not exception, f\"Exception occurred: {exception[0]}\"\n    assert result == [10]\n",
+  "test_file_path": "generated_tests/experiment2/PySnooper_1/A_attempt_1.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 1,
+    "retry_index": 0,
+    "latency_seconds": 2.591,
+    "usage": {
+      "prompt_tokens": 15319,
+      "completion_tokens": 498,
+      "total_tokens": 15817,
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      },
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 15319
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2/PySnooper_1/A_attempt_1.py",
+  "wall_clock_seconds": 2.595
+}

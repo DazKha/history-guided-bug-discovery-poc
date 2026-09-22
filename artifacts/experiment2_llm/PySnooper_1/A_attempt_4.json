@@ -1,0 +1,44 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "A",
+  "condition_name": "TARGET_ONLY",
+  "attempt": 4,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt"
+  ],
+  "hypothesis": "When a generator function decorated with @pysnooper.snoop() is closed early (via .close() or garbage collection) before exhaustion, the generator_wrapper's `with self:` block is exited by GeneratorExit and the wrapper's `while True` loop does not catch it, so the tracer's `__exit__` runs and restores the previous trace function; however, the `thread_global.depth` counter is not decremented for the generator frame because no 'return' event is delivered for the abandoned frame, leaving the global depth counter permanently inflated and corrupting indentation of all subsequent snooped output.",
+  "trigger": "Decorate a generator with @pysnooper.snoop(string_io), advance it one step with next(), then call generator.close() to abandon it, then run a second snooped function and inspect the indentation of its output lines.",
+  "potential_failure": "After closing an unfinished snooped generator, subsequent snooped calls emit lines with extra leading indentation (depth counter stuck at a positive value) instead of the expected zero-indent output.",
+  "oracle": {
+    "expected_behavior": "After a snooped generator is closed early, a subsequent snooped function's output lines should start at column 0 (no leading spaces), matching the normal output format shown in the README and ordinary tests such as test_string_io.",
+    "target_evidence": "pysnooper/tracer.py: `thread_global.depth` is incremented on 'call' events and decremented only on 'return' events; `generator_wrapper` wraps each `method(incoming)` call in `with self:` and does not handle GeneratorExit, so an abandoned generator frame never produces a 'return' event to decrement depth. README and tests/test_pysnooper.py (test_string_io, test_generator) document that normal snooped output lines begin at column 0 with no indentation.",
+    "historical_evidence": "",
+    "confidence": 0.35
+  },
+  "test_code": "import io\nimport pysnooper\n\n\ndef test_closed_generator_does_not_corrupt_subsequent_indentation():\n    gen_io = io.StringIO()\n\n    @pysnooper.snoop(gen_io)\n    def gen():\n        yield 1\n        yield 2\n\n    g = gen()\n    assert next(g) == 1\n    g.close()\n\n    out_io = io.StringIO()\n\n    @pysnooper.snoop(out_io)\n    def plain():\n        x = 7\n        return x\n\n    assert plain() == 7\n    lines = [line for line in out_io.getvalue().splitlines() if line.strip()]\n    assert lines, 'expected snooped output for plain function'\n    for line in lines:\n        assert not line.startswith(' '), (\n            'snooped output line unexpectedly indented after closing a '\n            'generator: {!r}'.format(line)\n        )\n",
+  "test_file_path": "generated_tests/experiment2/PySnooper_1/A_attempt_4.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 4,
+    "retry_index": 0,
+    "latency_seconds": 3.544,
+    "usage": {
+      "prompt_tokens": 15319,
+      "completion_tokens": 723,
+      "total_tokens": 16042,
+      "prompt_tokens_details": {
+        "cached_tokens": 256
+      },
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 15063
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2/PySnooper_1/A_attempt_4.py",
+  "wall_clock_seconds": 3.546
+}

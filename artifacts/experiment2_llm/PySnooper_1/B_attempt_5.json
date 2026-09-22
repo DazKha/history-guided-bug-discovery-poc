@@ -1,0 +1,45 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "B",
+  "condition_name": "NAIVE_RAW_HISTORY",
+  "attempt": 5,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_raw.json"
+  ],
+  "hypothesis": "When a Tracer is used as a context manager (with pysnooper.snoop(...):) and the wrapped block raises an exception, the Tracer's __exit__ does not restore the previous sys.settrace value, leaving the tracer's trace function installed globally after the with block exits.",
+  "trigger": "Use `with pysnooper.snoop(string_io):` around a block that raises ValueError, catch the exception, then check `sys.gettrace()`.",
+  "potential_failure": "After the with block exits due to an exception, sys.gettrace() still returns the Tracer.trace bound method instead of the original trace function (None), because __exit__ fails to pop the saved trace function when an exception propagates.",
+  "oracle": {
+    "expected_behavior": "After a `with pysnooper.snoop(...):` block exits (whether normally or via an exception), `sys.gettrace()` must be restored to the value it had before entering the block.",
+    "target_evidence": "pysnooper/tracer.py __enter__ pushes sys.gettrace() onto self.thread_local.original_trace_functions and calls sys.settrace(self.trace); __exit__ is documented/expected to restore it via sys.settrace(stack.pop()). The ordinary test test_generator explicitly asserts `original_tracer_active()` after generator operations, showing the intended invariant that the original trace function is restored.",
+    "historical_evidence": "PySnooper:3 fix diff shows a similar state-restoration bug in get_write_function where a wrong variable name (output_path vs output) broke file output; the regression test test_file_output verifies the intended behavior. This suggests state/cleanup correctness is a plausible bug area in this codebase.",
+    "confidence": 0.35
+  },
+  "test_code": "import io\nimport sys\n\nimport pytest\n\nimport pysnooper\n\n\ndef test_trace_restored_after_exception_in_with_block():\n    string_io = io.StringIO()\n    original_trace = sys.gettrace()\n\n    with pytest.raises(ValueError):\n        with pysnooper.snoop(string_io):\n            raise ValueError('boom')\n\n    assert sys.gettrace() is original_trace\n",
+  "test_file_path": "generated_tests/experiment2/PySnooper_1/B_attempt_5.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 10,
+    "retry_index": 0,
+    "latency_seconds": 2.817,
+    "usage": {
+      "prompt_tokens": 19711,
+      "completion_tokens": 551,
+      "total_tokens": 20262,
+      "prompt_tokens_details": {
+        "cached_tokens": 256
+      },
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 19455
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2/PySnooper_1/B_attempt_5.py",
+  "wall_clock_seconds": 2.819
+}
