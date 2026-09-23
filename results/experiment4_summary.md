@@ -4,7 +4,7 @@
 
 The intervention improved plan validity and increased hypothesis-level F2P coverage, but it did not improve budget-normalized trigger efficiency. The defensible classification is **CASE B / mixed result**: the plan contract solved a real planner-validity problem and the final compact generation refinement produced C2 F2P for 4/5 frozen hypotheses, but C2 remained less efficient per generated/executable test than the budget-matched direct control.
 
-The result is based on five frozen hypotheses, so it is directional evidence, not a significance claim.
+The result is based on five frozen hypotheses, so it is directional evidence, not a significance claim. It is evidence from one selected target and makes no cross-project generalization claim.
 
 ## What changed
 
@@ -28,13 +28,13 @@ The evaluator still requires the same unchanged test to fail semantically on bug
 
 ## Final iteration results
 
-| Arm | Hypotheses | Generated tests | Executable | F2P | Hypotheses with F2P | F2P/generated | F2P/executable |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| C1 direct | 5 | 5 | 5 | 2 | 2/5 (40%) | 40.0% | 40.0% |
-| C2 strict planner | 5 | 15 | 13 | 5 | 4/5 (80%) | 33.3% | 38.5% |
-| C1 budget-matched direct | 5 | 15 | 13 | 6 | 3/5 (60%) | 40.0% | 46.2% |
+| Arm | Hypotheses | Allocated candidate slots | Generated test artifacts | Executed test artifacts | F2P | Hypotheses with F2P | F2P/slot | F2P/generated artifact |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| C1 direct | 5 | 5 | 5 | 5 | 2 | 2/5 (40%) | 40.0% | 40.0% |
+| C2 strict planner | 5 | 15 | 13 | 13 | 5 | 4/5 (80%) | 33.3% | 38.5% |
+| C1 budget-matched direct | 5 | 15 | 13 | 13 | 6 | 3/5 (60%) | 40.0% | 46.2% |
 
-C2's five F2P tests came from four hypotheses. The 15-test C1 budget control was generated with the same direct-test prompt, three independent direct calls per frozen hypothesis, and the same evaluator.
+C2's five F2P tests came from four hypotheses. The 15-slot C1 budget control produced 13 generated/executed test artifacts with the same direct-test prompt, three independent direct calls per frozen hypothesis, and the same evaluator.
 
 ## Planner and failure metrics
 
@@ -42,13 +42,13 @@ C2's five F2P tests came from four hypotheses. The 15-test C1 budget control was
 - Planner attempts: 6; five valid first responses and one malformed first response repaired successfully.
 - Planner validation rejection rate: 1/6 (16.7%).
 - Repair success rate: 1/1 rejected planner attempts repaired to a valid plan set.
-- Final C2 executable-test rate: 13/15 (86.7%).
+- Final C2: 15 allocated candidate slots, 13 generated test artifacts, and 13 executed test artifacts.
 - Final C2 test outcomes: 5 F2P, 0 F2F, 3 P2P, 5 mechanical failures, 2 model-output failures.
 - Final C1 budget-matched outcomes: 6 F2P, 2 F2F, 5 P2P, 2 model-output failures.
 
 ## Interpretation
 
-Compared with Experiment 3 C2 (2/5 hypotheses with F2P and 2/5 valid planner outputs), Experiment 4 C2 reached 4/5 hypotheses with F2P and 5/5 valid final planner outputs. However, its per-test and per-executable-test rates were below the 15-test direct control, and its planner/test LLM cost was much higher. The evidence supports improved conversion coverage through bounded structured search, not a claim that each candidate became more effective.
+Compared with the budget-matched direct control, C2 improved hypothesis-level coverage from 3/5 to 4/5. It produced 5/15 F2P tests versus 6/15 for C1 budget-matched, so it did not improve F2P per generated candidate. C2 required 21 LLM calls and 326,930 recorded tokens versus 15 calls and 15,801 tokens for C1. Compared with Experiment 3 C2 (2/5 hypotheses with F2P and 2/5 valid planner outputs), Experiment 4 C2 reached 4/5 hypotheses with F2P and 5/5 valid final planner outputs. The evidence supports improved conversion coverage through bounded structured search, not a claim that each candidate became more effective.
 
 The dominant remaining failure mode in the retained run was generated-test instantiation: five mechanical failures and three P2P results. The next smallest defensible change is generic pre-execution collection/runtime validation with one bounded repair, not another increase in planner breadth or a change to historical memory.
 

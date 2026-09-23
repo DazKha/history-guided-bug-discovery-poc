@@ -7,10 +7,19 @@
   "final_c2": {
     "valid_plan_hypotheses": 5,
     "planner_attempts": 6,
-    "generated_tests": 15,
+    "allocated_candidate_slots": 15,
+    "generated_test_artifacts": 13,
     "executable_tests": 13,
     "verified_f2p": 5,
     "hypotheses_with_f2p": 4,
+    "outcomes": {"verified_f2p": 5, "p2p": 3, "mechanical_failure": 5, "model_output_failure": 2, "f2f": 0},
+    "hypothesis_outcomes": {
+      "h01": {"f2p": 2, "model_output_failure": 1},
+      "h02": {"mechanical_failure": 3},
+      "h03": {"f2p": 1, "p2p": 2},
+      "h04": {"f2p": 1, "mechanical_failure": 1, "model_output_failure": 1},
+      "h05": {"f2p": 1, "p2p": 1, "mechanical_failure": 1}
+    },
     "f2p_per_generated_test": 0.3333333333,
     "f2p_per_executable_test": 0.3846153846,
     "executions_per_f2p": 2.6,
@@ -20,10 +29,12 @@
     "tokens_per_f2p": 65386
   },
   "budget_matched_c1": {
-    "generated_tests": 15,
+    "allocated_candidate_slots": 15,
+    "generated_test_artifacts": 13,
     "executable_tests": 13,
     "verified_f2p": 6,
     "hypotheses_with_f2p": 3,
+    "outcomes": {"verified_f2p": 6, "f2f": 2, "p2p": 5, "model_output_failure": 2},
     "f2p_per_generated_test": 0.4,
     "f2p_per_executable_test": 0.4615384615,
     "executions_per_f2p": 2.1666666667,
@@ -36,5 +47,5 @@
   "test_suite": "24 passed",
   "invalidated_experiment4_runs": [],
   "artifact_csv": "results/experiment4_results.csv",
-  "latest_commit_before_final_commit": "d74980873bfd7221de0288467092f9170aee38cf"
+  "latest_experiment4_commit_before_cleanup": "46f9c031ad63a3c4b84c1e5f4ff37219af9edb0f"
 }

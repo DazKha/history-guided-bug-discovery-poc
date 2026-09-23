@@ -2,12 +2,12 @@
 
 Each entry is retained even when it was not selected as the preferred final refinement. No generated test or failed planner response was discarded from the artifact tree.
 
-| Entry | Intervention | C2 planner attempts | Valid hypotheses | C2 generated / executable | C2 F2P | C2 F2P hypotheses | Decision |
+| Entry | Intervention | C2 planner attempts | Valid hypotheses | C2 generated / executed artifacts | C2 F2P | C2 F2P hypotheses | Decision |
 |---|---|---:|---:|---:|---:|---:|---|
-| E4-I1 | Strict typed plan contract, deterministic validation, two validator-directed repairs | 6 | 5/5 | 15 / 14 | 4 | 2/5 | retained as baseline contract |
-| E4-I2 | Added generic assertion/lifecycle checklist to plan-to-test generation | 6 | 5/5 | 15 / 9 | 1 | 1/5 | rejected: output validity and trigger metrics regressed |
-| E4-I3 | Kept contract; compact scope-safe test prompt; AST/compile/assertion preflight | 6 | 5/5 | 15 / 13 | 5 | 4/5 | retained final iteration |
-| E4-I3-B | Three independent direct generations per hypothesis for equal 15-test budget | n/a | n/a | 15 / 13 | 6 | 3/5 | budget control, not an intervention refinement |
+| E4-I1 | Strict typed plan contract, deterministic validation, two validator-directed repairs | 6 | 5/5 | 14 / 14 | 4 | 2/5 | retained as baseline contract |
+| E4-I2 | Added generic assertion/lifecycle checklist to plan-to-test generation | 6 | 5/5 | 9 / 9 | 1 | 1/5 | rejected: output validity and trigger metrics regressed |
+| E4-I3 | Kept contract; compact scope-safe test prompt; AST/compile/assertion preflight | 6 | 5/5 | 13 / 13 | 5 | 4/5 | retained final iteration |
+| E4-I3-B | Three independent direct generations per hypothesis for equal 15-slot budget | n/a | n/a | 13 / 13 | 6 | 3/5 | budget control, not an intervention refinement |
 
 ## Invalidated or diagnostic runs
 
