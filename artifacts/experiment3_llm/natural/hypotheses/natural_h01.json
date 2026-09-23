@@ -1,0 +1,17 @@
+{
+  "experiment": "experiment3",
+  "mode": "natural",
+  "attempt": 1,
+  "status": "MODEL_ERROR",
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "error": "TEST response is missing hypothesis or test_code",
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 1,
+    "usage": {}
+  },
+  "wall_clock_seconds": 3.402
+}

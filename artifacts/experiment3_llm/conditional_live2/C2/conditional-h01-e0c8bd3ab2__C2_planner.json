@@ -1,0 +1,160 @@
+{
+  "experiment": "experiment3",
+  "mode": "conditional",
+  "run_label": "live2",
+  "arm": "C2",
+  "hypothesis_id": "conditional-h01-e0c8bd3ab2",
+  "hypothesis": "When PySnooper's file-output path is used with a non-ASCII trace string, FileWriter.write opens the output file without an explicit encoding, so on a non-UTF-8 locale the write can fail or corrupt the trace instead of preserving the Unicode text.",
+  "trigger": "Create a temporary output path, decorate a function that assigns a non-ASCII string local variable with @pysnooper.snoop(path), run the function under a non-UTF-8 default text encoding, then read the file back as UTF-8 and assert the non-ASCII value appears.",
+  "oracle": {
+    "expected_behavior": "Tracing to a requested filesystem path must write the trace text to that path and preserve non-ASCII variable representations, independent of the process locale.",
+    "target_evidence": "pysnooper/tracer.py FileWriter.write opens the path with open(self.path, 'w' if self.overwrite else 'a') and no encoding argument; get_write_function routes string/PathLike output to FileWriter; README documents @pysnooper.snoop('/my/log/file.log') and tests/test_pysnooper.py test_file_output exercises path output.",
+    "historical_evidence": "cookiecutter:1 shows locale-dependent implicit text I/O encoding for non-ASCII data; PySnooper:3 shows path-output file writing is a public, tested behavior but does not establish the encoding mechanism.",
+    "confidence": 0.72
+  },
+  "hypothesis_sha256": "e0c8bd3ab2481f840b4ee7e6902b44ec0bee11d05fbea5261ae5ad5af3f1e7c2",
+  "hypothesis_frozen": true,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "repair_attempts": 0,
+  "status": "TRIGGERS",
+  "triggers": [
+    {
+      "trigger_id": "trig-input-nonascii-local",
+      "hypothesis_id": "conditional-h01-e0c8bd3ab2",
+      "trigger_type": "INPUT",
+      "mechanism": "A non-ASCII string local variable produces a repr containing non-ASCII characters that FileWriter.write must encode when writing to the path; with no explicit encoding, the implicit locale encoding (ASCII under LC_ALL=C/PYTHONUTF8=0) cannot represent those characters.",
+      "preconditions": [
+        "PySnooper buggy checkout is importable",
+        "Process runs with LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0 so default text encoding is ASCII",
+        "A writable temporary output path is available"
+      ],
+      "input_mutation": "Decorate a function that assigns a local variable to a non-ASCII string such as 'héllo-世界' and pass the temporary path as the snoop output argument.",
+      "state_setup": "Create a fresh temporary directory and a path that does not yet exist so FileWriter opens it in append mode on first write.",
+      "environment_setup": "Run Python 3.9.18 with LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0 and pytest available.",
+      "action_sequence": [
+        "Create temporary output path",
+        "Define @pysnooper.snoop(path) function assigning non-ASCII string local",
+        "Call the decorated function",
+        "Read the output file back with encoding='utf-8'",
+        "Assert the non-ASCII value appears in the trace"
+      ],
+      "observable": "Either a UnicodeEncodeError is raised during tracing, or the file read back as UTF-8 lacks the exact non-ASCII value.",
+      "why_this_may_expose_the_mechanism": "The non-ASCII repr forces FileWriter.write to encode characters outside ASCII; because open() is called without encoding, the ASCII default encoding cannot represent them, exposing the missing explicit encoding.",
+      "target_evidence": [
+        "pysnooper/tracer.py FileWriter.write opens path with open(self.path, 'w' if self.overwrite else 'a') and no encoding argument",
+        "pysnooper/tracer.py get_write_function routes string/PathLike output to FileWriter",
+        "README documents @pysnooper.snoop('/my/log/file.log')",
+        "tests/test_pysnooper.py test_file_output exercises path output"
+      ],
+      "confidence": 0.72
+    },
+    {
+      "trigger_id": "trig-state-overwrite-append",
+      "hypothesis_id": "conditional-h01-e0c8bd3ab2",
+      "trigger_type": "STATE",
+      "mechanism": "The overwrite flag changes the open mode between 'w' and 'a' but not the encoding; exercising both modes with non-ASCII trace content checks whether the implicit encoding failure occurs on first write and on subsequent appends.",
+      "preconditions": [
+        "PySnooper buggy checkout is importable",
+        "Process runs with LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0",
+        "A temporary output path is available and may be pre-populated"
+      ],
+      "input_mutation": "Use @pysnooper.snoop(path, overwrite=True) and @pysnooper.snoop(path) with a function that assigns a non-ASCII string local, optionally pre-writing ASCII content to the path.",
+      "state_setup": "Pre-create the output file with ASCII content to exercise append mode, then run the decorated function twice to exercise overwrite-then-append transitions.",
+      "environment_setup": "Run Python 3.9.18 with LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0 and pytest available.",
+      "action_sequence": [
+        "Create temporary output path and pre-write ASCII content",
+        "Define @pysnooper.snoop(path) function assigning non-ASCII string local",
+        "Call the decorated function",
+        "Define @pysnooper.snoop(path, overwrite=True) function assigning non-ASCII string local",
+        "Call the second decorated function",
+        "Read the file back as UTF-8 and assert the non-ASCII value appears"
+      ],
+      "observable": "UnicodeEncodeError during either write, or the file read back as UTF-8 missing the non-ASCII value after append or overwrite.",
+      "why_this_may_expose_the_mechanism": "Both 'w' and 'a' modes use the same implicit encoding; testing both state transitions confirms the failure is tied to the missing encoding argument rather than a single open mode.",
+      "target_evidence": [
+        "pysnooper/tracer.py FileWriter.write uses open(self.path, 'w' if self.overwrite else 'a') without encoding",
+        "tests/test_pysnooper.py test_no_overwrite_by_default and test_overwrite exercise append and overwrite path output"
+      ],
+      "confidence": 0.68
+    },
+    {
+      "trigger_id": "trig-env-locale-forced",
+      "hypothesis_id": "conditional-h01-e0c8bd3ab2",
+      "trigger_type": "ENVIRONMENT",
+      "mechanism": "The default text encoding is determined by the process locale and UTF-8 mode; forcing LC_ALL=C with PYTHONUTF8=0 and PYTHONCOERCECLOCALE=0 makes the implicit open() encoding ASCII, so non-ASCII trace text cannot be written.",
+      "preconditions": [
+        "PySnooper buggy checkout is importable",
+        "The test harness can set environment variables before starting the Python process",
+        "A temporary output path is available"
+      ],
+      "input_mutation": "Decorate a function assigning a non-ASCII string local with @pysnooper.snoop(path) and run it under the forced non-UTF-8 locale.",
+      "state_setup": "Create a fresh temporary output path that does not exist before the run.",
+      "environment_setup": "Set LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0 in the subprocess environment and verify locale.getpreferredencoding(False) is ASCII before running the decorated function.",
+      "action_sequence": [
+        "Launch Python subprocess with LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0",
+        "Assert locale.getpreferredencoding(False) is ASCII",
+        "Create temporary output path",
+        "Define and call @pysnooper.snoop(path) function assigning non-ASCII string local",
+        "Read the output file back as UTF-8 and assert the non-ASCII value appears"
+      ],
+      "observable": "UnicodeEncodeError during tracing or absence of the non-ASCII value when the file is read back as UTF-8.",
+      "why_this_may_expose_the_mechanism": "The locale environment directly controls the implicit encoding used by open(); forcing ASCII makes the missing encoding='utf-8' argument observable as a write failure or corruption.",
+      "target_evidence": [
+        "pysnooper/tracer.py FileWriter.write opens the path without an encoding argument",
+        "Execution environment visible to the tester: Python 3.9.18; LC_ALL=C; PYTHONUTF8=0; PYTHONCOERCECLOCALE=0"
+      ],
+      "confidence": 0.75
+    },
+    {
+      "trigger_id": "trig-seq-multi-write",
+      "hypothesis_id": "conditional-h01-e0c8bd3ab2",
+      "trigger_type": "SEQUENCE",
+      "mechanism": "FileWriter.write is called once per trace line and reopens the file each time; a sequence of writes where an early ASCII line succeeds and a later non-ASCII line fails isolates the encoding failure to the specific write containing non-ASCII text.",
+      "preconditions": [
+        "PySnooper buggy checkout is importable",
+        "Process runs with LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0",
+        "A temporary output path is available"
+      ],
+      "input_mutation": "Decorate a function that first assigns an ASCII local and then assigns a non-ASCII string local, with @pysnooper.snoop(path), so the trace contains both ASCII and non-ASCII lines.",
+      "state_setup": "Create a fresh temporary output path and ensure the function executes multiple traced lines in order.",
+      "environment_setup": "Run Python 3.9.18 with LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0 and pytest available.",
+      "action_sequence": [
+        "Create temporary output path",
+        "Define @pysnooper.snoop(path) function assigning ASCII local then non-ASCII string local",
+        "Call the decorated function",
+        "Read the output file back as UTF-8",
+        "Assert both the ASCII and non-ASCII values appear in order"
+      ],
+      "observable": "The file contains the early ASCII trace lines but raises UnicodeEncodeError or omits the later non-ASCII value, or the read-back fails to show the non-ASCII value.",
+      "why_this_may_expose_the_mechanism": "Because each write reopens the file without encoding, the failure occurs precisely on the write whose content includes non-ASCII characters, demonstrating the encoding-dependent write path.",
+      "target_evidence": [
+        "pysnooper/tracer.py FileWriter.write opens the path on every write call without encoding",
+        "pysnooper/tracer.py Tracer.write calls self._write(s) for each trace line",
+        "tests/test_pysnooper.py test_file_output checks ordered trace content at the path"
+      ],
+      "confidence": 0.66
+    }
+  ],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 1,
+    "retry_index": 0,
+    "latency_seconds": 9.095,
+    "usage": {
+      "prompt_tokens": 16693,
+      "completion_tokens": 2184,
+      "total_tokens": 18877,
+      "prompt_tokens_details": {
+        "cached_tokens": 896
+      },
+      "prompt_cache_hit_tokens": 896,
+      "prompt_cache_miss_tokens": 15797
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "planner_wall_clock_seconds": 9.099
+}

@@ -119,3 +119,19 @@ def test_metrics_emits_one_row_per_trigger_test_pair():
     )
     assert [row["trigger_id"] for row in rows] == ["t1", "t2"]
     assert all(row["hypothesis_id"] == "h1" for row in rows)
+
+
+def test_hypothesis_stage_accepts_test_status_without_test_code():
+    from scripts.run_experiment3 import parse_hypothesis_only
+
+    content = json.dumps({
+        "status": "TEST",
+        "hypothesis": "frozen claim",
+        "trigger": "target setup",
+        "potential_failure": "semantic failure",
+        "oracle": {"expected_behavior": "invariant", "target_evidence": "target source"},
+        "applicability_decisions": [],
+    })
+    parsed = parse_hypothesis_only(content, attempt=1)
+    assert parsed["status"] == "TEST"
+    assert parsed["test_code"] == ""

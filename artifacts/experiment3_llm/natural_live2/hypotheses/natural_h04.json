@@ -1,0 +1,54 @@
+{
+  "experiment": "experiment3",
+  "mode": "natural",
+  "run_label": "live2",
+  "attempt": 4,
+  "status": "NO_SUPPORTED_HYPOTHESIS",
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 4,
+    "retry_index": 0,
+    "latency_seconds": 2.336,
+    "usage": {
+      "prompt_tokens": 15712,
+      "completion_tokens": 338,
+      "total_tokens": 16050,
+      "prompt_tokens_details": {
+        "cached_tokens": 15488
+      },
+      "prompt_cache_hit_tokens": 15488,
+      "prompt_cache_miss_tokens": 224
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "hypothesis": "",
+  "applicability": "NOT_APPLICABLE",
+  "claim": null,
+  "trigger_idea": null,
+  "potential_failure": "",
+  "target_supported_oracle": null,
+  "test_code": "",
+  "reasoning": "The two historical Bug Knowledge Units concern (1) locale-dependent implicit text encoding when reading a JSON context file in cookiecutter, and (2) a path/output variable mismatch in PySnooper's file-output closure. Neither mechanism is supported by the visible target context. The target's file-output path is handled by FileWriter, which opens the path with the default text encoding and writes strings; there is no explicit encoding parameter or non-ASCII fixture in the visible tests, and the historical PySnooper unit's transfer confidence is only 0.45 and explicitly notes encoding is not established. The cookiecutter unit's mechanism (implicit open encoding for reading JSON) does not map onto any visible target API or test. No grounded hypothesis can be frozen from the provided target context and structured history without relying on hidden regression tests, issue text, or fixed source.",
+  "evidence_references": [
+    "pysnooper/tracer.py:FileWriter.write",
+    "pysnooper/tracer.py:get_write_function",
+    "tests/test_pysnooper.py:test_file_output",
+    "tests/test_pysnooper.py:test_no_overwrite_by_default",
+    "tests/test_pysnooper.py:test_overwrite"
+  ],
+  "trigger": "",
+  "oracle": {
+    "expected_behavior": "",
+    "target_evidence": "",
+    "historical_evidence": "",
+    "confidence": 0
+  },
+  "applicability_decisions": [],
+  "test_file_path": "",
+  "wall_clock_seconds": 2.338
+}

@@ -36,5 +36,4 @@ If enabled, feedback may revise syntax, imports, fixtures, setup mechanics, or e
 
 ## Status of this run
 
-The implementation and offline evaluator are present. The required `DEEPSEEK_API_KEY` is absent from the environment and empty in `.env`, so new model generation cannot be executed honestly. Conditional C1 replay is executed from stored artifacts; C2 and natural end-to-end generation are marked blocked rather than replaced with fabricated or hand-crafted tests.
-
+The real model run completed after robustly parsing the repository `.env` format without printing or storing the secret. Natural 3A produced five hypothesis-stage responses but no executable tests. Conditional 3B generated five direct C1 tests and eight executable C2 trigger-tests after two bounded planner repairs; three hypotheses remained planner-invalid and were retained in the accounting. The evaluator was unchanged.

@@ -71,7 +71,7 @@ def deduplicate_triggers(candidates: list[dict[str, Any]], limit: int = 4) -> li
     return selected
 
 
-def build_trigger_prompt(hypothesis: dict[str, Any], target_context: str, history: list[dict[str, Any]], count: int = 4) -> str:
+def build_trigger_prompt(hypothesis: dict[str, Any], target_context: str, history: list[dict[str, Any]], count: int = 4, feedback: str = "") -> str:
     frozen = json.dumps(hypothesis, ensure_ascii=False, indent=2)
     historical = json.dumps(history, ensure_ascii=False, indent=2)
     return f"""You are a trigger planner for a controlled software-testing experiment.
@@ -89,6 +89,7 @@ Return JSON only: {{"triggers": [{{"trigger_id": "...", "hypothesis_id": "...", 
 {target_context}
 ===== STRUCTURED HISTORY =====
 {historical}
+{feedback}
 """
 
 
@@ -105,4 +106,3 @@ def parse_trigger_response(content: str) -> list[dict[str, Any]]:
     if not isinstance(triggers, list):
         raise ValueError("trigger response must contain a triggers list")
     return deduplicate_triggers(triggers, limit=4)
-

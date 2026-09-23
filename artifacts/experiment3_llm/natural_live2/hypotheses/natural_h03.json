@@ -1,0 +1,18 @@
+{
+  "experiment": "experiment3",
+  "mode": "natural",
+  "run_label": "live2",
+  "attempt": 3,
+  "status": "MODEL_ERROR",
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 3,
+    "usage": {}
+  },
+  "error": "hypothesis stage response lacks claim or oracle",
+  "wall_clock_seconds": 2.627
+}

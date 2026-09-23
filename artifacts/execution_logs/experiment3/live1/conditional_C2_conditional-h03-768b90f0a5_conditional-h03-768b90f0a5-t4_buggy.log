@@ -1,0 +1,77 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+__________ test_utf8_source_without_coding_declaration_under_c_locale __________
+
+tmp_path = PosixPath('/private/var/folders/1j/l08d1p2s6ls9235bnggg20rc0000gn/T/pytest-of-minhkha/pytest-378/test_utf8_source_without_codin0')
+
+    def test_utf8_source_without_coding_declaration_under_c_locale(tmp_path):
+        # Preconditions: LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0
+        assert os.environ.get('LC_ALL') == 'C'
+        assert os.environ.get('PYTHONUTF8') == '0'
+        assert os.environ.get('PYTHONCOERCECLOCALE') == '0'
+
+        module_name = 'pysnooper_utf8_locale_probe'
+        module_path = tmp_path / (module_name + '.py')
+
+        source_text = textwrap.dedent(u'''\
+            import pysnooper
+
+            @pysnooper.snoop()
+            def f():
+                s = 'h\u00e9llo'
+                return s
+        ''')
+
+        # Write UTF-8 bytes with no PEP-263 coding declaration.
+        module_path.write_bytes(source_text.encode('utf-8'))
+
+        sys.path.insert(0, str(tmp_path))
+        try:
+            module = __import__(module_name)
+        finally:
+            try:
+                sys.path.remove(str(tmp_path))
+            except ValueError:
+                pass
+
+        # Force the binary-read fallback: loader.get_source returns None.
+        module.__loader__ = _NoSourceLoader()
+
+        # Ensure the source file is still readable by the fallback open().
+        assert module_path.exists()
+
+        string_io = io.StringIO()
+        module.f.__wrapped__.__globals__['pysnooper'] = pysnooper
+
+        # Re-decorate the function with a tracer writing to our StringIO so we can
+        # inspect the captured trace deterministically.
+        traced = pysnooper.snoop(string_io)(module.f.__wrapped__)
+        result = traced()
+        assert result == u'h\u00e9llo'
+
+        output = string_io.getvalue()
+
+        # The trace line for the non-ASCII literal must contain the exact text.
+        assert u"s = 'h\u00e9llo'" in output
+>       assert u'\ufffd' not in output
+E       assert '\ufffd' not in "21:30:44.10..... 'h\xe9llo'\\n"
+E
+E         '\ufffd' is contained here:
+E              s = 'h\ufffd\ufffdllo'
+E         ?          +
+E           New var:....... s = 'h\xe9llo'
+E           21:30:44.101016 line         6     return s
+E           21:30:44.101024 return       6     return s
+E           Return value:.. 'h\xe9llo'
+
+_generated_eval_conditional-h03-768b90f0a5-conditional-h03-768b90f0a5-t4.py:66: AssertionError
+=============================== warnings summary ===============================
+pysnooper/variables.py:3
+pysnooper/variables.py:3
+  /Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/pysnooper/variables.py:3: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated since Python 3.3, and in 3.10 it will stop working
+    from collections import Mapping, Sequence
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED _generated_eval_conditional-h03-768b90f0a5-conditional-h03-768b90f0a5-t4.py::test_utf8_source_without_coding_declaration_under_c_locale
+1 failed, 2 warnings in 0.02s

@@ -1,0 +1,45 @@
+{
+  "experiment": "experiment3",
+  "mode": "conditional",
+  "arm": "C1",
+  "hypothesis_id": "conditional-h01-e0c8bd3ab2",
+  "hypothesis": "When PySnooper's file-output path is used with a non-ASCII trace string, FileWriter.write opens the output file without an explicit encoding, so on a non-UTF-8 locale the write can fail or corrupt the trace instead of preserving the Unicode text.",
+  "trigger": "Create a temporary output path, decorate a function that assigns a non-ASCII string local variable with @pysnooper.snoop(path), run the function under a non-UTF-8 default text encoding, then read the file back as UTF-8 and assert the non-ASCII value appears.",
+  "oracle": {
+    "expected_behavior": "Tracing to a requested filesystem path must write the trace text to that path and preserve non-ASCII variable representations, independent of the process locale.",
+    "target_evidence": "pysnooper/tracer.py FileWriter.write opens the path with open(self.path, 'w' if self.overwrite else 'a') and no encoding argument; get_write_function routes string/PathLike output to FileWriter; README documents @pysnooper.snoop('/my/log/file.log') and tests/test_pysnooper.py test_file_output exercises path output.",
+    "historical_evidence": "cookiecutter:1 shows locale-dependent implicit text I/O encoding for non-ASCII data; PySnooper:3 shows path-output file writing is a public, tested behavior but does not establish the encoding mechanism.",
+    "confidence": 0.72
+  },
+  "hypothesis_sha256": "e0c8bd3ab2481f840b4ee7e6902b44ec0bee11d05fbea5261ae5ad5af3f1e7c2",
+  "hypothesis_frozen": true,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "repair_attempts": 0,
+  "status": "TEST",
+  "test_code": "import os\nimport sys\nimport tempfile\nimport subprocess\nimport textwrap\n\n\ndef test_file_output_preserves_non_ascii_under_non_utf8_locale():\n    \"\"\"\n    Verify that @pysnooper.snoop(path) writes non-ASCII trace text to the file\n    even when the process default text encoding is not UTF-8.\n    \"\"\"\n    script = textwrap.dedent(\n        r'''\n        import os\n        import sys\n        import tempfile\n        import pysnooper\n\n        # Ensure the child process uses a non-UTF-8 default text encoding.\n        # PYTHONUTF8=0 disables UTF-8 mode; LC_ALL=C makes the locale ASCII.\n        # We also explicitly set the default encoding to ASCII to make the\n        # failure deterministic across platforms.\n        sys.setdefaultencoding = None  # no-op to avoid linter complaints\n\n        tmpdir = tempfile.mkdtemp()\n        out_path = os.path.join(tmpdir, \"trace.log\")\n\n        @pysnooper.snoop(out_path)\n        def f():\n            value = \"caf\\u00e9\"\n            return value\n\n        f()\n\n        with open(out_path, \"r\", encoding=\"utf-8\") as fh:\n            content = fh.read()\n\n        assert \"caf\\u00e9\" in content, (\n            \"Non-ASCII value missing from trace file. Content: %r\" % content\n        )\n        print(\"OK\")\n        '''\n    )\n\n    env = os.environ.copy()\n    env[\"PYTHONUTF8\"] = \"0\"\n    env[\"LC_ALL\"] = \"C\"\n    env[\"LANG\"] = \"C\"\n    # Force the default text encoding to ASCII in the child process.\n    env[\"PYTHONIOENCODING\"] = \"ascii\"\n\n    result = subprocess.run(\n        [sys.executable, \"-c\", script],\n        env=env,\n        stdout=subprocess.PIPE,\n        stderr=subprocess.PIPE,\n        text=True,\n    )\n\n    assert result.returncode == 0, (\n        \"Child process failed with return code %d.\\nstdout: %s\\nstderr: %s\"\n        % (result.returncode, result.stdout, result.stderr)\n    )\n    assert \"OK\" in result.stdout\n",
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 1,
+    "retry_index": 0,
+    "latency_seconds": 2.839,
+    "usage": {
+      "prompt_tokens": 575,
+      "completion_tokens": 606,
+      "total_tokens": 1181,
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      },
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 575
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_id": "conditional-h01-e0c8bd3ab2-direct",
+  "test_path": "generated_tests/experiment3/conditional_live1/C1/conditional-h01-e0c8bd3ab2-direct.py",
+  "test_sha256": "0b4a5a574e32c4e17021db658194ee4b7ade9da68708314d5db587188365cb03",
+  "wall_clock_seconds": 2.842
+}

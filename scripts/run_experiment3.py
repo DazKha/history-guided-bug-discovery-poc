@@ -43,7 +43,33 @@ This is hypothesis stage attempt {attempt}. Evaluate applicability as SUPPORTED,
 
 
 def parse_hypothesis_only(content: str, attempt: int) -> dict[str, Any]:
-    obj = parse_model(content)
+    text = content.strip()
+    if text.startswith("```"):
+        text = re.sub(r"^```(?:json)?\s*", "", text)
+        text = re.sub(r"\s*```$", "", text)
+    start, end = text.find("{"), text.rfind("}")
+    if start < 0 or end <= start:
+        raise ValueError("hypothesis response did not contain a JSON object")
+    obj = json.loads(text[start:end + 1])
+    status = str(obj.get("status", "")).upper()
+    if status in {"HYPOTHESIS", "SUPPORTED", "TEST"}:
+        status = "TEST"
+    elif status in {"NO_SUPPORTED_HYPOTHESIS", "NO_HYPOTHESIS", "NOT_APPLICABLE", "ABSTAIN"}:
+        status = "NO_SUPPORTED_HYPOTHESIS"
+    else:
+        raise ValueError(f"unsupported hypothesis status: {status}")
+    oracle = obj.get("oracle") or {}
+    obj["status"] = status
+    obj["hypothesis"] = str(obj.get("hypothesis") or "")
+    obj["trigger"] = str(obj.get("trigger") or "")
+    obj["potential_failure"] = str(obj.get("potential_failure") or "")
+    obj["oracle"] = {
+        "expected_behavior": str(oracle.get("expected_behavior") or ""),
+        "target_evidence": str(oracle.get("target_evidence") or ""),
+        "historical_evidence": str(oracle.get("historical_evidence") or ""),
+        "confidence": oracle.get("confidence", 0),
+    }
+    obj["applicability_decisions"] = obj.get("applicability_decisions") or []
     obj["test_code"] = ""
     obj["test_file_path"] = ""
     obj["attempt"] = attempt
@@ -71,10 +97,11 @@ def _hypothesis_id(mode: str, index: int, record: dict[str, Any]) -> str:
     return f"{mode}-h{index:02d}-{digest}"
 
 
-def generate_hypotheses(mode: str, attempts: int, client: DeepSeekClient | None = None) -> list[dict[str, Any]]:
+def generate_hypotheses(mode: str, attempts: int, client: DeepSeekClient | None = None, run_label: str = "") -> list[dict[str, Any]]:
     context = TARGET_CONTEXT.read_text()
     history = json.loads(HISTORY.read_text())
-    out = ROOT / "artifacts/experiment3_llm" / mode / "hypotheses"
+    suffix = f"_{run_label}" if run_label else ""
+    out = ROOT / "artifacts/experiment3_llm" / f"{mode}{suffix}" / "hypotheses"
     out.mkdir(parents=True, exist_ok=True)
     records: list[dict[str, Any]] = []
     conditional = ROOT / "data/experiment3_conditional_hypotheses.json"
@@ -82,7 +109,7 @@ def generate_hypotheses(mode: str, attempts: int, client: DeepSeekClient | None 
         source = json.loads(conditional.read_text())
         for index, raw in enumerate(source[:attempts], 1):
             record = freeze_hypothesis(raw)
-            record.update({"experiment": "experiment3", "mode": mode, "attempt": index, "generation_visible_files": [str(TARGET_CONTEXT.relative_to(ROOT)), str(HISTORY.relative_to(ROOT))]})
+            record.update({"experiment": "experiment3", "mode": mode, "run_label": run_label, "attempt": index, "generation_visible_files": [str(TARGET_CONTEXT.relative_to(ROOT)), str(HISTORY.relative_to(ROOT))]})
             record["hypothesis_id"] = _hypothesis_id(mode, index, record)
             _write_json(out / f"{record['hypothesis_id']}.json", record)
             records.append(record)
@@ -92,14 +119,14 @@ def generate_hypotheses(mode: str, attempts: int, client: DeepSeekClient | None 
     for attempt in range(1, attempts + 1):
         started = time.time()
         record: dict[str, Any] = {
-            "experiment": "experiment3", "mode": mode, "attempt": attempt, "status": "MODEL_ERROR",
+            "experiment": "experiment3", "mode": mode, "run_label": run_label, "attempt": attempt, "status": "MODEL_ERROR",
             "generation_visible_files": [str(TARGET_CONTEXT.relative_to(ROOT)), str(HISTORY.relative_to(ROOT))],
         }
         try:
             result = client.generate(hypothesis_only_prompt(context, history, attempt), max_tokens=MAX_TOKENS)
+            record["llm"] = _llm_meta(client, result)
             parsed = parse_hypothesis_only(result.content, attempt)
             record.update(parsed)
-            record["llm"] = _llm_meta(client, result)
             if parsed["status"] == "TEST":
                 frozen = freeze_hypothesis(record)
                 record.update(frozen)
@@ -115,7 +142,7 @@ def generate_hypotheses(mode: str, attempts: int, client: DeepSeekClient | None 
 
 def generate_c1(record: dict[str, Any], client: DeepSeekClient, context: str, out_root: Path, test_root: Path) -> dict[str, Any]:
     started = time.time()
-    result_record = {"experiment": "experiment3", "mode": record["mode"], "arm": "C1", "hypothesis_id": record["hypothesis_id"], "hypothesis": record["hypothesis"], "trigger": record.get("trigger", ""), "oracle": record.get("oracle", {}), "hypothesis_sha256": record["hypothesis_sha256"], "hypothesis_frozen": True, "generation_visible_files": record["generation_visible_files"], "repair_attempts": 0}
+    result_record = {"experiment": "experiment3", "mode": record["mode"], "run_label": record.get("run_label", ""), "arm": "C1", "hypothesis_id": record["hypothesis_id"], "hypothesis": record["hypothesis"], "trigger": record.get("trigger", ""), "oracle": record.get("oracle", {}), "hypothesis_sha256": record["hypothesis_sha256"], "hypothesis_frozen": True, "generation_visible_files": record["generation_visible_files"], "repair_attempts": 0}
     try:
         response = client.generate(hypothesis_prompt(record), max_tokens=MAX_TOKENS)
         parsed = parse_test_response(response.content)
@@ -134,15 +161,16 @@ def generate_c1(record: dict[str, Any], client: DeepSeekClient, context: str, ou
     return result_record
 
 
-def generate_c2(record: dict[str, Any], client: DeepSeekClient, context: str, history: list[dict[str, Any]], out_root: Path, test_root: Path) -> list[dict[str, Any]]:
+def generate_c2(record: dict[str, Any], client: DeepSeekClient, context: str, history: list[dict[str, Any]], out_root: Path, test_root: Path, planner_feedback: str = "") -> list[dict[str, Any]]:
     planner_started = time.time()
-    base = {"experiment": "experiment3", "mode": record["mode"], "arm": "C2", "hypothesis_id": record["hypothesis_id"], "hypothesis": record["hypothesis"], "trigger": record.get("trigger", ""), "oracle": record.get("oracle", {}), "hypothesis_sha256": record["hypothesis_sha256"], "hypothesis_frozen": True, "generation_visible_files": record["generation_visible_files"], "repair_attempts": 0}
+    base = {"experiment": "experiment3", "mode": record["mode"], "run_label": record.get("run_label", ""), "arm": "C2", "hypothesis_id": record["hypothesis_id"], "hypothesis": record["hypothesis"], "trigger": record.get("trigger", ""), "oracle": record.get("oracle", {}), "hypothesis_sha256": record["hypothesis_sha256"], "hypothesis_frozen": True, "generation_visible_files": record["generation_visible_files"], "repair_attempts": 0}
+    planner_meta = {}
     try:
-        planner_response = client.generate(build_trigger_prompt(record, context, history, count=4), max_tokens=MAX_TOKENS)
-        triggers = parse_trigger_response(planner_response.content)
+        planner_response = client.generate(build_trigger_prompt(record, context, history, count=4, feedback=planner_feedback), max_tokens=MAX_TOKENS)
         planner_meta = planner_response.log_record
+        triggers = parse_trigger_response(planner_response.content)
     except Exception as exc:
-        failed = dict(base, status="TRIGGER_PLANNER_ERROR", error=str(exc)[:500], llm={"model": client.model, "request_count": client.request_count, "usage": {}}, planner_wall_clock_seconds=round(time.time() - planner_started, 3))
+        failed = dict(base, status="TRIGGER_PLANNER_ERROR", error=str(exc)[:500], llm=planner_meta or {"model": client.model, "request_count": client.request_count, "usage": {}}, planner_wall_clock_seconds=round(time.time() - planner_started, 3))
         _write_json(out_root / f"{_safe_name(record['hypothesis_id'])}__C2_planner.json", failed)
         return [failed]
     _write_json(out_root / f"{_safe_name(record['hypothesis_id'])}__C2_planner.json", dict(base, status="TRIGGERS", triggers=triggers, llm=planner_meta, planner_wall_clock_seconds=round(time.time() - planner_started, 3)))
@@ -173,21 +201,33 @@ def main() -> None:
     parser.add_argument("--mode", choices=["natural", "conditional"], default="natural")
     parser.add_argument("--arm", choices=["C1", "C2", "both"], default="both")
     parser.add_argument("--attempts", type=int, default=5)
+    parser.add_argument("--run-label", default="")
+    parser.add_argument("--retry-failed-from", default="")
     args = parser.parse_args()
     attempts = max(1, args.attempts)
     client = DeepSeekClient(model=MODEL, temperature=TEMPERATURE)
-    hypotheses = generate_hypotheses(args.mode, attempts, client if args.mode == "natural" else None)
+    hypotheses = generate_hypotheses(args.mode, attempts, client if args.mode == "natural" else None, args.run_label)
+    if args.retry_failed_from:
+        retry_ids = set()
+        prior = ROOT / "artifacts/experiment3_llm" / f"{args.mode}_{args.retry_failed_from}" / "C2"
+        for path in prior.glob("*__C2_planner.json"):
+            prior_record = json.loads(path.read_text())
+            if prior_record.get("status") == "TRIGGER_PLANNER_ERROR":
+                retry_ids.add(prior_record.get("hypothesis_id"))
+        hypotheses = [record for record in hypotheses if record.get("hypothesis_id") in retry_ids]
     context = TARGET_CONTEXT.read_text()
     history = json.loads(HISTORY.read_text())
     for record in hypotheses:
         if record.get("status") != "TEST":
             continue
         if args.arm in {"C1", "both"}:
-            generate_c1(record, client, context, ROOT / "artifacts/experiment3_llm" / args.mode / "C1", ROOT / "generated_tests/experiment3" / args.mode / "C1")
+            suffix = f"_{args.run_label}" if args.run_label else ""
+            generate_c1(record, client, context, ROOT / "artifacts/experiment3_llm" / f"{args.mode}{suffix}" / "C1", ROOT / "generated_tests/experiment3" / f"{args.mode}{suffix}" / "C1")
         if args.arm in {"C2", "both"}:
-            generate_c2(record, client, context, history, ROOT / "artifacts/experiment3_llm" / args.mode / "C2", ROOT / "generated_tests/experiment3" / args.mode / "C2")
+            suffix = f"_{args.run_label}" if args.run_label else ""
+            feedback = "Previous planner output was rejected as malformed JSON. Repair only the response format; keep the frozen hypothesis and trigger content unchanged." if args.retry_failed_from else ""
+            generate_c2(record, client, context, history, ROOT / "artifacts/experiment3_llm" / f"{args.mode}{suffix}" / "C2", ROOT / "generated_tests/experiment3" / f"{args.mode}{suffix}" / "C2", planner_feedback=feedback)
 
 
 if __name__ == "__main__":
     main()
-

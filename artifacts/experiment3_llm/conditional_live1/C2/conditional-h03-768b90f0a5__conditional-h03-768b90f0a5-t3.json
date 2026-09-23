@@ -1,0 +1,75 @@
+{
+  "experiment": "experiment3",
+  "mode": "conditional",
+  "arm": "C2",
+  "hypothesis_id": "conditional-h03-768b90f0a5",
+  "hypothesis": "PySnooper's get_source_from_frame decodes source files using the platform default encoding when no PEP-263 coding declaration is present, so a UTF-8 source file containing non-ASCII characters will be mis-decoded (mojibake) under a non-UTF-8 locale such as LC_ALL=C, causing the traced source line to differ from the actual source text.",
+  "trigger": "Create a temporary module file encoded as UTF-8 whose function body contains a non-ASCII string literal (e.g. 'héllo') with no coding declaration, import it, and run a @pysnooper.snoop() decorated function under LC_ALL=C so the default locale encoding is ASCII.",
+  "oracle": {
+    "expected_behavior": "The trace output for the line containing the non-ASCII literal must contain the exact Unicode text 'héllo' as written in the UTF-8 source file, independent of the process locale.",
+    "target_evidence": "pysnooper/tracer.py get_source_from_frame: when source is read as bytes it sets encoding='ascii' and only overrides it if a PEP-263 coding comment is found in the first two lines; otherwise it decodes with pycompat.text_type(sline, encoding, 'replace'). The README documents that snoop output shows the actual source line, and ordinary tests (e.g. test_string_io, test_file_output) assert exact source-line text in the trace, establishing that source lines must faithfully reflect the file.",
+    "historical_evidence": "cookiecutter:1 shows the same class of locale-dependent implicit text decoding bug (implicit open using platform default encoding) fixed by making the encoding explicit UTF-8; PySnooper:3 is a weaker file-output path bug that only partially transfers.",
+    "confidence": 0.72
+  },
+  "hypothesis_sha256": "768b90f0a584e3ab99782b4766e6a8e28474486ecb76eeab883184fac7f32c1c",
+  "hypothesis_frozen": true,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "repair_attempts": 0,
+  "trigger_id": "conditional-h03-768b90f0a5-t3",
+  "trigger_plan": {
+    "trigger_id": "conditional-h03-768b90f0a5-t3",
+    "hypothesis_id": "conditional-h03-768b90f0a5",
+    "trigger_type": "SEQUENCE",
+    "mechanism": "The source_cache in get_source_from_frame caches decoded lines keyed by (module_name, file_name); a first call under a non-UTF-8 locale caches mojibake, and subsequent calls reuse the corrupted source even if the locale changes.",
+    "preconditions": [
+      "Same module file and module name used across calls",
+      "First snoop call occurs under LC_ALL=C",
+      "Second snoop call occurs after changing locale to a UTF-8 one (or vice versa)"
+    ],
+    "input_mutation": "Use the same UTF-8 module file with a non-ASCII literal; invoke the snooped function twice, once under LC_ALL=C and once under a UTF-8 locale.",
+    "state_setup": "Import the module once; decorate the function with @pysnooper.snoop() writing to a StringIO; clear or reuse source_cache between calls as appropriate.",
+    "environment_setup": "First call with LC_ALL=C; second call with LC_ALL=C.UTF-8 (or en_US.UTF-8) in the same process if possible, or in separate processes to compare.",
+    "action_sequence": [
+      "Write and import the UTF-8 module.",
+      "Call the snooped function under LC_ALL=C and capture output.",
+      "Change locale to UTF-8 (or run a second process with UTF-8 locale).",
+      "Call the snooped function again and capture output.",
+      "Compare the two trace outputs for the non-ASCII line."
+    ],
+    "observable": "The trace output for the non-ASCII line should be identical and correct in both locales; the buggy path shows mojibake under LC_ALL=C and correct text under UTF-8, and the cache may preserve the mojibake across calls.",
+    "why_this_may_expose_the_mechanism": "The source_cache is keyed only by module and file name, not by encoding or locale, so a locale-dependent decode can be cached and reused, amplifying the observable difference and confirming the mechanism.",
+    "target_evidence": [
+      "pysnooper/tracer.py source_cache = {} and cache_key = (module_name, file_name)",
+      "pysnooper/tracer.py source_cache[cache_key] = source",
+      "pysnooper/tracer.py encoding fallback 'ascii'"
+    ],
+    "confidence": 0.75
+  },
+  "status": "TEST",
+  "test_code": "import io\nimport os\nimport sys\nimport textwrap\nimport subprocess\n\nimport pytest\n\nimport pysnooper\nfrom pysnooper import tracer\n\n\nMODULE_SOURCE = textwrap.dedent(u'''\\\n    import pysnooper\n\n    @pysnooper.snoop()\n    def f():\n        s = 'h\\u00e9llo'\n        return s\n''')\n\n\nCHILD_SCRIPT = textwrap.dedent(u'''\\\n    import io\n    import sys\n    import pysnooper\n    from pysnooper import tracer\n\n    module_name = sys.argv[1]\n    module = __import__(module_name)\n\n    string_io = io.StringIO()\n    tracer_obj = pysnooper.snoop(string_io)\n    wrapped = tracer_obj(module.f)\n    wrapped()\n    sys.stdout.write(string_io.getvalue())\n''')\n\n\ndef _write_module(folder, module_name):\n    path = os.path.join(folder, module_name + '.py')\n    with open(path, 'wb') as fp:\n        fp.write(MODULE_SOURCE.encode('utf-8'))\n    return path\n\n\ndef _run_child(folder, module_name, locale_value):\n    env = dict(os.environ)\n    env['LC_ALL'] = locale_value\n    env['LANG'] = locale_value\n    env['PYTHONUTF8'] = '0'\n    env['PYTHONCOERCECLOCALE'] = '0'\n    env['PYTHONPATH'] = folder + os.pathsep + env.get('PYTHONPATH', '')\n    proc = subprocess.run(\n        [sys.executable, '-c', CHILD_SCRIPT, module_name],\n        cwd=folder,\n        env=env,\n        stdout=subprocess.PIPE,\n        stderr=subprocess.PIPE,\n    )\n    assert proc.returncode == 0, proc.stderr.decode('utf-8', 'replace')\n    return proc.stdout.decode('utf-8', 'replace')\n\n\ndef test_non_ascii_source_line_under_c_locale(tmp_path):\n    folder = str(tmp_path)\n    module_name = 'pysnooper_nonascii_module'\n    _write_module(folder, module_name)\n\n    output = _run_child(folder, module_name, 'C')\n\n    assert u'h\\u00e9llo' in output\n    assert u'h\\ufffdllo' not in output\n\n\ndef test_non_ascii_source_line_consistent_across_locales(tmp_path):\n    folder = str(tmp_path)\n    module_name = 'pysnooper_nonascii_module2'\n    _write_module(folder, module_name)\n\n    output_c = _run_child(folder, module_name, 'C')\n    output_utf8 = _run_child(folder, module_name, 'C.UTF-8')\n\n    assert u'h\\u00e9llo' in output_c\n    assert u'h\\u00e9llo' in output_utf8\n    assert u'h\\ufffdllo' not in output_c\n    assert u'h\\ufffdllo' not in output_utf8\n\n\ndef test_source_cache_reuse_does_not_preserve_mojibake(tmp_path):\n    folder = str(tmp_path)\n    module_name = 'pysnooper_nonascii_module3'\n    _write_module(folder, module_name)\n\n    sys.path.insert(0, folder)\n    try:\n        module = __import__(module_name)\n        tracer.source_cache.clear()\n\n        string_io = io.StringIO()\n        wrapped = pysnooper.snoop(string_io)(module.f)\n        wrapped()\n        first_output = string_io.getvalue()\n\n        string_io2 = io.StringIO()\n        wrapped2 = pysnooper.snoop(string_io2)(module.f)\n        wrapped2()\n        second_output = string_io2.getvalue()\n\n        assert u'h\\u00e9llo' in first_output\n        assert u'h\\u00e9llo' in second_output\n        assert u'h\\ufffdllo' not in first_output\n        assert u'h\\ufffdllo' not in second_output\n    finally:\n        sys.path.remove(folder)\n        sys.modules.pop(module_name, None)\n        tracer.source_cache.clear()\n",
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 9,
+    "retry_index": 0,
+    "latency_seconds": 4.216,
+    "usage": {
+      "prompt_tokens": 15980,
+      "completion_tokens": 1042,
+      "total_tokens": 17022,
+      "prompt_tokens_details": {
+        "cached_tokens": 512
+      },
+      "prompt_cache_hit_tokens": 512,
+      "prompt_cache_miss_tokens": 15468
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_id": "conditional-h03-768b90f0a5-conditional-h03-768b90f0a5-t3",
+  "test_path": "generated_tests/experiment3/conditional_live1/C2/conditional-h03-768b90f0a5-conditional-h03-768b90f0a5-t3.py",
+  "test_sha256": "8dfd84e1786c3faa72c6fefdcd0e09eed7dc5fb688d07c42a50915ae9470f43a",
+  "wall_clock_seconds": 4.218
+}

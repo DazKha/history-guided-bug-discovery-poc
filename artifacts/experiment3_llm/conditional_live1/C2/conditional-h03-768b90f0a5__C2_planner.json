@@ -1,0 +1,157 @@
+{
+  "experiment": "experiment3",
+  "mode": "conditional",
+  "arm": "C2",
+  "hypothesis_id": "conditional-h03-768b90f0a5",
+  "hypothesis": "PySnooper's get_source_from_frame decodes source files using the platform default encoding when no PEP-263 coding declaration is present, so a UTF-8 source file containing non-ASCII characters will be mis-decoded (mojibake) under a non-UTF-8 locale such as LC_ALL=C, causing the traced source line to differ from the actual source text.",
+  "trigger": "Create a temporary module file encoded as UTF-8 whose function body contains a non-ASCII string literal (e.g. 'héllo') with no coding declaration, import it, and run a @pysnooper.snoop() decorated function under LC_ALL=C so the default locale encoding is ASCII.",
+  "oracle": {
+    "expected_behavior": "The trace output for the line containing the non-ASCII literal must contain the exact Unicode text 'héllo' as written in the UTF-8 source file, independent of the process locale.",
+    "target_evidence": "pysnooper/tracer.py get_source_from_frame: when source is read as bytes it sets encoding='ascii' and only overrides it if a PEP-263 coding comment is found in the first two lines; otherwise it decodes with pycompat.text_type(sline, encoding, 'replace'). The README documents that snoop output shows the actual source line, and ordinary tests (e.g. test_string_io, test_file_output) assert exact source-line text in the trace, establishing that source lines must faithfully reflect the file.",
+    "historical_evidence": "cookiecutter:1 shows the same class of locale-dependent implicit text decoding bug (implicit open using platform default encoding) fixed by making the encoding explicit UTF-8; PySnooper:3 is a weaker file-output path bug that only partially transfers.",
+    "confidence": 0.72
+  },
+  "hypothesis_sha256": "768b90f0a584e3ab99782b4766e6a8e28474486ecb76eeab883184fac7f32c1c",
+  "hypothesis_frozen": true,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "repair_attempts": 0,
+  "status": "TRIGGERS",
+  "triggers": [
+    {
+      "trigger_id": "conditional-h03-768b90f0a5-t1",
+      "hypothesis_id": "conditional-h03-768b90f0a5",
+      "trigger_type": "ENVIRONMENT",
+      "mechanism": "Locale-dependent default encoding causes get_source_from_frame to decode UTF-8 bytes as ASCII when no PEP-263 coding declaration is present, producing U+FFFD replacement characters in the traced source line.",
+      "preconditions": [
+        "Python 3.9.18 with LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0",
+        "A temporary module file encoded as UTF-8 containing a non-ASCII string literal in a snooped function body",
+        "No PEP-263 coding declaration in the first two lines of the module file"
+      ],
+      "input_mutation": "Create a temporary module file with UTF-8 bytes for the string literal 'héllo' (e.g. b'h\\xc3\\xa9llo') and no coding comment.",
+      "state_setup": "Import the temporary module so its __loader__ is a SourceFileLoader; decorate the function with @pysnooper.snoop() writing to an io.StringIO.",
+      "environment_setup": "Run the test process with LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0 so locale.getpreferredencoding() returns 'ANSI_X3.4-1968' (ASCII).",
+      "action_sequence": [
+        "Write the UTF-8 module file to a temp directory.",
+        "Add the temp directory to sys.path and import the module.",
+        "Call the snooped function.",
+        "Read the captured trace from the StringIO."
+      ],
+      "observable": "The trace line for the assignment containing 'héllo' must contain the exact Unicode text 'héllo'; the buggy path yields 'h\\ufffdllo'.",
+      "why_this_may_expose_the_mechanism": "Under LC_ALL=C the fallback encoding in get_source_from_frame is 'ascii', so the non-ASCII bytes are decoded with errors='replace', directly exercising the hypothesized locale-dependent decoding path.",
+      "target_evidence": [
+        "pysnooper/tracer.py get_source_from_frame: encoding = 'ascii' fallback when no PEP-263 coding comment is found",
+        "pysnooper/tracer.py: pycompat.text_type(sline, encoding, 'replace')",
+        "README.md: snoop output shows the actual source line",
+        "tests/test_pysnooper.py test_string_io asserts exact source-line text"
+      ],
+      "confidence": 0.85
+    },
+    {
+      "trigger_id": "conditional-h03-768b90f0a5-t2",
+      "hypothesis_id": "conditional-h03-768b90f0a5",
+      "trigger_type": "INPUT",
+      "mechanism": "A non-ASCII character in the source line that is traced is decoded with the wrong encoding, so the emitted source line differs from the file bytes.",
+      "preconditions": [
+        "UTF-8 source file with no coding declaration",
+        "Non-ASCII character appears on the exact line that is traced (not only in a string literal value)",
+        "LC_ALL=C environment"
+      ],
+      "input_mutation": "Place a non-ASCII character in a comment or identifier on the traced line, e.g. 'x = 1  # héllo' or a variable name containing 'é', so the source line itself contains non-ASCII bytes.",
+      "state_setup": "Import the module and decorate the function with @pysnooper.snoop() capturing to a StringIO.",
+      "environment_setup": "LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0.",
+      "action_sequence": [
+        "Write the UTF-8 module file with the non-ASCII comment/identifier on the traced line.",
+        "Import the module.",
+        "Call the snooped function.",
+        "Inspect the captured trace line for that source line."
+      ],
+      "observable": "The trace line must contain the exact non-ASCII text as written; the buggy path shows U+FFFD replacement characters.",
+      "why_this_may_expose_the_mechanism": "By putting non-ASCII bytes directly on the traced source line, the assertion targets the exact string produced by get_source_from_frame rather than a variable repr, isolating the decoding bug.",
+      "target_evidence": [
+        "pysnooper/tracer.py get_source_from_frame decodes source lines with fallback 'ascii'",
+        "tests/test_pysnooper.py LineEntry assertions compare exact source text"
+      ],
+      "confidence": 0.8
+    },
+    {
+      "trigger_id": "conditional-h03-768b90f0a5-t3",
+      "hypothesis_id": "conditional-h03-768b90f0a5",
+      "trigger_type": "SEQUENCE",
+      "mechanism": "The source_cache in get_source_from_frame caches decoded lines keyed by (module_name, file_name); a first call under a non-UTF-8 locale caches mojibake, and subsequent calls reuse the corrupted source even if the locale changes.",
+      "preconditions": [
+        "Same module file and module name used across calls",
+        "First snoop call occurs under LC_ALL=C",
+        "Second snoop call occurs after changing locale to a UTF-8 one (or vice versa)"
+      ],
+      "input_mutation": "Use the same UTF-8 module file with a non-ASCII literal; invoke the snooped function twice, once under LC_ALL=C and once under a UTF-8 locale.",
+      "state_setup": "Import the module once; decorate the function with @pysnooper.snoop() writing to a StringIO; clear or reuse source_cache between calls as appropriate.",
+      "environment_setup": "First call with LC_ALL=C; second call with LC_ALL=C.UTF-8 (or en_US.UTF-8) in the same process if possible, or in separate processes to compare.",
+      "action_sequence": [
+        "Write and import the UTF-8 module.",
+        "Call the snooped function under LC_ALL=C and capture output.",
+        "Change locale to UTF-8 (or run a second process with UTF-8 locale).",
+        "Call the snooped function again and capture output.",
+        "Compare the two trace outputs for the non-ASCII line."
+      ],
+      "observable": "The trace output for the non-ASCII line should be identical and correct in both locales; the buggy path shows mojibake under LC_ALL=C and correct text under UTF-8, and the cache may preserve the mojibake across calls.",
+      "why_this_may_expose_the_mechanism": "The source_cache is keyed only by module and file name, not by encoding or locale, so a locale-dependent decode can be cached and reused, amplifying the observable difference and confirming the mechanism.",
+      "target_evidence": [
+        "pysnooper/tracer.py source_cache = {} and cache_key = (module_name, file_name)",
+        "pysnooper/tracer.py source_cache[cache_key] = source",
+        "pysnooper/tracer.py encoding fallback 'ascii'"
+      ],
+      "confidence": 0.75
+    },
+    {
+      "trigger_id": "conditional-h03-768b90f0a5-t4",
+      "hypothesis_id": "conditional-h03-768b90f0a5",
+      "trigger_type": "STATE",
+      "mechanism": "When the module loader does not provide source (e.g. loader.get_source returns None or raises ImportError), get_source_from_frame falls back to reading the file in binary and decoding with the 'ascii' fallback, exposing the locale-dependent decode.",
+      "preconditions": [
+        "A module whose __loader__ lacks a usable get_source or whose get_source returns None",
+        "UTF-8 source file with non-ASCII literal and no coding declaration",
+        "LC_ALL=C environment"
+      ],
+      "input_mutation": "Create a module file with a non-ASCII literal and arrange for the loader's get_source to be unavailable or return None (e.g. by using a custom loader or by deleting the file after import so the loader cannot read it, while the file is still readable by the fallback open).",
+      "state_setup": "Import the module, then either replace its __loader__ with one whose get_source returns None, or delete the source file after import so the loader path fails and the binary-read fallback is used.",
+      "environment_setup": "LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0.",
+      "action_sequence": [
+        "Write the UTF-8 module file.",
+        "Import the module.",
+        "Modify the module's __loader__ or remove the file to force the binary-read fallback.",
+        "Call the snooped function.",
+        "Inspect the captured trace."
+      ],
+      "observable": "The trace line must contain the exact non-ASCII text; the buggy fallback path yields U+FFFD replacement characters.",
+      "why_this_may_expose_the_mechanism": "This directly forces execution of the 'open(file_name, \"rb\")' branch and the subsequent 'ascii' decode, which is the exact code path hypothesized to be locale-dependent.",
+      "target_evidence": [
+        "pysnooper/tracer.py: if source is None: with open(file_name, 'rb') as fp: source = fp.read().splitlines()",
+        "pysnooper/tracer.py: encoding = 'ascii' fallback",
+        "tests/test_pysnooper.py test_unavailable_source exercises the fallback path"
+      ],
+      "confidence": 0.78
+    }
+  ],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 6,
+    "retry_index": 0,
+    "latency_seconds": 8.951,
+    "usage": {
+      "prompt_tokens": 16732,
+      "completion_tokens": 2157,
+      "total_tokens": 18889,
+      "prompt_tokens_details": {
+        "cached_tokens": 128
+      },
+      "prompt_cache_hit_tokens": 128,
+      "prompt_cache_miss_tokens": 16604
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "planner_wall_clock_seconds": 8.952
+}

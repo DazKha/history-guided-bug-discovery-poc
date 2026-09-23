@@ -1,0 +1,36 @@
+{
+  "experiment": "experiment3",
+  "mode": "conditional",
+  "attempt": 2,
+  "hypothesis_id": "conditional-h02-c19fcca1ca",
+  "status": "TEST",
+  "hypothesis": "When a decorated function is called with a non-ASCII string argument, PySnooper's default stderr output path can raise UnicodeEncodeError because the default write function writes directly to sys.stderr without encoding fallback, causing the decorated function call to fail instead of returning its normal result.",
+  "trigger": "Decorate a function that accepts a non-ASCII string argument with @pysnooper.snoop() using default output, then call it with a non-ASCII string such as 'caf\\u00e9' under a non-UTF-8 stderr encoding.",
+  "potential_failure": "The decorated function raises UnicodeEncodeError while PySnooper is writing the variable representation to stderr, so the function does not return its expected result.",
+  "oracle": {
+    "expected_behavior": "The decorated function should return its normal result even when its arguments contain non-ASCII characters, and PySnooper should not crash while writing trace output.",
+    "target_evidence": "pysnooper/tracer.py get_write_function defines the default output=None branch as writing directly to sys.stderr and only catches UnicodeEncodeError in the Python 2 fallback path; pysnooper/utils.py provides shitcode for non-ASCII fallback; README documents default stderr output and non-ASCII variable values are part of ordinary tracing.",
+    "historical_evidence": "cookiecutter:1 shows locale-dependent implicit text encoding can corrupt or fail on non-ASCII data; PySnooper:3 shows file-output path handling is a known fragile area, but neither directly establishes the target stderr encoding behavior.",
+    "confidence": 0.55
+  },
+  "applicability_decisions": [
+    {
+      "history_id": "cookiecutter:1",
+      "decision": "WEAK",
+      "reason": "The historical unit concerns locale-dependent implicit text decoding when reading a JSON context file, not writing trace output to stderr. The shared theme is non-ASCII data under a non-UTF-8 default encoding, which is relevant to PySnooper's default stderr write path, but the context, preconditions, and failure mechanism differ. Target-side evidence supports probing encoding behavior, but the historical unit alone does not establish the target bug."
+    },
+    {
+      "history_id": "PySnooper:3",
+      "decision": "WEAK",
+      "reason": "The historical unit is in the same project and concerns file-output path handling, which is adjacent to PySnooper's output-writing code. However, its failure mechanism is a path variable mismatch, not an encoding failure, and the target context already contains ordinary tests for file output. It suggests output handling is fragile but does not directly support the non-ASCII stderr hypothesis."
+    }
+  ],
+  "hypothesis_frozen": true,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "source_artifact": "artifacts/experiment2_llm_run1/PySnooper_1/C_attempt_2.json",
+  "hypothesis_sha256": "c19fcca1ca6f1ac998539ccd9c008059015bdca92b9276801c639484bdcfe692",
+  "run_label": "live3"
+}

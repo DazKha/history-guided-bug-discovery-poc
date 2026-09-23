@@ -1,0 +1,30 @@
+{
+  "experiment": "experiment3",
+  "mode": "conditional",
+  "run_label": "live2",
+  "arm": "C2",
+  "hypothesis_id": "conditional-h05-080bc02016",
+  "hypothesis": "PySnooper's get_source_from_frame decodes source files using the locale-dependent default encoding when no PEP-263 coding declaration is present, so a UTF-8 source file containing non-ASCII characters is mis-decoded (mojibake) under a non-UTF-8 locale, corrupting the traced source line.",
+  "trigger": "Create a temporary module file encoded as UTF-8 whose function body contains a non-ASCII string literal (e.g. 'héllo') and no coding declaration; import it, decorate the function with pysnooper.snoop(string_io), and run it under a non-UTF-8 locale (LC_ALL=C).",
+  "oracle": {
+    "expected_behavior": "The trace output must contain the exact non-ASCII source line text (e.g. the literal 'héllo') as written in the UTF-8 file, independent of the process locale.",
+    "target_evidence": "pysnooper/tracer.py get_source_from_frame: when source is bytes it sets encoding='ascii' and only overrides it if a PEP-263 coding declaration is found in the first two lines; otherwise it decodes with that encoding. The README and tests (e.g. test_unavailable_source, test_string_io) show source lines are echoed verbatim into trace output, so a mis-decoded line is a functional defect.",
+    "historical_evidence": "cookiecutter:1 shows the same class of locale-dependent implicit text decoding bug (UTF-8 data read with platform default encoding); PySnooper:3 is only weakly related (file-output path variable mismatch).",
+    "confidence": 0.6
+  },
+  "hypothesis_sha256": "080bc02016cd546877b681eb6e3976c601936656104c3a4d7860f5d665e770c1",
+  "hypothesis_frozen": true,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "repair_attempts": 0,
+  "status": "TRIGGER_PLANNER_ERROR",
+  "error": "Expecting ',' delimiter: line 89 column 6 (char 7681)",
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 8,
+    "usage": {}
+  },
+  "planner_wall_clock_seconds": 7.577
+}

@@ -1,0 +1,36 @@
+{
+  "experiment": "experiment3",
+  "mode": "conditional",
+  "attempt": 5,
+  "hypothesis_id": "conditional-h05-080bc02016",
+  "status": "TEST",
+  "hypothesis": "PySnooper's get_source_from_frame decodes source files using the locale-dependent default encoding when no PEP-263 coding declaration is present, so a UTF-8 source file containing non-ASCII characters is mis-decoded (mojibake) under a non-UTF-8 locale, corrupting the traced source line.",
+  "trigger": "Create a temporary module file encoded as UTF-8 whose function body contains a non-ASCII string literal (e.g. 'héllo') and no coding declaration; import it, decorate the function with pysnooper.snoop(string_io), and run it under a non-UTF-8 locale (LC_ALL=C).",
+  "potential_failure": "get_source_from_frame reads the file as bytes and decodes with encoding='ascii' (or the locale default) instead of UTF-8, so the traced source line shows replacement characters or mojibake rather than the original non-ASCII text.",
+  "oracle": {
+    "expected_behavior": "The trace output must contain the exact non-ASCII source line text (e.g. the literal 'héllo') as written in the UTF-8 file, independent of the process locale.",
+    "target_evidence": "pysnooper/tracer.py get_source_from_frame: when source is bytes it sets encoding='ascii' and only overrides it if a PEP-263 coding declaration is found in the first two lines; otherwise it decodes with that encoding. The README and tests (e.g. test_unavailable_source, test_string_io) show source lines are echoed verbatim into trace output, so a mis-decoded line is a functional defect.",
+    "historical_evidence": "cookiecutter:1 shows the same class of locale-dependent implicit text decoding bug (UTF-8 data read with platform default encoding); PySnooper:3 is only weakly related (file-output path variable mismatch).",
+    "confidence": 0.6
+  },
+  "applicability_decisions": [
+    {
+      "history_id": "cookiecutter:1",
+      "decision": "SUPPORTED",
+      "reason": "Same failure mechanism class: implicit locale-dependent text decoding of UTF-8 data. PySnooper's get_source_from_frame decodes bytes with encoding='ascii' unless a PEP-263 declaration exists, which is exactly the locale/default-encoding hazard described. Target-side source provides a concrete oracle (trace output must echo the source line verbatim), and the trigger (UTF-8 file with non-ASCII content, no coding declaration, non-UTF-8 locale) is feasible in the given environment."
+    },
+    {
+      "history_id": "PySnooper:3",
+      "decision": "WEAK",
+      "reason": "It concerns file-output path handling, not source decoding. The invariant (trace written to requested path) is testable but the mechanism does not transfer to the encoding defect, so it only weakly informs the probe and is not used as the primary oracle."
+    }
+  ],
+  "hypothesis_frozen": true,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "source_artifact": "artifacts/experiment2_llm/PySnooper_1/C_attempt_4.json",
+  "hypothesis_sha256": "080bc02016cd546877b681eb6e3976c601936656104c3a4d7860f5d665e770c1",
+  "run_label": "live2"
+}

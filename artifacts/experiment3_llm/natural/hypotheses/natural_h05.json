@@ -1,0 +1,46 @@
+{
+  "experiment": "experiment3",
+  "mode": "natural",
+  "attempt": 5,
+  "status": "NO_SUPPORTED_HYPOTHESIS",
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "test_code": "",
+  "hypothesis": "",
+  "applicability": "NOT_APPLICABLE",
+  "reason": "The two historical Bug Knowledge Units concern (1) locale-dependent implicit text encoding when reading a JSON context file in cookiecutter, and (2) a path/output variable mismatch in PySnooper's file-output closure. The target context is the buggy PySnooper checkout with ordinary source, docs, and tests. No target-side evidence establishes a locale-dependent implicit text I/O read or a path/output variable mismatch in the visible target code. The cookiecutter encoding mechanism has no grounded trigger in the target's visible source paths, and the PySnooper file-output history is explicitly weak for transfer and does not match any visible defect in the target's FileWriter or get_write_function. Therefore no grounded hypothesis can be frozen without relying on hidden issue text, fixed source, diffs, or benchmark metadata.",
+  "frozen_claim": null,
+  "trigger_idea": null,
+  "potential_failure": "",
+  "target_supported_oracle": null,
+  "trigger": "",
+  "oracle": {
+    "expected_behavior": "",
+    "target_evidence": "",
+    "historical_evidence": "",
+    "confidence": 0
+  },
+  "test_file_path": "",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 5,
+    "retry_index": 0,
+    "latency_seconds": 2.797,
+    "usage": {
+      "prompt_tokens": 15712,
+      "completion_tokens": 247,
+      "total_tokens": 15959,
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      },
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 15712
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "wall_clock_seconds": 2.798
+}

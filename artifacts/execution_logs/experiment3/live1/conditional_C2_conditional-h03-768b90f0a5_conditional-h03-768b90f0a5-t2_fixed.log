@@ -1,0 +1,58 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_____________________ test_utf8_source_line_under_c_locale _____________________
+
+utf8_module = <module 'pysnooper_utf8_source_module' from '/private/var/folders/1j/l08d1p2s6ls9235bnggg20rc0000gn/T/pytest-of-minhkha/pytest-375/test_utf8_source_line_under_c_0/pysnooper_utf8_source_module.py'>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x103f09550>
+
+    def test_utf8_source_line_under_c_locale(utf8_module, monkeypatch):
+        """The traced source line must contain the exact non-ASCII text."""
+        # Force the buggy decoding path: no PEP-263 coding declaration, and
+        # a non-UTF-8 default locale encoding.
+        monkeypatch.setenv('LC_ALL', 'C')
+        monkeypatch.setenv('LANG', 'C')
+        monkeypatch.setenv('PYTHONUTF8', '0')
+        monkeypatch.setenv('PYTHONCOERCECLOCALE', '0')
+
+        # Ensure the source cache does not hide the decoding behavior.
+        from pysnooper import tracer as tracer_module
+        tracer_module.source_cache.clear()
+
+        string_io = io.StringIO()
+
+        # Re-decorate the function so output goes to our StringIO.
+        snooped = pysnooper.snoop(string_io)(utf8_module.f)
+        result = snooped()
+        assert result == 1
+
+        output = string_io.getvalue()
+>       assert 'h\u00e9llo' in output, (
+            'Expected the exact non-ASCII source text in the trace output, '
+            'but got:\n' + output
+        )
+E       AssertionError: Expected the exact non-ASCII source text in the trace output, but got:
+E         Starting var:.. args = ()
+E         Starting var:.. kwargs = {}
+E         Starting var:.. function = <function f at 0x103f29280>
+E         Starting var:.. self = <pysnooper.tracer.Tracer object at 0x103f09130>
+E         21:30:43.504950 call       216         def simple_wrapper(*args, **kwargs):
+E         21:30:43.505057 line       217             with self:
+E         21:30:43.505074 line       218                 return function(*args, **kwargs)
+E         21:30:43.505206 return     218                 return function(*args, **kwargs)
+E         Return value:.. 1
+E
+E       assert 'h\xe9llo' in 'Starting var:.. args = ()\\nStarting var:.. kwargs = {}\\nStarting var:.. function = <function f at 0x103f29280>\\nStart...*args, **kwargs)\\n21:30:43.505206 return     218                 return function(*args, **kwargs)\\nReturn value:.. 1\\n'
+
+_generated_eval_conditional-h03-768b90f0a5-conditional-h03-768b90f0a5-t2.py:54: AssertionError
+----------------------------- Captured stderr call -----------------------------
+    21:30:43.505082 call         4 def f():\n    21:30:43.505148 line         5     x = 1  # h\xe9llo\n    New var:....... x = 1\n    21:30:43.505170 line         6     return x\n    21:30:43.505182 return       6     return x\n    Return value:.. 1
+=============================== warnings summary ===============================
+pysnooper/variables.py:3
+pysnooper/variables.py:3
+  /Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-fixed/PySnooper/pysnooper/variables.py:3: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated since Python 3.3, and in 3.10 it will stop working
+    from collections import Mapping, Sequence
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED _generated_eval_conditional-h03-768b90f0a5-conditional-h03-768b90f0a5-t2.py::test_utf8_source_line_under_c_locale
+1 failed, 2 warnings in 0.02s

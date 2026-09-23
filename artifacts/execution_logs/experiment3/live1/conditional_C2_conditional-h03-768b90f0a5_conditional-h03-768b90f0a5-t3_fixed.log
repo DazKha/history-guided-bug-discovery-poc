@@ -1,0 +1,105 @@
+FF.                                                                      [100%]
+=================================== FAILURES ===================================
+__________________ test_non_ascii_source_line_under_c_locale ___________________
+
+tmp_path = PosixPath('/private/var/folders/1j/l08d1p2s6ls9235bnggg20rc0000gn/T/pytest-of-minhkha/pytest-377/test_non_ascii_source_line_und0')
+
+    def test_non_ascii_source_line_under_c_locale(tmp_path):
+        folder = str(tmp_path)
+        module_name = 'pysnooper_nonascii_module'
+        _write_module(folder, module_name)
+
+>       output = _run_child(folder, module_name, 'C')
+
+_generated_eval_conditional-h03-768b90f0a5-conditional-h03-768b90f0a5-t3.py:70:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+folder = '/private/var/folders/1j/l08d1p2s6ls9235bnggg20rc0000gn/T/pytest-of-minhkha/pytest-377/test_non_ascii_source_line_und0'
+module_name = 'pysnooper_nonascii_module', locale_value = 'C'
+
+    def _run_child(folder, module_name, locale_value):
+        env = dict(os.environ)
+        env['LC_ALL'] = locale_value
+        env['LANG'] = locale_value
+        env['PYTHONUTF8'] = '0'
+        env['PYTHONCOERCECLOCALE'] = '0'
+        env['PYTHONPATH'] = folder + os.pathsep + env.get('PYTHONPATH', '')
+        proc = subprocess.run(
+            [sys.executable, '-c', CHILD_SCRIPT, module_name],
+            cwd=folder,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+>       assert proc.returncode == 0, proc.stderr.decode('utf-8', 'replace')
+E       AssertionError:     21:30:43.907199 call         4 def f():
+E             21:30:43.907244 line         5     s = 'h\xe9llo'
+E             New var:....... s = 'h\xe9llo'
+E             21:30:43.907259 line         6     return s
+E             21:30:43.907267 return       6     return s
+E             Return value:.. 'h\xe9llo'
+E         Traceback (most recent call last):
+E           File "<string>", line 13, in <module>
+E         UnicodeEncodeError: 'ascii' codec can't encode character '\xe9' in position 488: ordinal not in range(128)
+E
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-fixed/PySnooper/env39/bin/pytho...>\nUnicodeEncodeError: \'ascii\' codec can\'t encode character \'\\xe9\' in position 488: ordinal not in range(128)\n').returncode
+
+_generated_eval_conditional-h03-768b90f0a5-conditional-h03-768b90f0a5-t3.py:61: AssertionError
+_____________ test_non_ascii_source_line_consistent_across_locales _____________
+
+tmp_path = PosixPath('/private/var/folders/1j/l08d1p2s6ls9235bnggg20rc0000gn/T/pytest-of-minhkha/pytest-377/test_non_ascii_source_line_con0')
+
+    def test_non_ascii_source_line_consistent_across_locales(tmp_path):
+        folder = str(tmp_path)
+        module_name = 'pysnooper_nonascii_module2'
+        _write_module(folder, module_name)
+
+>       output_c = _run_child(folder, module_name, 'C')
+
+_generated_eval_conditional-h03-768b90f0a5-conditional-h03-768b90f0a5-t3.py:81:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+folder = '/private/var/folders/1j/l08d1p2s6ls9235bnggg20rc0000gn/T/pytest-of-minhkha/pytest-377/test_non_ascii_source_line_con0'
+module_name = 'pysnooper_nonascii_module2', locale_value = 'C'
+
+    def _run_child(folder, module_name, locale_value):
+        env = dict(os.environ)
+        env['LC_ALL'] = locale_value
+        env['LANG'] = locale_value
+        env['PYTHONUTF8'] = '0'
+        env['PYTHONCOERCECLOCALE'] = '0'
+        env['PYTHONPATH'] = folder + os.pathsep + env.get('PYTHONPATH', '')
+        proc = subprocess.run(
+            [sys.executable, '-c', CHILD_SCRIPT, module_name],
+            cwd=folder,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+>       assert proc.returncode == 0, proc.stderr.decode('utf-8', 'replace')
+E       AssertionError:     21:30:43.947002 call         4 def f():
+E             21:30:43.947053 line         5     s = 'h\xe9llo'
+E             New var:....... s = 'h\xe9llo'
+E             21:30:43.947068 line         6     return s
+E             21:30:43.947077 return       6     return s
+E             Return value:.. 'h\xe9llo'
+E         Traceback (most recent call last):
+E           File "<string>", line 13, in <module>
+E         UnicodeEncodeError: 'ascii' codec can't encode character '\xe9' in position 488: ordinal not in range(128)
+E
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-fixed/PySnooper/env39/bin/pytho...>\nUnicodeEncodeError: \'ascii\' codec can\'t encode character \'\\xe9\' in position 488: ordinal not in range(128)\n').returncode
+
+_generated_eval_conditional-h03-768b90f0a5-conditional-h03-768b90f0a5-t3.py:61: AssertionError
+=============================== warnings summary ===============================
+pysnooper/variables.py:3
+pysnooper/variables.py:3
+  /Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-fixed/PySnooper/pysnooper/variables.py:3: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated since Python 3.3, and in 3.10 it will stop working
+    from collections import Mapping, Sequence
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED _generated_eval_conditional-h03-768b90f0a5-conditional-h03-768b90f0a5-t3.py::test_non_ascii_source_line_under_c_locale
+FAILED _generated_eval_conditional-h03-768b90f0a5-conditional-h03-768b90f0a5-t3.py::test_non_ascii_source_line_consistent_across_locales
+2 failed, 1 passed, 2 warnings in 0.08s

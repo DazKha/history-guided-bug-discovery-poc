@@ -1,0 +1,45 @@
+{
+  "experiment": "experiment3",
+  "mode": "conditional",
+  "arm": "C1",
+  "hypothesis_id": "conditional-h03-768b90f0a5",
+  "hypothesis": "PySnooper's get_source_from_frame decodes source files using the platform default encoding when no PEP-263 coding declaration is present, so a UTF-8 source file containing non-ASCII characters will be mis-decoded (mojibake) under a non-UTF-8 locale such as LC_ALL=C, causing the traced source line to differ from the actual source text.",
+  "trigger": "Create a temporary module file encoded as UTF-8 whose function body contains a non-ASCII string literal (e.g. 'héllo') with no coding declaration, import it, and run a @pysnooper.snoop() decorated function under LC_ALL=C so the default locale encoding is ASCII.",
+  "oracle": {
+    "expected_behavior": "The trace output for the line containing the non-ASCII literal must contain the exact Unicode text 'héllo' as written in the UTF-8 source file, independent of the process locale.",
+    "target_evidence": "pysnooper/tracer.py get_source_from_frame: when source is read as bytes it sets encoding='ascii' and only overrides it if a PEP-263 coding comment is found in the first two lines; otherwise it decodes with pycompat.text_type(sline, encoding, 'replace'). The README documents that snoop output shows the actual source line, and ordinary tests (e.g. test_string_io, test_file_output) assert exact source-line text in the trace, establishing that source lines must faithfully reflect the file.",
+    "historical_evidence": "cookiecutter:1 shows the same class of locale-dependent implicit text decoding bug (implicit open using platform default encoding) fixed by making the encoding explicit UTF-8; PySnooper:3 is a weaker file-output path bug that only partially transfers.",
+    "confidence": 0.72
+  },
+  "hypothesis_sha256": "768b90f0a584e3ab99782b4766e6a8e28474486ecb76eeab883184fac7f32c1c",
+  "hypothesis_frozen": true,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "repair_attempts": 0,
+  "status": "TEST",
+  "test_code": "import os\nimport subprocess\nimport sys\nimport textwrap\n\n\ndef test_utf8_source_line_not_mojibake_under_c_locale(tmp_path):\n    \"\"\"A UTF-8 source file with non-ASCII text and no coding declaration must\n    still be traced with the exact Unicode source line, even when the process\n    locale is C (ASCII default encoding).\"\"\"\n\n    module_path = tmp_path / \"utf8_target_module.py\"\n    module_path.write_text(\n        textwrap.dedent(\n            '''\\\n            import pysnooper\n\n\n            @pysnooper.snoop()\n            def greet():\n                message = \"h\\u00e9llo\"\n                return message\n            '''\n        ),\n        encoding=\"utf-8\",\n    )\n\n    driver_path = tmp_path / \"driver.py\"\n    driver_path.write_text(\n        textwrap.dedent(\n            '''\\\n            import sys\n            sys.path.insert(0, {!r})\n            import utf8_target_module\n            utf8_target_module.greet()\n            '''.format(str(tmp_path))\n        ),\n        encoding=\"utf-8\",\n    )\n\n    env = dict(os.environ)\n    env[\"LC_ALL\"] = \"C\"\n    env[\"LANG\"] = \"C\"\n    env[\"PYTHONIOENCODING\"] = \"utf-8\"\n\n    result = subprocess.run(\n        [sys.executable, str(driver_path)],\n        capture_output=True,\n        env=env,\n        cwd=str(tmp_path),\n    )\n\n    stdout = result.stdout.decode(\"utf-8\", \"replace\")\n    stderr = result.stderr.decode(\"utf-8\", \"replace\")\n    combined = stdout + stderr\n\n    assert result.returncode == 0, (\n        \"driver failed under LC_ALL=C:\\n\" + combined\n    )\n\n    assert \"h\\u00e9llo\" in combined, (\n        \"Expected the exact Unicode source text 'h\\u00e9llo' in the trace \"\n        \"output, but it was missing (mojibake or replacement characters \"\n        \"were likely emitted instead).\\n\" + combined\n    )\n\n    assert \"h\\ufffdllo\" not in combined, (\n        \"Trace output contains U+FFFD replacement characters instead of \"\n        \"the real source text 'h\\u00e9llo', indicating locale-dependent \"\n        \"mis-decoding of the UTF-8 source file.\\n\" + combined\n    )\n",
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 5,
+    "retry_index": 0,
+    "latency_seconds": 2.804,
+    "usage": {
+      "prompt_tokens": 641,
+      "completion_tokens": 632,
+      "total_tokens": 1273,
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      },
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 641
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_id": "conditional-h03-768b90f0a5-direct",
+  "test_path": "generated_tests/experiment3/conditional_live1/C1/conditional-h03-768b90f0a5-direct.py",
+  "test_sha256": "3b219554d6224ecc382d80ce9171712f0dbc3e1947c248dae64a50dbec8060d9",
+  "wall_clock_seconds": 2.808
+}

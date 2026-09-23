@@ -1,0 +1,29 @@
+{
+  "experiment": "experiment3",
+  "mode": "conditional",
+  "arm": "C2",
+  "hypothesis_id": "conditional-h01-e0c8bd3ab2",
+  "hypothesis": "When PySnooper's file-output path is used with a non-ASCII trace string, FileWriter.write opens the output file without an explicit encoding, so on a non-UTF-8 locale the write can fail or corrupt the trace instead of preserving the Unicode text.",
+  "trigger": "Create a temporary output path, decorate a function that assigns a non-ASCII string local variable with @pysnooper.snoop(path), run the function under a non-UTF-8 default text encoding, then read the file back as UTF-8 and assert the non-ASCII value appears.",
+  "oracle": {
+    "expected_behavior": "Tracing to a requested filesystem path must write the trace text to that path and preserve non-ASCII variable representations, independent of the process locale.",
+    "target_evidence": "pysnooper/tracer.py FileWriter.write opens the path with open(self.path, 'w' if self.overwrite else 'a') and no encoding argument; get_write_function routes string/PathLike output to FileWriter; README documents @pysnooper.snoop('/my/log/file.log') and tests/test_pysnooper.py test_file_output exercises path output.",
+    "historical_evidence": "cookiecutter:1 shows locale-dependent implicit text I/O encoding for non-ASCII data; PySnooper:3 shows path-output file writing is a public, tested behavior but does not establish the encoding mechanism.",
+    "confidence": 0.72
+  },
+  "hypothesis_sha256": "e0c8bd3ab2481f840b4ee7e6902b44ec0bee11d05fbea5261ae5ad5af3f1e7c2",
+  "hypothesis_frozen": true,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "repair_attempts": 0,
+  "status": "TRIGGER_PLANNER_ERROR",
+  "error": "Expecting ',' delimiter: line 91 column 6 (char 7148)",
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 2,
+    "usage": {}
+  },
+  "planner_wall_clock_seconds": 9.124
+}

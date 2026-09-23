@@ -1,0 +1,36 @@
+{
+  "experiment": "experiment3",
+  "mode": "conditional",
+  "attempt": 4,
+  "hypothesis_id": "conditional-h04-a9ae48b9d8",
+  "status": "TEST",
+  "hypothesis": "PySnooper's file-output path handling writes trace output to the requested path and preserves the decorated function's return value, but the FileWriter.write method opens the path with the platform-default text encoding, so on a non-UTF-8 locale (LC_ALL=C, PYTHONUTF8=0) writing a trace containing a non-ASCII variable repr raises UnicodeEncodeError instead of producing the trace.",
+  "trigger": "Decorate a function with @pysnooper.snoop(path) where path is a temporary file, the function has a local variable whose repr contains a non-ASCII character (e.g. 'é'), and run under LC_ALL=C with PYTHONUTF8=0 so the default text encoding is ASCII.",
+  "potential_failure": "FileWriter.write opens the output file with open(self.path, 'w'/'a') without an explicit encoding, so the default locale encoding (ASCII under LC_ALL=C) is used; writing the non-ASCII trace line raises UnicodeEncodeError, and the trace is not written to the requested path.",
+  "oracle": {
+    "expected_behavior": "After running the decorated function, the requested output path exists and contains the trace, including the non-ASCII variable value, and the decorated function returns its correct result.",
+    "target_evidence": "pysnooper/tracer.py FileWriter.write uses open(self.path, 'w' if self.overwrite else 'a') with no encoding argument; get_write_function routes path outputs to FileWriter; tests/test_pysnooper.py test_file_output and test_no_overwrite_by_default assert trace content at the requested path; README documents @pysnooper.snoop('/my/log/file.log').",
+    "historical_evidence": "PySnooper:3 historical unit shows the file-output path branch is a real bug surface (path/output variable mismatch), and cookiecutter:1 shows locale-dependent implicit text encoding is a real failure mechanism; combined they suggest probing path-output encoding behavior.",
+    "confidence": 0.6
+  },
+  "applicability_decisions": [
+    {
+      "history_id": "cookiecutter:1",
+      "decision": "WEAK",
+      "reason": "The mechanism (locale-dependent implicit text encoding) transfers to PySnooper's FileWriter.write, which also calls open() without an explicit encoding. However, the historical context is JSON context loading, not trace file writing, so the target-side oracle must be established from PySnooper source and ordinary tests rather than from the historical unit itself."
+    },
+    {
+      "history_id": "PySnooper:3",
+      "decision": "SUPPORTED",
+      "reason": "Same target, same public file-output path branch. The historical failure mechanism (wrong path variable) differs from the encoding mechanism, but the unit establishes that the path-output branch is a real bug surface and that the ordinary tests assert trace content at the requested path, giving a target-side oracle for file-output behavior."
+    }
+  ],
+  "hypothesis_frozen": true,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "source_artifact": "artifacts/experiment2_llm_run1/PySnooper_1/C_attempt_5.json",
+  "hypothesis_sha256": "a9ae48b9d893c88b17406f0c9ec663488f2c39df8465b94da1c40f0ad327fa14",
+  "run_label": "live1"
+}

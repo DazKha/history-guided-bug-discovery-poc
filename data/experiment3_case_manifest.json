@@ -12,7 +12,7 @@
   },
   "trigger_count": 4,
   "max_repairs": 1,
-  "model_generation_status": "blocked_missing_deepseek_api_key",
-  "offline_replay_status": "conditional_c1_completed",
+  "model_generation_status": "completed_live_runs_live2_and_conditional_live1_live2_live3",
+  "offline_replay_status": "superseded_by_real_conditional_run",
   "leakage_note": "fixed source, issue, patch, hidden regression, benchmark truth, and mechanism-match labels are evaluator-only"
 }

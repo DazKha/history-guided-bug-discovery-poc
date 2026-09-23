@@ -1,0 +1,45 @@
+{
+  "experiment": "experiment3",
+  "mode": "conditional",
+  "arm": "C1",
+  "hypothesis_id": "conditional-h02-c19fcca1ca",
+  "hypothesis": "When a decorated function is called with a non-ASCII string argument, PySnooper's default stderr output path can raise UnicodeEncodeError because the default write function writes directly to sys.stderr without encoding fallback, causing the decorated function call to fail instead of returning its normal result.",
+  "trigger": "Decorate a function that accepts a non-ASCII string argument with @pysnooper.snoop() using default output, then call it with a non-ASCII string such as 'caf\\u00e9' under a non-UTF-8 stderr encoding.",
+  "oracle": {
+    "expected_behavior": "The decorated function should return its normal result even when its arguments contain non-ASCII characters, and PySnooper should not crash while writing trace output.",
+    "target_evidence": "pysnooper/tracer.py get_write_function defines the default output=None branch as writing directly to sys.stderr and only catches UnicodeEncodeError in the Python 2 fallback path; pysnooper/utils.py provides shitcode for non-ASCII fallback; README documents default stderr output and non-ASCII variable values are part of ordinary tracing.",
+    "historical_evidence": "cookiecutter:1 shows locale-dependent implicit text encoding can corrupt or fail on non-ASCII data; PySnooper:3 shows file-output path handling is a known fragile area, but neither directly establishes the target stderr encoding behavior.",
+    "confidence": 0.55
+  },
+  "hypothesis_sha256": "c19fcca1ca6f1ac998539ccd9c008059015bdca92b9276801c639484bdcfe692",
+  "hypothesis_frozen": true,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "repair_attempts": 0,
+  "status": "TEST",
+  "test_code": "import sys\nimport io\nimport pytest\nimport pysnooper\n\n\ndef test_non_ascii_argument_with_non_utf8_stderr():\n    \"\"\"\n    When a decorated function is called with a non-ASCII string argument,\n    PySnooper's default stderr output path should not raise UnicodeEncodeError\n    even if sys.stderr uses a non-UTF-8 encoding.\n    \"\"\"\n    original_stderr = sys.stderr\n    # Create a text stream that raises UnicodeEncodeError on non-ASCII writes,\n    # simulating a non-UTF-8 stderr encoding (e.g., ASCII).\n    class AsciiOnlyStderr(io.TextIOBase):\n        def __init__(self):\n            self.buffer = io.StringIO()\n        def write(self, s):\n            # Simulate strict ASCII encoding: raise on non-ASCII characters\n            s.encode('ascii')\n            return self.buffer.write(s)\n        def flush(self):\n            pass\n\n    fake_stderr = AsciiOnlyStderr()\n    sys.stderr = fake_stderr\n    try:\n        @pysnooper.snoop()\n        def identity(x):\n            return x\n\n        result = identity('caf\\u00e9')\n        assert result == 'caf\\u00e9'\n    finally:\n        sys.stderr = original_stderr\n",
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 3,
+    "retry_index": 0,
+    "latency_seconds": 1.73,
+    "usage": {
+      "prompt_tokens": 525,
+      "completion_tokens": 341,
+      "total_tokens": 866,
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      },
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 525
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_id": "conditional-h02-c19fcca1ca-direct",
+  "test_path": "generated_tests/experiment3/conditional_live1/C1/conditional-h02-c19fcca1ca-direct.py",
+  "test_sha256": "6a31852081ce933121d784cf21e434d60e136a9109564471aec034ab1f95e8ff",
+  "wall_clock_seconds": 1.734
+}

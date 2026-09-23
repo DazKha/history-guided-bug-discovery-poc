@@ -1,15 +1,16 @@
 # Experiment 3 failure analysis
 
-No new C2 trigger candidates were generated because the model credential was unavailable. Therefore no new trigger-level failure taxonomy can be inferred. The five offline C1 replay rows are retained without filtering:
+## 3A natural stage
 
-| Hypothesis | Classification | Activation | Failure category |
-|---|---|---|---|
-| conditional-h01 | EXCEPTION_F2P | ACTIVATED | VALID_EXCEPTION_F2P |
-| conditional-h02 | F2F | ACTIVATED | SEMANTIC_NON_TRIGGER |
-| conditional-h03 | P2P | NOT_ACTIVATED | TRIGGER_TOO_WEAK |
-| conditional-h04 | EXCEPTION_F2P | ACTIVATED | VALID_EXCEPTION_F2P |
-| conditional-h05 | P2P | NOT_ACTIVATED | TRIGGER_TOO_WEAK |
+Five fresh hypothesis calls produced 3 `NO_SUPPORTED_HYPOTHESIS` and 2 model-output errors. No tests were generated, so no trigger-level semantic classification is possible for 3A.
 
-The replay contains two valid exception-based F2P rows, one F2F row, and two P2P rows. These are unchanged prior tests and must not be attributed to the new intervention.
+## 3B conditional stage
 
-No rows were discarded because of outcome. No thresholds or oracle rules were changed.
+| Arm | Hypotheses | Tests | Classification counts | Main failure |
+|---|---:|---:|---|---|
+| C1 direct | 5 | 5 | 2 ASSERTION_F2P, 1 F2F, 2 P2P | direct trigger instability |
+| C2 planner | 5 | 8 | 3 ASSERTION_F2P, 3 F2F, 2 P2P | 3 hypotheses never yielded valid planner output |
+
+C2 had 12 planner attempts across the initial call and two bounded repairs: 5 initial, 4 first repairs, and 3 second repairs. Two hypotheses eventually yielded four triggers each. Three hypotheses remained non-executable at the planner stage; these were retained in accounting and not silently dropped.
+
+For executable C2 tests, six of eight reached a meaningful buggy failure. The three F2F cases show that a trigger can reach target behavior while the observable/assertion still fails on both revisions. The two P2P cases show the remaining trigger-too-weak path. No evaluator thresholds, oracle rules, or fixed-revision information were changed.

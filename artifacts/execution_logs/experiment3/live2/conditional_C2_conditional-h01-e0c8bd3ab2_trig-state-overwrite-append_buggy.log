@@ -1,0 +1,59 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+__________________ test_non_ascii_file_output_under_c_locale ___________________
+
+tmp_path = PosixPath('/private/var/folders/1j/l08d1p2s6ls9235bnggg20rc0000gn/T/pytest-of-minhkha/pytest-384/test_non_ascii_file_output_und0')
+
+    def test_non_ascii_file_output_under_c_locale(tmp_path):
+        path = tmp_path / 'snoop.log'
+        path.write_text('lala', encoding='ascii')
+
+        env = dict(os.environ)
+        env['LC_ALL'] = 'C'
+        env['LANG'] = 'C'
+        env['PYTHONUTF8'] = '0'
+        env['PYTHONCOERCECLOCALE'] = '0'
+        env['PYTHONIOENCODING'] = 'ascii'
+
+        script_path = tmp_path / 'child_script.py'
+        script_path.write_text(CHILD_SCRIPT, encoding='utf-8')
+
+        proc = subprocess.run(
+            [sys.executable, str(script_path), str(path), NON_ASCII],
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
+        stderr_text = proc.stderr.decode('utf-8', 'replace')
+>       assert proc.returncode == 0, (
+            'Child process failed under non-UTF-8 locale.\n'
+            'returncode={!r}\nstderr:\n{}'.format(proc.returncode, stderr_text)
+        )
+E       AssertionError: Child process failed under non-UTF-8 locale.
+E         returncode=1
+E         stderr:
+E         Traceback (most recent call last):
+E           File "/private/var/folders/1j/l08d1p2s6ls9235bnggg20rc0000gn/T/pytest-of-minhkha/pytest-384/test_non_ascii_file_output_und0/child_script.py", line 18, in <module>
+E             append_fn()
+E           File "/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/pysnooper/tracer.py", line 215, in simple_wrapper
+E             return function(*args, **kwargs)
+E           File "/private/var/folders/1j/l08d1p2s6ls9235bnggg20rc0000gn/T/pytest-of-minhkha/pytest-384/test_non_ascii_file_output_und0/child_script.py", line 11, in append_fn
+E             return value
+E           File "/private/var/folders/1j/l08d1p2s6ls9235bnggg20rc0000gn/T/pytest-of-minhkha/pytest-384/test_non_ascii_file_output_und0/child_script.py", line 11, in append_fn
+E             return value
+E           File "/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/pysnooper/tracer.py", line 317, in trace
+E             self.write('{indent}{newish_string}{name} = {value_repr}'.format(
+E           File "/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/pysnooper/tracer.py", line 242, in write
+E             self._write(s)
+E           File "/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/pysnooper/tracer.py", line 134, in write
+E             output_file.write(s)
+E         UnicodeEncodeError: 'ascii' codec can't encode characters in position 25-29: ordinal not in range(128)
+E
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/env39/bin/pytho...write(s)\nUnicodeEncodeError: \'ascii\' codec can\'t encode characters in position 25-29: ordinal not in range(128)\n').returncode
+
+_generated_eval_conditional-h01-e0c8bd3ab2-trig-state-overwrite-append.py:58: AssertionError
+=========================== short test summary info ============================
+FAILED _generated_eval_conditional-h01-e0c8bd3ab2-trig-state-overwrite-append.py::test_non_ascii_file_output_under_c_locale
+1 failed in 0.07s

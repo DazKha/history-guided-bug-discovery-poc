@@ -1,0 +1,75 @@
+{
+  "experiment": "experiment3",
+  "mode": "conditional",
+  "run_label": "live2",
+  "arm": "C2",
+  "hypothesis_id": "conditional-h01-e0c8bd3ab2",
+  "hypothesis": "When PySnooper's file-output path is used with a non-ASCII trace string, FileWriter.write opens the output file without an explicit encoding, so on a non-UTF-8 locale the write can fail or corrupt the trace instead of preserving the Unicode text.",
+  "trigger": "Create a temporary output path, decorate a function that assigns a non-ASCII string local variable with @pysnooper.snoop(path), run the function under a non-UTF-8 default text encoding, then read the file back as UTF-8 and assert the non-ASCII value appears.",
+  "oracle": {
+    "expected_behavior": "Tracing to a requested filesystem path must write the trace text to that path and preserve non-ASCII variable representations, independent of the process locale.",
+    "target_evidence": "pysnooper/tracer.py FileWriter.write opens the path with open(self.path, 'w' if self.overwrite else 'a') and no encoding argument; get_write_function routes string/PathLike output to FileWriter; README documents @pysnooper.snoop('/my/log/file.log') and tests/test_pysnooper.py test_file_output exercises path output.",
+    "historical_evidence": "cookiecutter:1 shows locale-dependent implicit text I/O encoding for non-ASCII data; PySnooper:3 shows path-output file writing is a public, tested behavior but does not establish the encoding mechanism.",
+    "confidence": 0.72
+  },
+  "hypothesis_sha256": "e0c8bd3ab2481f840b4ee7e6902b44ec0bee11d05fbea5261ae5ad5af3f1e7c2",
+  "hypothesis_frozen": true,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "repair_attempts": 0,
+  "trigger_id": "trig-env-locale-forced",
+  "trigger_plan": {
+    "trigger_id": "trig-env-locale-forced",
+    "hypothesis_id": "conditional-h01-e0c8bd3ab2",
+    "trigger_type": "ENVIRONMENT",
+    "mechanism": "The default text encoding is determined by the process locale and UTF-8 mode; forcing LC_ALL=C with PYTHONUTF8=0 and PYTHONCOERCECLOCALE=0 makes the implicit open() encoding ASCII, so non-ASCII trace text cannot be written.",
+    "preconditions": [
+      "PySnooper buggy checkout is importable",
+      "The test harness can set environment variables before starting the Python process",
+      "A temporary output path is available"
+    ],
+    "input_mutation": "Decorate a function assigning a non-ASCII string local with @pysnooper.snoop(path) and run it under the forced non-UTF-8 locale.",
+    "state_setup": "Create a fresh temporary output path that does not exist before the run.",
+    "environment_setup": "Set LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0 in the subprocess environment and verify locale.getpreferredencoding(False) is ASCII before running the decorated function.",
+    "action_sequence": [
+      "Launch Python subprocess with LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0",
+      "Assert locale.getpreferredencoding(False) is ASCII",
+      "Create temporary output path",
+      "Define and call @pysnooper.snoop(path) function assigning non-ASCII string local",
+      "Read the output file back as UTF-8 and assert the non-ASCII value appears"
+    ],
+    "observable": "UnicodeEncodeError during tracing or absence of the non-ASCII value when the file is read back as UTF-8.",
+    "why_this_may_expose_the_mechanism": "The locale environment directly controls the implicit encoding used by open(); forcing ASCII makes the missing encoding='utf-8' argument observable as a write failure or corruption.",
+    "target_evidence": [
+      "pysnooper/tracer.py FileWriter.write opens the path without an encoding argument",
+      "Execution environment visible to the tester: Python 3.9.18; LC_ALL=C; PYTHONUTF8=0; PYTHONCOERCECLOCALE=0"
+    ],
+    "confidence": 0.75
+  },
+  "status": "TEST",
+  "test_code": "import os\nimport sys\nimport subprocess\nimport textwrap\n\n\ndef test_file_output_non_ascii_under_ascii_locale(tmp_path):\n    \"\"\"\n    Frozen hypothesis: PySnooper's FileWriter.write opens the output file\n    without an explicit encoding, so under a non-UTF-8 locale (LC_ALL=C,\n    PYTHONUTF8=0, PYTHONCOERCECLOCALE=0) writing a trace containing a\n    non-ASCII variable repr fails or corrupts the trace.\n\n    Trigger plan: launch a subprocess with the forced non-UTF-8 locale,\n    verify the default text encoding is ASCII, decorate a function that\n    assigns a non-ASCII string local with @pysnooper.snoop(path), run it,\n    then read the file back as UTF-8 and assert the non-ASCII value appears.\n    \"\"\"\n    output_path = tmp_path / 'snoop.log'\n    assert not output_path.exists()\n\n    script = textwrap.dedent(\n        '''\n        import locale\n        import sys\n\n        # Precondition: the forced locale must yield an ASCII default\n        # text encoding, otherwise the mechanism cannot be exercised.\n        enc = locale.getpreferredencoding(False)\n        assert enc.lower().replace('-', '') == 'ascii', (\n            'expected ASCII default encoding, got %r' % (enc,)\n        )\n\n        import pysnooper\n\n        @pysnooper.snoop(sys.argv[1])\n        def my_function():\n            value = u'\\u00e9\\u00e8\\u00ea'  # non-ASCII: e-acute, e-grave, e-circumflex\n            return value\n\n        my_function()\n        '''\n    )\n\n    env = dict(os.environ)\n    env['LC_ALL'] = 'C'\n    env['PYTHONUTF8'] = '0'\n    env['PYTHONCOERCECLOCALE'] = '0'\n\n    proc = subprocess.run(\n        [sys.executable, '-c', script, str(output_path)],\n        env=env,\n        stdout=subprocess.PIPE,\n        stderr=subprocess.PIPE,\n    )\n\n    # The trace must be written without a UnicodeEncodeError.\n    assert proc.returncode == 0, (\n        'tracing subprocess failed under ASCII locale.\\n'\n        'stdout: %r\\nstderr: %r' % (proc.stdout, proc.stderr)\n    )\n\n    # The output file must exist and, read back as UTF-8, must preserve\n    # the non-ASCII variable representation.\n    assert output_path.exists(), 'trace output file was not created'\n    content = output_path.read_text(encoding='utf-8')\n    assert u'\\u00e9\\u00e8\\u00ea' in content, (\n        'non-ASCII value missing from trace file; got: %r' % (content,)\n    )\n",
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 4,
+    "retry_index": 0,
+    "latency_seconds": 3.496,
+    "usage": {
+      "prompt_tokens": 15879,
+      "completion_tokens": 727,
+      "total_tokens": 16606,
+      "prompt_tokens_details": {
+        "cached_tokens": 384
+      },
+      "prompt_cache_hit_tokens": 384,
+      "prompt_cache_miss_tokens": 15495
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_id": "conditional-h01-e0c8bd3ab2-trig-env-locale-forced",
+  "test_path": "generated_tests/experiment3/conditional_live2/C2/conditional-h01-e0c8bd3ab2-trig-env-locale-forced.py",
+  "test_sha256": "c2afd798b634cc3ec99c0ae28f2a350ad8eb4a249ee7f8bc0fc83cd22d0350b7",
+  "wall_clock_seconds": 3.499
+}

@@ -1,0 +1,76 @@
+{
+  "experiment": "experiment3",
+  "mode": "conditional",
+  "run_label": "live2",
+  "arm": "C2",
+  "hypothesis_id": "conditional-h01-e0c8bd3ab2",
+  "hypothesis": "When PySnooper's file-output path is used with a non-ASCII trace string, FileWriter.write opens the output file without an explicit encoding, so on a non-UTF-8 locale the write can fail or corrupt the trace instead of preserving the Unicode text.",
+  "trigger": "Create a temporary output path, decorate a function that assigns a non-ASCII string local variable with @pysnooper.snoop(path), run the function under a non-UTF-8 default text encoding, then read the file back as UTF-8 and assert the non-ASCII value appears.",
+  "oracle": {
+    "expected_behavior": "Tracing to a requested filesystem path must write the trace text to that path and preserve non-ASCII variable representations, independent of the process locale.",
+    "target_evidence": "pysnooper/tracer.py FileWriter.write opens the path with open(self.path, 'w' if self.overwrite else 'a') and no encoding argument; get_write_function routes string/PathLike output to FileWriter; README documents @pysnooper.snoop('/my/log/file.log') and tests/test_pysnooper.py test_file_output exercises path output.",
+    "historical_evidence": "cookiecutter:1 shows locale-dependent implicit text I/O encoding for non-ASCII data; PySnooper:3 shows path-output file writing is a public, tested behavior but does not establish the encoding mechanism.",
+    "confidence": 0.72
+  },
+  "hypothesis_sha256": "e0c8bd3ab2481f840b4ee7e6902b44ec0bee11d05fbea5261ae5ad5af3f1e7c2",
+  "hypothesis_frozen": true,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "repair_attempts": 0,
+  "trigger_id": "trig-state-overwrite-append",
+  "trigger_plan": {
+    "trigger_id": "trig-state-overwrite-append",
+    "hypothesis_id": "conditional-h01-e0c8bd3ab2",
+    "trigger_type": "STATE",
+    "mechanism": "The overwrite flag changes the open mode between 'w' and 'a' but not the encoding; exercising both modes with non-ASCII trace content checks whether the implicit encoding failure occurs on first write and on subsequent appends.",
+    "preconditions": [
+      "PySnooper buggy checkout is importable",
+      "Process runs with LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0",
+      "A temporary output path is available and may be pre-populated"
+    ],
+    "input_mutation": "Use @pysnooper.snoop(path, overwrite=True) and @pysnooper.snoop(path) with a function that assigns a non-ASCII string local, optionally pre-writing ASCII content to the path.",
+    "state_setup": "Pre-create the output file with ASCII content to exercise append mode, then run the decorated function twice to exercise overwrite-then-append transitions.",
+    "environment_setup": "Run Python 3.9.18 with LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0 and pytest available.",
+    "action_sequence": [
+      "Create temporary output path and pre-write ASCII content",
+      "Define @pysnooper.snoop(path) function assigning non-ASCII string local",
+      "Call the decorated function",
+      "Define @pysnooper.snoop(path, overwrite=True) function assigning non-ASCII string local",
+      "Call the second decorated function",
+      "Read the file back as UTF-8 and assert the non-ASCII value appears"
+    ],
+    "observable": "UnicodeEncodeError during either write, or the file read back as UTF-8 missing the non-ASCII value after append or overwrite.",
+    "why_this_may_expose_the_mechanism": "Both 'w' and 'a' modes use the same implicit encoding; testing both state transitions confirms the failure is tied to the missing encoding argument rather than a single open mode.",
+    "target_evidence": [
+      "pysnooper/tracer.py FileWriter.write uses open(self.path, 'w' if self.overwrite else 'a') without encoding",
+      "tests/test_pysnooper.py test_no_overwrite_by_default and test_overwrite exercise append and overwrite path output"
+    ],
+    "confidence": 0.68
+  },
+  "status": "TEST",
+  "test_code": "import os\nimport sys\nimport subprocess\nimport textwrap\n\nimport pytest\n\n\nNON_ASCII = '\\u00e9\\u00e8\\u00ea\\u4e2d\\u6587'\n\n\nCHILD_SCRIPT = textwrap.dedent(\n    '''\n    import sys\n    import pysnooper\n\n    path = sys.argv[1]\n    non_ascii = sys.argv[2]\n\n    @pysnooper.snoop(path)\n    def append_fn():\n        value = non_ascii\n        return value\n\n    @pysnooper.snoop(path, overwrite=True)\n    def overwrite_fn():\n        value = non_ascii\n        return value\n\n    append_fn()\n    overwrite_fn()\n    '''\n)\n\n\ndef test_non_ascii_file_output_under_c_locale(tmp_path):\n    path = tmp_path / 'snoop.log'\n    path.write_text('lala', encoding='ascii')\n\n    env = dict(os.environ)\n    env['LC_ALL'] = 'C'\n    env['LANG'] = 'C'\n    env['PYTHONUTF8'] = '0'\n    env['PYTHONCOERCECLOCALE'] = '0'\n    env['PYTHONIOENCODING'] = 'ascii'\n\n    script_path = tmp_path / 'child_script.py'\n    script_path.write_text(CHILD_SCRIPT, encoding='utf-8')\n\n    proc = subprocess.run(\n        [sys.executable, str(script_path), str(path), NON_ASCII],\n        env=env,\n        stdout=subprocess.PIPE,\n        stderr=subprocess.PIPE,\n    )\n\n    stderr_text = proc.stderr.decode('utf-8', 'replace')\n    assert proc.returncode == 0, (\n        'Child process failed under non-UTF-8 locale.\\n'\n        'returncode={!r}\\nstderr:\\n{}'.format(proc.returncode, stderr_text)\n    )\n\n    content = path.read_text(encoding='utf-8')\n    assert NON_ASCII in content, (\n        'Non-ASCII value {!r} was not preserved in the trace file.\\n'\n        'File content:\\n{}'.format(NON_ASCII, content)\n    )\n",
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 3,
+    "retry_index": 0,
+    "latency_seconds": 2.687,
+    "usage": {
+      "prompt_tokens": 15906,
+      "completion_tokens": 572,
+      "total_tokens": 16478,
+      "prompt_tokens_details": {
+        "cached_tokens": 384
+      },
+      "prompt_cache_hit_tokens": 384,
+      "prompt_cache_miss_tokens": 15522
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_id": "conditional-h01-e0c8bd3ab2-trig-state-overwrite-append",
+  "test_path": "generated_tests/experiment3/conditional_live2/C2/conditional-h01-e0c8bd3ab2-trig-state-overwrite-append.py",
+  "test_sha256": "2eb4f7656124e71d2c9cb911dd245ab389a5e5eca7b92affc6f2b8d17664bd3a",
+  "wall_clock_seconds": 2.689
+}

@@ -1,0 +1,29 @@
+{
+  "experiment": "experiment3",
+  "mode": "conditional",
+  "arm": "C2",
+  "hypothesis_id": "conditional-h04-a9ae48b9d8",
+  "hypothesis": "PySnooper's file-output path handling writes trace output to the requested path and preserves the decorated function's return value, but the FileWriter.write method opens the path with the platform-default text encoding, so on a non-UTF-8 locale (LC_ALL=C, PYTHONUTF8=0) writing a trace containing a non-ASCII variable repr raises UnicodeEncodeError instead of producing the trace.",
+  "trigger": "Decorate a function with @pysnooper.snoop(path) where path is a temporary file, the function has a local variable whose repr contains a non-ASCII character (e.g. 'é'), and run under LC_ALL=C with PYTHONUTF8=0 so the default text encoding is ASCII.",
+  "oracle": {
+    "expected_behavior": "After running the decorated function, the requested output path exists and contains the trace, including the non-ASCII variable value, and the decorated function returns its correct result.",
+    "target_evidence": "pysnooper/tracer.py FileWriter.write uses open(self.path, 'w' if self.overwrite else 'a') with no encoding argument; get_write_function routes path outputs to FileWriter; tests/test_pysnooper.py test_file_output and test_no_overwrite_by_default assert trace content at the requested path; README documents @pysnooper.snoop('/my/log/file.log').",
+    "historical_evidence": "PySnooper:3 historical unit shows the file-output path branch is a real bug surface (path/output variable mismatch), and cookiecutter:1 shows locale-dependent implicit text encoding is a real failure mechanism; combined they suggest probing path-output encoding behavior.",
+    "confidence": 0.6
+  },
+  "hypothesis_sha256": "a9ae48b9d893c88b17406f0c9ec663488f2c39df8465b94da1c40f0ad327fa14",
+  "hypothesis_frozen": true,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "repair_attempts": 0,
+  "status": "TRIGGER_PLANNER_ERROR",
+  "error": "Expecting ',' delimiter: line 1 column 6987 (char 6986)",
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 12,
+    "usage": {}
+  },
+  "planner_wall_clock_seconds": 9.836
+}
