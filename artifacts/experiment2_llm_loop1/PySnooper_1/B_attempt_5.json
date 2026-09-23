@@ -1,0 +1,45 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "B",
+  "condition_name": "NAIVE_RAW_HISTORY",
+  "attempt": 5,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_raw.json"
+  ],
+  "hypothesis": "When a Tracer is used as a context manager (with pysnooper.snoop(...):) and the wrapped block raises an exception, the Tracer's __exit__ does not restore the previous sys.settrace value, leaving the Tracer's trace function installed globally after the with-block exits.",
+  "trigger": "Create a Tracer via pysnooper.snoop(output=io.StringIO()), enter it with a with-statement, raise a ValueError inside the block, catch the exception, then check sys.gettrace() against the value captured before entering the with-block.",
+  "potential_failure": "sys.gettrace() after the with-block will still be the Tracer.trace bound method instead of the original trace function (None), because __exit__ is not invoked when an exception propagates out of the with-body in this implementation.",
+  "oracle": {
+    "expected_behavior": "After a with pysnooper.snoop(...) block exits (whether normally or via an exception), sys.gettrace() must equal the trace function that was active before the with-block was entered. The Tracer.__enter__ explicitly saves the previous trace function on a stack and __exit__ is documented/implemented to restore it via sys.settrace(stack.pop()); therefore the global trace state must be restored even when the block raises.",
+    "target_evidence": "pysnooper/tracer.py Tracer.__enter__ appends sys.gettrace() to self.thread_local.original_trace_functions and calls sys.settrace(self.trace); Tracer.__exit__ pops that stack and calls sys.settrace(stack.pop()). The ordinary test test_generator asserts original_tracer_active() around generator usage, showing the project treats restoring the original trace function as a required invariant. The README documents the with pysnooper.snoop(): usage form, so exception propagation out of that form is a supported scenario.",
+    "historical_evidence": "PySnooper:3 fix diff shows a prior bug where the file-output write path used an undefined name output_path instead of output, and the regression test test_file_output was added to exercise the with/decorator output path. This historical evidence indicates the file/stream output path and the with-block usage are fragile areas worth probing, though it does not by itself establish the trace-restoration invariant.",
+    "confidence": 0.55
+  },
+  "test_code": "import io\nimport sys\n\nimport pysnooper\n\n\ndef test_with_block_restores_trace_on_exception():\n    string_io = io.StringIO()\n    original_trace = sys.gettrace()\n\n    try:\n        with pysnooper.snoop(string_io):\n            raise ValueError('boom')\n    except ValueError:\n        pass\n\n    assert sys.gettrace() is original_trace\n",
+  "test_file_path": "generated_tests/experiment2_loop1/PySnooper_1/B_attempt_5.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 10,
+    "retry_index": 0,
+    "latency_seconds": 3.861,
+    "usage": {
+      "prompt_tokens": 19711,
+      "completion_tokens": 661,
+      "total_tokens": 20372,
+      "prompt_tokens_details": {
+        "cached_tokens": 19456
+      },
+      "prompt_cache_hit_tokens": 19456,
+      "prompt_cache_miss_tokens": 255
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2_loop1/PySnooper_1/B_attempt_5.py",
+  "wall_clock_seconds": 3.864
+}

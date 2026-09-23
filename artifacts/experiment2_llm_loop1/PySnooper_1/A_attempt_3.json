@@ -1,0 +1,44 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "A",
+  "condition_name": "TARGET_ONLY",
+  "attempt": 3,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt"
+  ],
+  "hypothesis": "When a function decorated with @pysnooper.snoop() is called from a frame that is itself being traced (e.g., inside a with pysnooper.snoop() block), the tracer's thread_global.depth counter is incremented on the 'call' event but is not decremented on the corresponding 'return' event because the return event is filtered out by the target-frame check, causing subsequent trace lines to be over-indented.",
+  "trigger": "Use a single Tracer instance both as a decorator on a function and as a context manager around a call to that function, then inspect the indentation of the output lines.",
+  "potential_failure": "The 'Return value' line for the decorated function call is emitted with an indentation level that is one level deeper than the 'call' line, because thread_global.depth was incremented on entry but not decremented on exit.",
+  "oracle": {
+    "expected_behavior": "The 'call' line and the corresponding 'Return value' line for a decorated function should have the same indentation level, since the function call is a single nesting level.",
+    "target_evidence": "In pysnooper/tracer.py, the trace method increments thread_global.depth on 'call' events and decrements it on 'return' events. The early filtering check `if not (frame.f_code in self.target_codes or frame in self.target_frames)` returns None for frames that are not targets. When a decorated function is called from within a with-block, the decorated function's frame is in target_codes, so its 'call' event increments depth. However, the return event for the with-block's calling frame (which is in target_frames) may be processed differently, and the decorated function's return event may be filtered if the frame is no longer considered a target. This can cause depth to remain incremented, leading to incorrect indentation for subsequent lines.",
+    "historical_evidence": "",
+    "confidence": 0.6
+  },
+  "test_code": "import io\nimport re\nimport pysnooper\n\n\ndef test_indentation_after_decorated_call_in_with_block():\n    string_io = io.StringIO()\n    snoop = pysnooper.snoop(string_io)\n\n    @snoop\n    def inner():\n        return 42\n\n    def outer():\n        with snoop:\n            inner()\n\n    outer()\n    output = string_io.getvalue()\n    lines = output.splitlines()\n\n    call_line = None\n    return_line = None\n    for line in lines:\n        if 'call' in line and 'def inner' in line:\n            call_line = line\n        if 'Return value' in line and '42' in line:\n            return_line = line\n\n    assert call_line is not None, 'call line not found'\n    assert return_line is not None, 'return line not found'\n\n    call_indent = len(call_line) - len(call_line.lstrip())\n    return_indent = len(return_line) - len(return_line.lstrip())\n\n    assert call_indent == return_indent, (\n        f'Indentation mismatch: call line indent={call_indent}, '\n        f'return line indent={return_indent}\\n'\n        f'call line: {call_line!r}\\n'\n        f'return line: {return_line!r}'\n    )\n",
+  "test_file_path": "generated_tests/experiment2_loop1/PySnooper_1/A_attempt_3.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 3,
+    "retry_index": 0,
+    "latency_seconds": 3.557,
+    "usage": {
+      "prompt_tokens": 15319,
+      "completion_tokens": 817,
+      "total_tokens": 16136,
+      "prompt_tokens_details": {
+        "cached_tokens": 15104
+      },
+      "prompt_cache_hit_tokens": 15104,
+      "prompt_cache_miss_tokens": 215
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2_loop1/PySnooper_1/A_attempt_3.py",
+  "wall_clock_seconds": 3.56
+}

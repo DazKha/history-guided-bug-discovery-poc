@@ -1,0 +1,21 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "B",
+  "condition_name": "NAIVE_RAW_HISTORY",
+  "attempt": 3,
+  "status": "MODEL_ERROR",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_raw.json"
+  ],
+  "error": "test contains forbidden construction",
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 8,
+    "latency_seconds": 3.694,
+    "usage": {}
+  },
+  "wall_clock_seconds": 3.694
+}

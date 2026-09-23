@@ -1,0 +1,45 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "B",
+  "condition_name": "NAIVE_RAW_HISTORY",
+  "attempt": 2,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_raw.json"
+  ],
+  "hypothesis": "When pysnooper.snoop() is used as a context manager (with block) and the wrapped block raises an exception, the Tracer.__exit__ method fails to restore the previous trace function because it accesses self.thread_local.original_trace_functions, but __enter__ stored the stack under self.thread_local.__dict__.setdefault('original_trace_functions', []) — this attribute access works, but the real bug is that __exit__ does not handle the case where the exception propagates, leaving sys.settrace in a corrupted state or raising AttributeError.",
+  "trigger": "Use pysnooper.snoop() as a context manager around a block that raises ValueError, then check that sys.gettrace() is restored to its original value and that the exception propagates correctly.",
+  "potential_failure": "After the with block exits due to an exception, sys.gettrace() may not be restored to the original trace function, or an AttributeError may be raised because thread_local.original_trace_functions is not properly initialized in all code paths.",
+  "oracle": {
+    "expected_behavior": "The original trace function should be restored after the with block exits, even when an exception occurs inside the block. The exception should propagate normally.",
+    "target_evidence": "In pysnooper/tracer.py, Tracer.__enter__ stores the original trace function in self.thread_local.__dict__.setdefault('original_trace_functions', []) and calls sys.settrace(self.trace). Tracer.__exit__ retrieves the stack via self.thread_local.original_trace_functions and calls sys.settrace(stack.pop()). The test_with_block test in tests/test_pysnooper.py demonstrates that a single Tracer can handle many mixed uses, implying that trace restoration should work correctly across multiple invocations.",
+    "historical_evidence": "The historical PySnooper bug #3 involved a NameError in get_write_function due to using an undefined variable output_path instead of the parameter output. This suggests that variable scoping and attribute access in the tracer module are error-prone areas. The current hypothesis probes a different but related area: trace function restoration in __exit__.",
+    "confidence": 0.6
+  },
+  "test_code": "import sys\nimport pytest\nimport pysnooper\n\n\ndef test_trace_restored_after_exception_in_with_block():\n    original_trace = sys.gettrace()\n\n    class MyException(Exception):\n        pass\n\n    with pytest.raises(MyException):\n        with pysnooper.snoop():\n            raise MyException('boom')\n\n    assert sys.gettrace() is original_trace, (\n        'sys.gettrace() was not restored after exception in with block'\n    )\n",
+  "test_file_path": "generated_tests/experiment2_loop1/PySnooper_1/B_attempt_2.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 7,
+    "retry_index": 0,
+    "latency_seconds": 3.527,
+    "usage": {
+      "prompt_tokens": 19711,
+      "completion_tokens": 653,
+      "total_tokens": 20364,
+      "prompt_tokens_details": {
+        "cached_tokens": 19456
+      },
+      "prompt_cache_hit_tokens": 19456,
+      "prompt_cache_miss_tokens": 255
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2_loop1/PySnooper_1/B_attempt_2.py",
+  "wall_clock_seconds": 3.528
+}

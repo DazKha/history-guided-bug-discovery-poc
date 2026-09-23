@@ -1,0 +1,56 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "C",
+  "condition_name": "STRUCTURED_APPLICABILITY_AWARE",
+  "attempt": 5,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "hypothesis": "When a Tracer is used as a context manager (with pysnooper.snoop(...)) and the wrapped block raises an exception, the tracer's __exit__ does not restore the original trace function correctly because it pops from thread_local.original_trace_functions, but if the same Tracer instance is reused across multiple with-blocks in the same thread, the stack handling can leave sys.gettrace() pointing to the Tracer's trace function after the outermost with-block exits, causing the original trace function to be lost.",
+  "trigger": "Create a Tracer via pysnooper.snoop(), save sys.gettrace(), enter and exit the with-block normally, then assert sys.gettrace() is restored to the original value. Then reuse the same Tracer in a second with-block and assert restoration again.",
+  "potential_failure": "sys.gettrace() is not restored to the original trace function after exiting the with-block, or the original trace function is lost after nested/reused with-blocks.",
+  "oracle": {
+    "expected_behavior": "After exiting a with pysnooper.snoop() block, sys.gettrace() must equal the trace function that was active before entering the block, and this must hold for repeated uses of the same Tracer instance.",
+    "target_evidence": "pysnooper/tracer.py __enter__ pushes sys.gettrace() onto thread_local.original_trace_functions and calls sys.settrace(self.trace); __exit__ pops from that stack and calls sys.settrace(stack.pop()). The ordinary test test_with_block reuses a single snoop instance across many with-blocks and asserts correct output, implying the trace function must be properly restored each time. test_generator explicitly checks original_tracer_active() before/after generator operations.",
+    "historical_evidence": "PySnooper:3 concerns file-output path handling, not trace-function restoration; it is only weakly related. cookiecutter:1 concerns encoding, not applicable.",
+    "confidence": 0.55
+  },
+  "test_code": "import sys\nimport io\nimport pysnooper\n\n\ndef test_tracer_restores_original_trace_function_on_reuse():\n    original_trace = sys.gettrace()\n    string_io = io.StringIO()\n    snoop = pysnooper.snoop(string_io)\n\n    def foo(x):\n        return x + 1\n\n    with snoop:\n        result1 = foo(1)\n    assert result1 == 2\n    assert sys.gettrace() is original_trace, (\n        'sys.gettrace() was not restored after first with-block: '\n        'expected %r, got %r' % (original_trace, sys.gettrace())\n    )\n\n    with snoop:\n        result2 = foo(2)\n    assert result2 == 3\n    assert sys.gettrace() is original_trace, (\n        'sys.gettrace() was not restored after second with-block: '\n        'expected %r, got %r' % (original_trace, sys.gettrace())\n    )\n\n    output = string_io.getvalue()\n    assert 'result1 = foo(1)' in output\n    assert 'result2 = foo(2)' in output\n",
+  "test_file_path": "generated_tests/experiment2_loop1/PySnooper_1/C_attempt_5.py",
+  "applicability_decisions": [
+    {
+      "history_id": "cookiecutter:1",
+      "decision": "NOT_APPLICABLE",
+      "reason": "The historical bug concerns locale-dependent implicit text encoding when reading a JSON context file. The target PySnooper tracer does not read JSON context files; its file I/O is writing trace output, and the encoding mechanism does not transfer. No target-side evidence supports an encoding-related oracle."
+    },
+    {
+      "history_id": "PySnooper:3",
+      "decision": "WEAK",
+      "reason": "The historical bug concerns a path/output variable mismatch in the file-output closure of get_write_function/FileWriter. The target source does contain that same file-output code path, so the context and preconditions partially match. However, the historical evidence is explicitly noted as weak for the target encoding mechanism, and the target-side oracle for path-output correctness is already covered by ordinary tests (test_file_output, test_no_overwrite_by_default, test_overwrite). The strongest target-specific hypothesis instead targets trace-function restoration in __enter__/__exit__, which is exercised by ordinary tests (test_with_block, test_generator) but not directly asserted for sys.gettrace() restoration. This is a weak transfer, not a supported one."
+    }
+  ],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 15,
+    "retry_index": 0,
+    "latency_seconds": 5.196,
+    "usage": {
+      "prompt_tokens": 16177,
+      "completion_tokens": 1004,
+      "total_tokens": 17181,
+      "prompt_tokens_details": {
+        "cached_tokens": 16000
+      },
+      "prompt_cache_hit_tokens": 16000,
+      "prompt_cache_miss_tokens": 177
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2_loop1/PySnooper_1/C_attempt_5.py",
+  "wall_clock_seconds": 5.197
+}

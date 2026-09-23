@@ -1,0 +1,45 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "B",
+  "condition_name": "NAIVE_RAW_HISTORY",
+  "attempt": 4,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_raw.json"
+  ],
+  "hypothesis": "When a Tracer is used as a context manager (with pysnooper.snoop(...):) and the wrapped block raises an exception, the Tracer's __exit__ does not restore the previous sys.settrace value, leaving the tracer's trace function installed globally after the with block exits.",
+  "trigger": "Create a Tracer via pysnooper.snoop(output=io.StringIO()), enter it with a 'with' statement, raise a ValueError inside the block, catch the exception outside, then check sys.gettrace() is None (the value before entering the with block).",
+  "potential_failure": "sys.gettrace() remains the Tracer.trace bound method after the with block exits due to the exception, instead of being restored to the pre-with value (None). This leaks the trace function globally and can cause unexpected tracing of unrelated code.",
+  "oracle": {
+    "expected_behavior": "After a 'with pysnooper.snoop(...):' block exits (whether normally or via an exception), sys.gettrace() must be restored to the value it had before entering the block. The Tracer.__exit__ method explicitly pops the saved trace function from thread_local.original_trace_functions and calls sys.settrace(stack.pop()), so the invariant is that sys.gettrace() equals the pre-with value after exit.",
+    "target_evidence": "pysnooper/tracer.py Tracer.__enter__ saves sys.gettrace() onto thread_local.original_trace_functions and calls sys.settrace(self.trace). Tracer.__exit__ pops that stack and calls sys.settrace(stack.pop()). The ordinary test test_generator asserts original_tracer_active() before/after generator usage, showing the project treats restoring sys.gettrace() as a required invariant. The ordinary test test_with_block exercises the with-block path but does not assert sys.gettrace() restoration.",
+    "historical_evidence": "PySnooper:3 historical fix shows the project had a real bug in the file-output path of get_write_function (using undefined output_path instead of output), demonstrating that the with/context-manager and output paths are bug-prone areas. The cookiecutter:1 evidence about encoding is not directly relevant.",
+    "confidence": 0.55
+  },
+  "test_code": "import io\nimport sys\n\nimport pysnooper\n\n\ndef test_with_block_restores_trace_on_exception():\n    string_io = io.StringIO()\n    snoop = pysnooper.snoop(string_io)\n\n    original_trace = sys.gettrace()\n    assert original_trace is None\n\n    try:\n        with snoop:\n            raise ValueError('boom')\n    except ValueError:\n        pass\n\n    assert sys.gettrace() is original_trace\n",
+  "test_file_path": "generated_tests/experiment2_loop1/PySnooper_1/B_attempt_4.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 9,
+    "retry_index": 0,
+    "latency_seconds": 3.67,
+    "usage": {
+      "prompt_tokens": 19711,
+      "completion_tokens": 653,
+      "total_tokens": 20364,
+      "prompt_tokens_details": {
+        "cached_tokens": 19456
+      },
+      "prompt_cache_hit_tokens": 19456,
+      "prompt_cache_miss_tokens": 255
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2_loop1/PySnooper_1/B_attempt_4.py",
+  "wall_clock_seconds": 3.673
+}

@@ -1,0 +1,56 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "C",
+  "condition_name": "STRUCTURED_APPLICABILITY_AWARE",
+  "attempt": 3,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "hypothesis": "When PySnooper traces a function whose source file contains a non-ASCII character in a comment or string, the trace output written to a file path will contain mojibake (e.g., 'Ã©' instead of 'é') because the file is opened without an explicit encoding, relying on the locale default (ASCII under LC_ALL=C).",
+  "trigger": "Create a temporary Python module with a non-ASCII character (e.g., 'é') in a comment, import it, decorate a function with @pysnooper.snoop(path) where path is a temporary file, call the function, then read the output file as UTF-8 and assert that the non-ASCII character appears correctly.",
+  "potential_failure": "The trace output file will contain the non-ASCII character encoded incorrectly (e.g., 'Ã©' instead of 'é') because FileWriter.write opens the file without specifying encoding='utf-8', and under LC_ALL=C the default encoding is ASCII, causing the write to either fail with UnicodeEncodeError or produce mojibake.",
+  "oracle": {
+    "expected_behavior": "The trace output file should contain the non-ASCII character 'é' exactly as it appears in the source code, regardless of the process locale.",
+    "target_evidence": "pysnooper/tracer.py FileWriter.write opens the file with open(self.path, 'w' if self.overwrite else 'a') without specifying encoding. The source code is read as bytes and decoded using the encoding declared in the file (or ASCII default), then written to the file. Under LC_ALL=C, the default encoding for open() is ASCII, so writing non-ASCII characters will fail or produce incorrect output. The README and tests demonstrate file output but do not test non-ASCII content.",
+    "historical_evidence": "cookiecutter:1 shows a similar locale-dependent encoding bug where implicit text I/O used the platform default encoding instead of UTF-8. The fix was to specify encoding explicitly. PySnooper:3 is about a path variable mismatch, not encoding, and is not applicable.",
+    "confidence": 0.75
+  },
+  "test_code": "import io\nimport os\nimport sys\nimport tempfile\nimport textwrap\n\nimport pysnooper\n\n\ndef test_file_output_non_ascii():\n    # Create a temporary Python module with a non-ASCII character in a comment\n    with tempfile.TemporaryDirectory() as tmpdir:\n        module_name = 'non_ascii_module'\n        module_path = os.path.join(tmpdir, module_name + '.py')\n        source = textwrap.dedent(u'''\\\n            # -*- coding: utf-8 -*-\n            import pysnooper\n\n            @pysnooper.snoop()\n            def f(x):\n                # comment with non-ascii: \\u00e9\n                return x + 1\n        ''')\n        with open(module_path, 'w', encoding='utf-8') as f:\n            f.write(source)\n\n        sys.path.insert(0, tmpdir)\n        try:\n            module = __import__(module_name)\n        finally:\n            sys.path.pop(0)\n\n        output_path = os.path.join(tmpdir, 'trace.log')\n        # Re-decorate with file output\n        decorated = pysnooper.snoop(output_path)(module.f)\n        result = decorated(1)\n        assert result == 2\n\n        with open(output_path, 'r', encoding='utf-8') as f:\n            output = f.read()\n\n        # The non-ASCII character should appear correctly in the trace output\n        assert '\\u00e9' in output, (\n            'Non-ASCII character \\u00e9 not found in trace output. '\n            'Output was: {!r}'.format(output)\n        )\n",
+  "test_file_path": "generated_tests/experiment2_loop1/PySnooper_1/C_attempt_3.py",
+  "applicability_decisions": [
+    {
+      "history_id": "cookiecutter:1",
+      "decision": "SUPPORTED",
+      "reason": "The historical bug is about locale-dependent implicit text I/O encoding. PySnooper's FileWriter.write opens files without specifying encoding, which under LC_ALL=C defaults to ASCII. The target context includes a non-ASCII character in the source code that will be written to the trace output. The invariant (non-ASCII data preserved) is meaningful and testable. The oracle is supported by target source evidence (FileWriter.write lacks encoding parameter) and the historical fix pattern."
+    },
+    {
+      "history_id": "PySnooper:3",
+      "decision": "NOT_APPLICABLE",
+      "reason": "The historical bug is about a path variable mismatch in the file-output closure, not about encoding. The target context does not show evidence of a path variable mismatch; the FileWriter class correctly uses self.path. The failure mechanism and invariant are different from the encoding issue."
+    }
+  ],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 13,
+    "retry_index": 0,
+    "latency_seconds": 5.145,
+    "usage": {
+      "prompt_tokens": 16177,
+      "completion_tokens": 1119,
+      "total_tokens": 17296,
+      "prompt_tokens_details": {
+        "cached_tokens": 16000
+      },
+      "prompt_cache_hit_tokens": 16000,
+      "prompt_cache_miss_tokens": 177
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2_loop1/PySnooper_1/C_attempt_3.py",
+  "wall_clock_seconds": 5.147
+}

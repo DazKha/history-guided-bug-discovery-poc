@@ -1,0 +1,44 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "A",
+  "condition_name": "TARGET_ONLY",
+  "attempt": 5,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt"
+  ],
+  "hypothesis": "When a generator function decorated with @pysnooper.snoop() is garbage-collected or closed without being fully exhausted, the generator_wrapper's `with self:` block is exited via GeneratorExit, but the wrapper's `except StopIteration: return` path is not taken; the wrapper's `while True` loop does not re-enter `with self` after GeneratorExit, so the tracer's thread-local original_trace_functions stack is left with an extra entry, causing sys.gettrace() to remain set to the tracer's trace function after the generator is closed.",
+  "trigger": "Decorate a generator function with pysnooper.snoop(), create the generator, advance it once with next(), then call generator.close() (or let it be garbage-collected) without exhausting it. After close(), check sys.gettrace().",
+  "potential_failure": "sys.gettrace() is not None after closing a partially-consumed snooped generator, meaning the global trace function was not restored to its original value.",
+  "oracle": {
+    "expected_behavior": "After closing a partially-consumed generator decorated with pysnooper.snoop(), sys.gettrace() should equal the trace function that was active before the generator was created (typically None).",
+    "target_evidence": "In tracer.py, generator_wrapper uses `with self:` inside a `while True` loop. Tracer.__enter__ appends sys.gettrace() to thread_local.original_trace_functions and calls sys.settrace(self.trace). Tracer.__exit__ pops from that stack and calls sys.settrace(stack.pop()). The existing test_generator in tests/test_pysnooper.py asserts `original_tracer_active()` after each send/next and after StopIteration, establishing that the tracer must restore the original trace function after generator interactions. The close() path is a distinct generator termination path not covered by that test.",
+    "historical_evidence": "",
+    "confidence": 0.55
+  },
+  "test_code": "import sys\nimport io\nimport gc\n\nimport pysnooper\n\n\ndef test_closed_generator_restores_trace_function():\n    string_io = io.StringIO()\n    original_tracer = sys.gettrace()\n\n    @pysnooper.snoop(string_io)\n    def f(x1):\n        x2 = (yield x1)\n        x3 = 'foo'\n        x4 = (yield 2)\n        return\n\n    assert sys.gettrace() is original_tracer\n    generator = f(0)\n    assert sys.gettrace() is original_tracer\n    first_item = next(generator)\n    assert sys.gettrace() is original_tracer\n    assert first_item == 0\n\n    generator.close()\n    gc.collect()\n\n    assert sys.gettrace() is original_tracer, (\n        'sys.gettrace() was not restored after closing a partially-consumed '\n        'snooped generator; got {!r}, expected {!r}'.format(\n            sys.gettrace(), original_tracer\n        )\n    )\n",
+  "test_file_path": "generated_tests/experiment2_loop1/PySnooper_1/A_attempt_5.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 5,
+    "retry_index": 0,
+    "latency_seconds": 3.328,
+    "usage": {
+      "prompt_tokens": 15319,
+      "completion_tokens": 732,
+      "total_tokens": 16051,
+      "prompt_tokens_details": {
+        "cached_tokens": 15104
+      },
+      "prompt_cache_hit_tokens": 15104,
+      "prompt_cache_miss_tokens": 215
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2_loop1/PySnooper_1/A_attempt_5.py",
+  "wall_clock_seconds": 3.33
+}

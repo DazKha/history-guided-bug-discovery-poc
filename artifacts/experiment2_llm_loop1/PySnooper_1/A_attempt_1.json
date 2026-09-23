@@ -1,0 +1,44 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "A",
+  "condition_name": "TARGET_ONLY",
+  "attempt": 1,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt"
+  ],
+  "hypothesis": "When a generator function decorated with @pysnooper.snoop() is garbage-collected before being exhausted, the generator_wrapper's `with self:` block is exited via GeneratorExit, but the wrapper's `except StopIteration: return` does not catch GeneratorExit, so the exception propagates through the with-block; however, the real defect is that the tracer's `__exit__` pops `self.thread_local.original_trace_functions` and restores the previous trace function, but the generator's frame remains in `self.frame_to_local_reprs` because no 'return' event is delivered for the abandoned generator frame, leaking frame references and leaving stale local-repr state that corrupts subsequent tracing of the same Tracer instance.",
+  "trigger": "Create a Tracer via pysnooper.snoop(string_io), decorate a generator function that yields once and then is abandoned (not exhausted), call next() once, then delete the generator and force gc.collect(). Then reuse the same Tracer on a normal function and assert the output is correct and that the tracer's frame_to_local_reprs does not retain the abandoned generator frame.",
+  "potential_failure": "The abandoned generator frame stays in tracer.frame_to_local_reprs, and/or the thread_local original_trace_functions stack is left unbalanced, causing subsequent uses of the same Tracer to emit incorrect 'New var'/'Modified var' lines or to fail to restore the original trace function.",
+  "oracle": {
+    "expected_behavior": "After abandoning a decorated generator and forcing garbage collection, reusing the same Tracer on a plain function must produce a clean, correct trace (Starting var for the new function's argument, correct line entries, correct return value), and the tracer must not retain the abandoned generator frame in frame_to_local_reprs.",
+    "target_evidence": "pysnooper/tracer.py generator_wrapper uses `with self:` around each `method(incoming)` call; Tracer.__exit__ pops thread_local.original_trace_functions and discards only the calling frame from target_frames/frame_to_local_reprs; Tracer.trace deletes frame_to_local_reprs[frame] only on 'return' events. tests/test_pysnooper.py::test_generator exercises a fully-exhausted generator and asserts original trace function restoration, establishing that the tracer is expected to leave global trace state clean.",
+    "historical_evidence": "",
+    "confidence": 0.35
+  },
+  "test_code": "import gc\nimport io\n\nimport pysnooper\n\n\ndef test_abandoned_generator_does_not_corrupt_reused_tracer():\n    string_io = io.StringIO()\n    snoop = pysnooper.snoop(string_io)\n\n    @snoop\n    def gen():\n        yield 1\n        yield 2\n\n    g = gen()\n    assert next(g) == 1\n    del g\n    gc.collect()\n\n    @snoop\n    def plain(foo):\n        x = 7\n        return x + foo\n\n    result = plain(3)\n    assert result == 10\n\n    output = string_io.getvalue()\n    assert 'def plain(foo):' in output\n    assert 'Return value:.. 10' in output\n    assert 'foo' in output\n    assert 'x = 7' in output\n",
+  "test_file_path": "generated_tests/experiment2_loop1/PySnooper_1/A_attempt_1.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 1,
+    "retry_index": 0,
+    "latency_seconds": 4.429,
+    "usage": {
+      "prompt_tokens": 15319,
+      "completion_tokens": 799,
+      "total_tokens": 16118,
+      "prompt_tokens_details": {
+        "cached_tokens": 15104
+      },
+      "prompt_cache_hit_tokens": 15104,
+      "prompt_cache_miss_tokens": 215
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2_loop1/PySnooper_1/A_attempt_1.py",
+  "wall_clock_seconds": 4.433
+}

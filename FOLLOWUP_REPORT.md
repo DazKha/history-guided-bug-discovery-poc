@@ -8,16 +8,19 @@ I then ran a smaller transfer-feasibility experiment on real BugsInPy `PySnooper
 
 This is a retrospectively selected transfer-feasibility experiment. It evaluates whether the mechanism can transfer when suitable history is available. It does not evaluate autonomous retrieval quality.
 
-Final objective results:
+The evaluator semantics were then audited. The original strict evaluator counted only assertion failures and incorrectly classified target-origin `UnicodeEncodeError` as mechanical. The corrected rule accepts either an assertion failure or a target exception that violates a pre-execution oracle, provided the unchanged test passes on fixed and setup is valid.
 
-- A target-only: 5 tests, 0 mechanism matches, 0 F2P, 5 P2P.
-- B naive raw history: 4 tests, 0 mechanism matches, 0 F2P, 4 P2P, 1 model/JSON error.
-- C structured + applicability: 3 tests, 2 mechanism matches, 0 F2P, 2 P2P, 1 F2F, 2 model/JSON errors.
+Final objective results after re-evaluation:
 
-The evaluator ran every unchanged generated test on both buggy and fixed revisions. No condition achieved the required assertion-level `T(B)=FAIL, T(F)=PASS` result. A preserved exploratory pass did produce an encoding-focused C test that raised `UnicodeEncodeError` on buggy and passed on fixed, but it was not promoted to F2P because the expected target exception escaped instead of causing an intended semantic assertion failure.
+- Across the preserved exploratory batch, strict batch, and one additional uniform batch (15 attempts per condition), A produced 0/15 F2P and 0 mechanism matches.
+- B produced 0/15 F2P and 1 mechanism match.
+- C produced 2/15 verified `EXCEPTION_F2P` and 9 mechanism matches. Both valid F2P cases occurred in the preserved exploratory C batch and involved `UnicodeEncodeError` in target `pysnooper/tracer.py`, with the same tests passing on fixed.
+- No assertion-based F2P occurred. The additional loop produced no new F2P; C still had three mechanism matches, one F2F, and four P2P.
 
-The honest conclusion is: structured history improved mechanism targeting in this selected case, but this PoC did not verify a discovery advantage. The dominant remaining bottleneck was executable oracle/test construction, not harness reproducibility. The result is evidence for a refined next experiment, not proof that the architecture works.
+The evaluator ran every unchanged generated test on both buggy and fixed revisions. The two exception-based F2P cases satisfy the corrected criterion: their hypotheses and target-supported oracles were present before execution, setup was valid, the exception occurred inside target behavior, and the fixed revision passed.
 
-Reviewer artifacts: `results/experiment2_summary.csv`, `results/experiment2_failure_analysis.md`, `results/experiment2_case_study.md`, and `results/experiment2_comparison_with_experiment1.md`.
+The honest conclusion is: in this retrospectively selected transfer-feasibility case, structured historical knowledge identified the correct failure mechanism and produced verified executable evidence distinguishing buggy and fixed revisions. The result is not architecture proof: the F2P cases occurred in one batch, later attempts did not reproduce them, and A/B did not produce valid F2P. Trigger construction remains the bottleneck.
+
+Reviewer artifacts: `results/evaluator_audit.md`, `results/experiment2_re_evaluated.csv`, `results/experiment2_re_evaluated_summary.md`, `results/looped_experiment_summary.md`, and `results/failure_analysis_final.md`.
 
 Limitations: one target, five attempts per condition, retrospective history selection, model output/JSON failures, no statistical inference, and no recall denominator.

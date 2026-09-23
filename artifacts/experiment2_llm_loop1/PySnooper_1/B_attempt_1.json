@@ -1,0 +1,45 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "B",
+  "condition_name": "NAIVE_RAW_HISTORY",
+  "attempt": 1,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_raw.json"
+  ],
+  "hypothesis": "When a Tracer is used as a context manager (with pysnooper.snoop(...):) and the wrapped block raises an exception, the Tracer's __exit__ does not restore the previous sys.settrace value, leaving the Tracer's trace function installed globally after the with block exits.",
+  "trigger": "Create a Tracer via pysnooper.snoop(), enter it with a with statement, raise a ValueError inside the block, catch the exception outside, then check sys.gettrace() is None (the value before entering the with block).",
+  "potential_failure": "sys.gettrace() remains the Tracer.trace bound method after the with block exits due to an exception, instead of being restored to the original trace function (None).",
+  "oracle": {
+    "expected_behavior": "After a with pysnooper.snoop(): block exits, whether normally or due to an exception, sys.gettrace() must equal the trace function that was active before entering the block. Since no trace function is active before entering, sys.gettrace() must be None after the block.",
+    "target_evidence": "pysnooper/tracer.py Tracer.__enter__ saves sys.gettrace() on a per-thread stack and calls sys.settrace(self.trace). Tracer.__exit__ pops the saved trace function and calls sys.settrace(stack.pop()). The ordinary test test_generator explicitly asserts original_tracer_active() before and after generator operations, demonstrating that PySnooper is expected to restore the previous trace function. The README documents using pysnooper.snoop() as a with block, so exception propagation through the with block is a supported usage pattern.",
+    "historical_evidence": "The PySnooper:3 historical bug shows a defect in the file-output path of get_write_function where a wrong variable name (output_path instead of output) caused a NameError. This is a different code path, but it demonstrates that PySnooper's tracer machinery has had state/cleanup-related defects. The cookiecutter:1 bug is unrelated to tracing state.",
+    "confidence": 0.55
+  },
+  "test_code": "import sys\nimport pytest\nimport pysnooper\n\n\ndef test_with_block_exception_restores_trace():\n    original_trace = sys.gettrace()\n    assert original_trace is None\n\n    snoop = pysnooper.snoop()\n\n    with pytest.raises(ValueError):\n        with snoop:\n            raise ValueError('boom')\n\n    assert sys.gettrace() is original_trace\n",
+  "test_file_path": "generated_tests/experiment2_loop1/PySnooper_1/B_attempt_1.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 6,
+    "retry_index": 0,
+    "latency_seconds": 3.621,
+    "usage": {
+      "prompt_tokens": 19711,
+      "completion_tokens": 614,
+      "total_tokens": 20325,
+      "prompt_tokens_details": {
+        "cached_tokens": 19456
+      },
+      "prompt_cache_hit_tokens": 19456,
+      "prompt_cache_miss_tokens": 255
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2_loop1/PySnooper_1/B_attempt_1.py",
+  "wall_clock_seconds": 3.623
+}

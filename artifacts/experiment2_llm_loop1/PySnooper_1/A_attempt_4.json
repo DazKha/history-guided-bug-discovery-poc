@@ -1,0 +1,44 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "A",
+  "condition_name": "TARGET_ONLY",
+  "attempt": 4,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt"
+  ],
+  "hypothesis": "When a generator function decorated with @pysnooper.snoop() is garbage-collected before exhaustion, the generator_wrapper's `with self:` block is never exited, leaving sys.settrace(self.trace) installed and the Tracer's thread-local trace stack unbalanced.",
+  "trigger": "Create a decorated generator, advance it once with next(), then delete it and call gc.collect(); afterwards check sys.gettrace() is None.",
+  "potential_failure": "sys.gettrace() remains the Tracer.trace method instead of being restored to None, meaning the global trace function leaks after the generator is abandoned.",
+  "oracle": {
+    "expected_behavior": "After the decorated generator is garbage-collected without being exhausted, sys.gettrace() should be None, because the Tracer's __exit__ should have restored the original trace function.",
+    "target_evidence": "pysnooper/tracer.py generator_wrapper uses `with self:` around each `method(incoming)` call; Tracer.__enter__ calls sys.settrace(self.trace) and __exit__ calls sys.settrace(stack.pop()). tests/test_pysnooper.py::test_generator asserts that the original tracer is active before and after each generator step, establishing that the tracer must not leak.",
+    "historical_evidence": "",
+    "confidence": 0.6
+  },
+  "test_code": "import gc\nimport sys\n\nimport pysnooper\n\n\ndef test_abandoned_generator_does_not_leak_tracer():\n    original_tracer = sys.gettrace()\n\n    @pysnooper.snoop()\n    def f(x1):\n        x2 = (yield x1)\n        x3 = 'foo'\n        x4 = (yield 2)\n        return\n\n    generator = f(0)\n    first_item = next(generator)\n    assert first_item == 0\n\n    del generator\n    gc.collect()\n\n    assert sys.gettrace() is original_tracer\n",
+  "test_file_path": "generated_tests/experiment2_loop1/PySnooper_1/A_attempt_4.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 4,
+    "retry_index": 0,
+    "latency_seconds": 2.656,
+    "usage": {
+      "prompt_tokens": 15319,
+      "completion_tokens": 494,
+      "total_tokens": 15813,
+      "prompt_tokens_details": {
+        "cached_tokens": 15104
+      },
+      "prompt_cache_hit_tokens": 15104,
+      "prompt_cache_miss_tokens": 215
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2_loop1/PySnooper_1/A_attempt_4.py",
+  "wall_clock_seconds": 2.658
+}

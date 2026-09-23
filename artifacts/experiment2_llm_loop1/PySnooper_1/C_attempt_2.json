@@ -1,0 +1,56 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "C",
+  "condition_name": "STRUCTURED_APPLICABILITY_AWARE",
+  "attempt": 2,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "hypothesis": "When a decorated function raises an exception, PySnooper's tracer writes an 'exception' event line but then also writes a normal 'return' event line for the same frame, because the ended_by_exception detection fails to recognize the exception-return opcode; the output should instead contain 'Call ended by exception' and no normal return line.",
+  "trigger": "Decorate a function that raises ValueError with pysnooper.snoop(string_io), call it inside pytest.raises(ValueError), and inspect the captured trace output.",
+  "potential_failure": "The trace output contains a normal 'return' event line for the frame that raised, instead of the intended 'Call ended by exception' marker, so the exception path is misreported.",
+  "oracle": {
+    "expected_behavior": "For a frame that terminates by exception, PySnooper should emit 'Call ended by exception' and should not emit a normal 'return' event line for that frame.",
+    "target_evidence": "pysnooper/tracer.py computes ended_by_exception from event == 'return', arg is None, and opcode.opname[code_byte] not in ('RETURN_VALUE', 'YIELD_VALUE'); when true it writes 'Call ended by exception', otherwise it writes the normal event line. The ordinary test suite includes tests/samples/exception.py and test_exception, showing exception tracing is intended behavior.",
+    "historical_evidence": "PySnooper:3 concerns file-output path handling, not exception-return opcode detection; it is only weak transfer evidence and does not establish this oracle.",
+    "confidence": 0.55
+  },
+  "test_code": "import io\nimport pytest\nimport pysnooper\n\n\ndef test_exception_return_is_reported_as_call_ended_by_exception():\n    string_io = io.StringIO()\n\n    @pysnooper.snoop(string_io)\n    def my_function():\n        x = 1\n        raise ValueError('boom')\n\n    with pytest.raises(ValueError, match='boom'):\n        my_function()\n\n    output = string_io.getvalue()\n    assert 'Call ended by exception' in output\n    assert 'return' not in output\n",
+  "test_file_path": "generated_tests/experiment2_loop1/PySnooper_1/C_attempt_2.py",
+  "applicability_decisions": [
+    {
+      "history_id": "cookiecutter:1",
+      "decision": "NOT_APPLICABLE",
+      "reason": "The historical unit is about locale-dependent implicit text encoding when reading a JSON context file. The target PySnooper context has no JSON context loading, no non-ASCII fixture, and no locale-sensitive read path in the supplied source. The failure mechanism and invariant do not transfer to the target."
+    },
+    {
+      "history_id": "PySnooper:3",
+      "decision": "WEAK",
+      "reason": "The historical unit is in the same repository and concerns file-output path handling, but the target context already shows FileWriter using self.path correctly and the ordinary tests cover file output. The mechanism is a path/output variable mismatch, not exception-return opcode detection, so it only weakly suggests probing output behavior. The generated hypothesis is instead grounded in target-side tracer.py exception handling and the ordinary exception sample test."
+    }
+  ],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 12,
+    "retry_index": 0,
+    "latency_seconds": 4.037,
+    "usage": {
+      "prompt_tokens": 16177,
+      "completion_tokens": 750,
+      "total_tokens": 16927,
+      "prompt_tokens_details": {
+        "cached_tokens": 16000
+      },
+      "prompt_cache_hit_tokens": 16000,
+      "prompt_cache_miss_tokens": 177
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2_loop1/PySnooper_1/C_attempt_2.py",
+  "wall_clock_seconds": 4.038
+}

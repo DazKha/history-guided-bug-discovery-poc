@@ -5,7 +5,10 @@ import csv
 import json
 from pathlib import Path
 
-from evaluate_generated_tests import classify_output, run_test
+try:
+    from .evaluate_generated_tests import classify_output, run_test
+except ImportError:
+    from evaluate_generated_tests import classify_output, run_test
 
 
 ROOT = Path(__file__).resolve().parents[1]

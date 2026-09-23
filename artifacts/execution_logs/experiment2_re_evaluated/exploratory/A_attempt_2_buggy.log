@@ -1,0 +1,73 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+____________________ test_cross_thread_context_manager_exit ____________________
+
+    def test_cross_thread_context_manager_exit():
+        # Save the original trace function
+        original_trace = sys.gettrace()
+
+        # Create a Tracer instance
+        tracer = pysnooper.snoop()
+
+        # Enter the context manager in the main thread
+        tracer.__enter__()
+
+        # Verify that the trace function has been set
+        assert sys.gettrace() is not original_trace
+
+        # Now exit the context manager in a different thread
+        exception_holder = []
+
+        def exit_in_thread():
+            try:
+                tracer.__exit__(None, None, None)
+            except Exception as e:
+                exception_holder.append(e)
+
+        t = threading.Thread(target=exit_in_thread)
+        t.start()
+        t.join()
+
+        # The original trace function should be restored in the main thread
+        # But since __exit__ was called in a different thread, it will fail
+        # and the main thread's trace function will not be restored.
+        # We assert that no exception was raised in the other thread.
+>       assert not exception_holder, f"Exception raised in other thread: {exception_holder}"
+E       AssertionError: Exception raised in other thread: [AttributeError("'_thread._local' object has no attribute 'original_trace_functions'")]
+E       assert not [AttributeError("'_thread._local' object has no attribute 'original_trace_functions'")]
+
+_generated_eval_A_attempt_2.py:37: AssertionError
+----------------------------- Captured stderr call -----------------------------
+New var:....... original_trace = None
+New var:....... tracer = <pysnooper.tracer.Tracer object at 0x105525460>
+07:18:13.239376 line        18     assert sys.gettrace() is not original_trace
+New var:....... @py_assert1 = None
+New var:....... @py_assert3 = None
+New var:....... @py_assert5 = None
+07:18:13.239559 line        21     exception_holder = []
+New var:....... exception_holder = []
+07:18:13.239590 line        23     def exit_in_thread():
+New var:....... exit_in_thread = <function test_cross_thread_context_manager_exit.<locals>.exit_in_thread at 0x105631790>
+07:18:13.239616 line        29     t = threading.Thread(target=exit_in_thread)
+New var:....... t = <Thread(Thread-1, initial)>
+07:18:13.239671 line        30     t.start()
+Modified var:.. t = <Thread(Thread-1, stopped 6139834368)>
+Modified var:.. exception_holder = [AttributeError("'_thread._local' object has no attribute 'original_trace_functions'")]
+07:18:13.239850 line        31     t.join()
+07:18:13.239886 line        37     assert not exception_holder, f"Exception raised in other thread: {exception_holder}"
+Modified var:.. @py_assert1 = False
+New var:....... @py_format2 = 'Exception raised in other thread: [AttributeErr...has no attribute \'original_trace_functions\'")]'
+07:18:13.240000 exception   37     assert not exception_holder, f"Exception raised in other thread: {exception_holder}"
+AssertionError: Exception raised in other thread: [AttributeError("'_thread._local' object has no ...
+assert not [AttributeError("'_thread._local' object has no attribute 'original_trace_functions'")]
+Call ended by exception
+=============================== warnings summary ===============================
+pysnooper/variables.py:3
+pysnooper/variables.py:3
+  /Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/pysnooper/variables.py:3: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated since Python 3.3, and in 3.10 it will stop working
+    from collections import Mapping, Sequence
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED _generated_eval_A_attempt_2.py::test_cross_thread_context_manager_exit
+1 failed, 2 warnings in 0.03s

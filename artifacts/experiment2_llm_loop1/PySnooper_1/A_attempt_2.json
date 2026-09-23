@@ -1,0 +1,20 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "A",
+  "condition_name": "TARGET_ONLY",
+  "attempt": 2,
+  "status": "MODEL_ERROR",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt"
+  ],
+  "error": "test contains forbidden construction",
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 2,
+    "latency_seconds": 2.695,
+    "usage": {}
+  },
+  "wall_clock_seconds": 2.695
+}

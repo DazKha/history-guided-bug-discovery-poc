@@ -1,0 +1,56 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "C",
+  "condition_name": "STRUCTURED_APPLICABILITY_AWARE",
+  "attempt": 4,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "hypothesis": "When a decorated function's source file is read as bytes and decoded, PySnooper's get_source_from_frame decodes using the PEP-263 declared encoding (defaulting to 'ascii'), so a source file containing non-ASCII characters without a coding declaration will be decoded with 'replace', corrupting the source line shown in trace output rather than preserving the actual source text.",
+  "trigger": "Create a temporary module whose source contains a non-ASCII character (e.g. a string literal with 'é') and no PEP-263 coding declaration, import it, decorate a function with pysnooper.snoop(string_io), call it, and inspect the captured trace output for the source line.",
+  "potential_failure": "The trace output line for the source statement will contain '?' replacement characters instead of the original non-ASCII text, because get_source_from_frame decodes bytes with encoding='ascii' when no coding cookie is present.",
+  "oracle": {
+    "expected_behavior": "The trace output should contain the original non-ASCII source text (e.g. 'é') for the executed line, matching the actual source file content.",
+    "target_evidence": "pysnooper/tracer.py get_source_from_frame: when source is read as bytes, it sets encoding='ascii' and only overrides it if a PEP-263 coding cookie is found in the first two lines, then decodes with errors='replace'. Python 3 source files are UTF-8 by default, so a non-ASCII source without a coding cookie is valid UTF-8 but will be mis-decoded as ascii, producing replacement characters in the displayed source line.",
+    "historical_evidence": "cookiecutter:1 shows a locale/encoding-dependent implicit text read causing non-ASCII corruption; PySnooper:3 shows file-output path handling. The cookiecutter unit suggests probing encoding handling, but the target-side mechanism here is the explicit ascii default in get_source_from_frame.",
+    "confidence": 0.6
+  },
+  "test_code": "import io\nimport textwrap\nimport sys\n\nimport pysnooper\nfrom python_toolbox import sys_tools, temp_file_tools\n\n\ndef test_non_ascii_source_line_preserved():\n    with temp_file_tools.create_temp_folder(prefix='pysnooper') as folder, \\\n            sys_tools.TempSysPathAdder(str(folder)):\n        module_name = 'pysnooper_nonascii_source_probe'\n        python_file_path = folder / ('%s.py' % (module_name,))\n        content = textwrap.dedent(u'''\n            import pysnooper\n            @pysnooper.snoop()\n            def f():\n                x = 'caf\\u00e9'\n                return x\n        ''')\n        with python_file_path.open('w', encoding='utf-8') as python_file:\n            python_file.write(content)\n        module = __import__(module_name)\n        string_io = io.StringIO()\n        module.f = pysnooper.snoop(string_io)(module.f)\n        result = module.f()\n        assert result == 'caf\\u00e9'\n        output = string_io.getvalue()\n        assert 'caf\\u00e9' in output\n",
+  "test_file_path": "generated_tests/experiment2_loop1/PySnooper_1/C_attempt_4.py",
+  "applicability_decisions": [
+    {
+      "history_id": "cookiecutter:1",
+      "decision": "WEAK",
+      "reason": "The cookiecutter unit concerns locale-dependent implicit text I/O encoding when reading a JSON context file. The target has a related but distinct encoding concern: get_source_from_frame explicitly defaults to 'ascii' when decoding bytes source without a PEP-263 cookie. The mechanism (encoding-dependent decoding corrupting non-ASCII data) transfers, but the specific API and fix differ, so support is weak."
+    },
+    {
+      "history_id": "PySnooper:3",
+      "decision": "NOT_APPLICABLE",
+      "reason": "The PySnooper:3 unit concerns a path/output variable mismatch in the file-output closure. The target's get_write_function/FileWriter path handling appears consistent, and the unit's mechanism (wrong captured path variable) does not match the encoding mechanism probed here. No target-side evidence supports a path-variable mismatch."
+    }
+  ],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 14,
+    "retry_index": 0,
+    "latency_seconds": 4.694,
+    "usage": {
+      "prompt_tokens": 16177,
+      "completion_tokens": 962,
+      "total_tokens": 17139,
+      "prompt_tokens_details": {
+        "cached_tokens": 16000
+      },
+      "prompt_cache_hit_tokens": 16000,
+      "prompt_cache_miss_tokens": 177
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2_loop1/PySnooper_1/C_attempt_4.py",
+  "wall_clock_seconds": 4.696
+}
