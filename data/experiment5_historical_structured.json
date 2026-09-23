@@ -1,0 +1,52 @@
+[
+  {
+    "history_id": "cookiecutter:1",
+    "Context": "Cookiecutter reads a JSON context file through cookiecutter.generate.generate_context.",
+    "Preconditions": "A context JSON file is UTF-8 encoded and contains a non-ASCII value.",
+    "Trigger": "The context file is read on a runtime whose locale/default text encoding is not guaranteed to be UTF-8.",
+    "Expected Invariant": "Valid UTF-8 context data must decode to the same Unicode values independently of the process locale.",
+    "Observed Failure": "The historical regression added a non-ASCII JSON fixture; the buggy implicit open could use the platform default encoding.",
+    "Failure Mechanism": "Implicit text I/O encoding is locale-dependent; the fix makes the read encoding explicitly UTF-8.",
+    "Oracle": "generate_context returns the expected mapping containing the exact non-ASCII value.",
+    "Oracle Provenance": "Historical regression assertion plus the explicit encoding fix; target truth must still be established from target-side evidence.",
+    "Test Strategy": "Create a UTF-8 input containing a non-ASCII value, call the public context-loading API, and assert the returned value is preserved.",
+    "Evidence References": [
+      "cookiecutter/bugs/1/bug.info",
+      "cookiecutter@7f6804c4953a18386809f11faf4d86898570debc:tests/test_generate_context.py",
+      "git diff c15633745df6..7f6804c4953a",
+      "evidence.fix_diff",
+      "evidence.regression_test"
+    ],
+    "Confidence": {
+      "mechanism": 0.98,
+      "trigger": 0.95,
+      "invariant": 0.95,
+      "transfer_to_target": 0.85
+    }
+  },
+  {
+    "history_id": "PySnooper:3",
+    "Context": "PySnooper writes trace output to a path supplied to the public snoop decorator.",
+    "Preconditions": "The caller selects a filesystem path rather than a stream.",
+    "Trigger": "The path-output branch performs the write using the wrong captured path variable.",
+    "Expected Invariant": "Tracing to a requested path writes the trace to that path and preserves the decorated function result.",
+    "Observed Failure": "The historical test exercises file output and the fix changes the opened path variable.",
+    "Failure Mechanism": "A path/output variable mismatch in a file-output closure can send behavior to the wrong location; this is only partial evidence for the target encoding mechanism.",
+    "Oracle": "The requested output path contains the expected trace after the decorated function runs.",
+    "Oracle Provenance": "Historical regression assertion and fix diff; transfer compatibility with the target is weak because encoding is not established.",
+    "Test Strategy": "Decorate a small function with a temporary output path, run it, and assert result plus trace content at that path.",
+    "Evidence References": [
+      "PySnooper/bugs/3/bug.info",
+      "PySnooper@15555ed760000b049aff8fecc79d29339c1224c3:tests/test_pysnooper.py",
+      "git diff 6e3d797be3fa..15555ed76000",
+      "evidence.fix_diff",
+      "evidence.regression_test"
+    ],
+    "Confidence": {
+      "mechanism": 0.92,
+      "trigger": 0.9,
+      "invariant": 0.9,
+      "transfer_to_target": 0.45
+    }
+  }
+]

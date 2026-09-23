@@ -20,11 +20,11 @@ No unsupported action, missing required field, unsupported observable, leakage, 
 
 | Hypothesis | Plan | Outcome | Diagnosis |
 |---|---|---|---|
-| h01 | 1, 2, 3 | 3 F2P | Correct environment/state setup and observable alignment were executable. |
-| h02 | 1, 2, 3 | 2 MODEL_ERROR, 1 F2F | Test-generation output instability; the one executable test reached the same encoding exception on buggy and fixed, so the oracle/trigger did not distinguish revisions. |
-| h03 | 1, 2, 3 | P2P, MECHANICAL_FAILURE, P2P | The mechanism-level source-decoding condition was not consistently instantiated; one candidate failed mechanically rather than semantically. |
-| h04 | 1, 2, 3 | 1 P2P, 1 MECHANICAL_FAILURE, 1 F2P | One valid path-output realization worked; other candidates had weak or non-executable setup. |
-| h05 | 1, 2, 3 | 3 MECHANICAL_FAILURE | Source-module/trace-output setup was not reliably executable in generated code. |
+| h01 | 1, 2, 3 | MODEL_ERROR, 2 F2P | One candidate was rejected as model output; two valid realizations worked. |
+| h02 | 1, 2, 3 | 3 MECHANICAL_FAILURE | All three generated tests failed in setup/fixture/runtime plumbing before a semantic comparison. |
+| h03 | 1, 2, 3 | P2P, F2P, P2P | One source-decoding realization worked; two did not activate the intended semantic difference. |
+| h04 | 1, 2, 3 | F2P, MECHANICAL_FAILURE, MODEL_ERROR | One realization worked; the other two failed in mechanics or model output. |
+| h05 | 1, 2, 3 | MECHANICAL_FAILURE, F2P, P2P | One realization worked; the other two failed mechanically or did not activate the mechanism. |
 
 ### Every F2F result across the refinement ledger
 

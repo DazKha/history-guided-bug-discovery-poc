@@ -43,7 +43,7 @@ C2's five F2P tests came from four hypotheses. The 15-test C1 budget control was
 - Planner validation rejection rate: 1/6 (16.7%).
 - Repair success rate: 1/1 rejected planner attempts repaired to a valid plan set.
 - Final C2 executable-test rate: 13/15 (86.7%).
-- Final C2 test outcomes: 5 F2P, 1 F2F, 3 P2P, 5 mechanical failures, 2 model-output failures.
+- Final C2 test outcomes: 5 F2P, 0 F2F, 3 P2P, 5 mechanical failures, 2 model-output failures.
 - Final C1 budget-matched outcomes: 6 F2P, 2 F2F, 5 P2P, 2 model-output failures.
 
 ## Interpretation
