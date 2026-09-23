@@ -1,0 +1,12 @@
+{
+  "natural": {
+    "C1": "BLOCKED_MISSING_DEEPSEEK_API_KEY",
+    "C2": "BLOCKED_MISSING_DEEPSEEK_API_KEY"
+  },
+  "conditional": {
+    "C1": "REPLAYED_STORED_EXPERIMENT2_TESTS",
+    "C2": "BLOCKED_MISSING_DEEPSEEK_API_KEY"
+  },
+  "model_generation_executed": false,
+  "reason": "DEEPSEEK_API_KEY was absent from the environment and empty in .env"
+}

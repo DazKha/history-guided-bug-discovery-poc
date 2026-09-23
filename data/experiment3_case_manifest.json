@@ -1,0 +1,18 @@
+{
+  "experiment": "experiment3_trigger_construction",
+  "target_id": "PySnooper:1",
+  "target_context": "data/experiment2_target_context/PySnooper-1.txt",
+  "structured_history": "data/experiment2_historical_structured.json",
+  "conditional_hypotheses": "data/experiment3_conditional_hypotheses.json",
+  "buggy_checkout": "workspace/harness-pysnooper-buggy/PySnooper",
+  "fixed_checkout_evaluator_only": "workspace/harness-pysnooper-fixed/PySnooper",
+  "arms": {
+    "C1": "frozen hypothesis to one direct test",
+    "C2": "frozen hypothesis to four structured trigger candidates to one test each"
+  },
+  "trigger_count": 4,
+  "max_repairs": 1,
+  "model_generation_status": "blocked_missing_deepseek_api_key",
+  "offline_replay_status": "conditional_c1_completed",
+  "leakage_note": "fixed source, issue, patch, hidden regression, benchmark truth, and mechanism-match labels are evaluator-only"
+}

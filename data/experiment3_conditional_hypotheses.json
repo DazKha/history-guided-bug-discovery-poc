@@ -1,0 +1,177 @@
+[
+  {
+    "experiment": "experiment3",
+    "mode": "conditional",
+    "attempt": 1,
+    "hypothesis_id": "conditional-h01",
+    "status": "TEST",
+    "hypothesis": "When PySnooper's file-output path is used with a non-ASCII trace string, FileWriter.write opens the output file without an explicit encoding, so on a non-UTF-8 locale the write can fail or corrupt the trace instead of preserving the Unicode text.",
+    "trigger": "Create a temporary output path, decorate a function that assigns a non-ASCII string local variable with @pysnooper.snoop(path), run the function under a non-UTF-8 default text encoding, then read the file back as UTF-8 and assert the non-ASCII value appears.",
+    "potential_failure": "FileWriter.write uses open(self.path, 'w' if self.overwrite else 'a') without encoding='utf-8'; under LC_ALL=C/PYTHONUTF8=0 the default encoding is ASCII, so writing the trace containing a non-ASCII repr raises UnicodeEncodeError or writes replacement/escaped text, and the expected non-ASCII value is absent from the file.",
+    "oracle": {
+      "expected_behavior": "Tracing to a requested filesystem path must write the trace text to that path and preserve non-ASCII variable representations, independent of the process locale.",
+      "target_evidence": "pysnooper/tracer.py FileWriter.write opens the path with open(self.path, 'w' if self.overwrite else 'a') and no encoding argument; get_write_function routes string/PathLike output to FileWriter; README documents @pysnooper.snoop('/my/log/file.log') and tests/test_pysnooper.py test_file_output exercises path output.",
+      "historical_evidence": "cookiecutter:1 shows locale-dependent implicit text I/O encoding for non-ASCII data; PySnooper:3 shows path-output file writing is a public, tested behavior but does not establish the encoding mechanism.",
+      "confidence": 0.72
+    },
+    "applicability_decisions": [
+      {
+        "history_id": "cookiecutter:1",
+        "decision": "SUPPORTED",
+        "reason": "The target has a public file-output path in pysnooper/tracer.py FileWriter.write that uses implicit text I/O encoding, matching the historical locale-dependent encoding mechanism. The target-side oracle is meaningful: a non-ASCII trace value must be preserved in the requested output file. The trigger is feasible by forcing a non-UTF-8 default encoding and using a non-ASCII local variable."
+      },
+      {
+        "history_id": "PySnooper:3",
+        "decision": "WEAK",
+        "reason": "The historical unit confirms that path-output file writing is a tested public behavior, but its failure mechanism is a path-variable mismatch, not encoding. It supports probing file output but does not establish the target encoding invariant; the stronger target-specific oracle comes from the implicit open() encoding in FileWriter.write."
+      }
+    ],
+    "hypothesis_frozen": true,
+    "generation_visible_files": [
+      "data/experiment2_target_context/PySnooper-1.txt",
+      "data/experiment2_historical_structured.json"
+    ],
+    "source_artifact": "artifacts/experiment2_llm_run1/PySnooper_1/C_attempt_1.json",
+    "hypothesis_sha256": "e0c8bd3ab2481f840b4ee7e6902b44ec0bee11d05fbea5261ae5ad5af3f1e7c2"
+  },
+  {
+    "experiment": "experiment3",
+    "mode": "conditional",
+    "attempt": 2,
+    "hypothesis_id": "conditional-h02",
+    "status": "TEST",
+    "hypothesis": "When a decorated function is called with a non-ASCII string argument, PySnooper's default stderr output path can raise UnicodeEncodeError because the default write function writes directly to sys.stderr without encoding fallback, causing the decorated function call to fail instead of returning its normal result.",
+    "trigger": "Decorate a function that accepts a non-ASCII string argument with @pysnooper.snoop() using default output, then call it with a non-ASCII string such as 'caf\\u00e9' under a non-UTF-8 stderr encoding.",
+    "potential_failure": "The decorated function raises UnicodeEncodeError while PySnooper is writing the variable representation to stderr, so the function does not return its expected result.",
+    "oracle": {
+      "expected_behavior": "The decorated function should return its normal result even when its arguments contain non-ASCII characters, and PySnooper should not crash while writing trace output.",
+      "target_evidence": "pysnooper/tracer.py get_write_function defines the default output=None branch as writing directly to sys.stderr and only catches UnicodeEncodeError in the Python 2 fallback path; pysnooper/utils.py provides shitcode for non-ASCII fallback; README documents default stderr output and non-ASCII variable values are part of ordinary tracing.",
+      "historical_evidence": "cookiecutter:1 shows locale-dependent implicit text encoding can corrupt or fail on non-ASCII data; PySnooper:3 shows file-output path handling is a known fragile area, but neither directly establishes the target stderr encoding behavior.",
+      "confidence": 0.55
+    },
+    "applicability_decisions": [
+      {
+        "history_id": "cookiecutter:1",
+        "decision": "WEAK",
+        "reason": "The historical unit concerns locale-dependent implicit text decoding when reading a JSON context file, not writing trace output to stderr. The shared theme is non-ASCII data under a non-UTF-8 default encoding, which is relevant to PySnooper's default stderr write path, but the context, preconditions, and failure mechanism differ. Target-side evidence supports probing encoding behavior, but the historical unit alone does not establish the target bug."
+      },
+      {
+        "history_id": "PySnooper:3",
+        "decision": "WEAK",
+        "reason": "The historical unit is in the same project and concerns file-output path handling, which is adjacent to PySnooper's output-writing code. However, its failure mechanism is a path variable mismatch, not an encoding failure, and the target context already contains ordinary tests for file output. It suggests output handling is fragile but does not directly support the non-ASCII stderr hypothesis."
+      }
+    ],
+    "hypothesis_frozen": true,
+    "generation_visible_files": [
+      "data/experiment2_target_context/PySnooper-1.txt",
+      "data/experiment2_historical_structured.json"
+    ],
+    "source_artifact": "artifacts/experiment2_llm_run1/PySnooper_1/C_attempt_2.json",
+    "hypothesis_sha256": "c19fcca1ca6f1ac998539ccd9c008059015bdca92b9276801c639484bdcfe692"
+  },
+  {
+    "experiment": "experiment3",
+    "mode": "conditional",
+    "attempt": 3,
+    "hypothesis_id": "conditional-h03",
+    "status": "TEST",
+    "hypothesis": "PySnooper's get_source_from_frame decodes source files using the platform default encoding when no PEP-263 coding declaration is present, so a UTF-8 source file containing non-ASCII characters will be mis-decoded (mojibake) under a non-UTF-8 locale such as LC_ALL=C, causing the traced source line to differ from the actual source text.",
+    "trigger": "Create a temporary module file encoded as UTF-8 whose function body contains a non-ASCII string literal (e.g. 'héllo') with no coding declaration, import it, and run a @pysnooper.snoop() decorated function under LC_ALL=C so the default locale encoding is ASCII.",
+    "potential_failure": "get_source_from_frame opens the file in binary mode and decodes bytes with encoding='ascii' (the fallback when no coding comment is found), so the non-ASCII bytes are replaced with U+FFFD; the emitted trace line shows 'h\\ufffdllo' instead of 'héllo', and the source line no longer matches the real source.",
+    "oracle": {
+      "expected_behavior": "The trace output for the line containing the non-ASCII literal must contain the exact Unicode text 'héllo' as written in the UTF-8 source file, independent of the process locale.",
+      "target_evidence": "pysnooper/tracer.py get_source_from_frame: when source is read as bytes it sets encoding='ascii' and only overrides it if a PEP-263 coding comment is found in the first two lines; otherwise it decodes with pycompat.text_type(sline, encoding, 'replace'). The README documents that snoop output shows the actual source line, and ordinary tests (e.g. test_string_io, test_file_output) assert exact source-line text in the trace, establishing that source lines must faithfully reflect the file.",
+      "historical_evidence": "cookiecutter:1 shows the same class of locale-dependent implicit text decoding bug (implicit open using platform default encoding) fixed by making the encoding explicit UTF-8; PySnooper:3 is a weaker file-output path bug that only partially transfers.",
+      "confidence": 0.72
+    },
+    "applicability_decisions": [
+      {
+        "history_id": "cookiecutter:1",
+        "decision": "SUPPORTED",
+        "reason": "Same failure mechanism class: implicit/locale-dependent text decoding of a UTF-8 file. Target's get_source_from_frame explicitly falls back to encoding='ascii' when no PEP-263 coding comment is present, which is exactly the locale-independent-decoding invariant violated. Target-side oracle is strong: ordinary tests assert exact source-line text in trace output, so a non-ASCII source line must appear verbatim."
+      },
+      {
+        "history_id": "PySnooper:3",
+        "decision": "WEAK",
+        "reason": "Same repository and same file-output/tracing area, but the historical mechanism is a path-variable mismatch in the file writer, not an encoding bug. It suggests probing file output but does not establish the encoding invariant; transfer_to_target is low (0.45). Not used as the primary oracle."
+      }
+    ],
+    "hypothesis_frozen": true,
+    "generation_visible_files": [
+      "data/experiment2_target_context/PySnooper-1.txt",
+      "data/experiment2_historical_structured.json"
+    ],
+    "source_artifact": "artifacts/experiment2_llm_run1/PySnooper_1/C_attempt_4.json",
+    "hypothesis_sha256": "768b90f0a584e3ab99782b4766e6a8e28474486ecb76eeab883184fac7f32c1c"
+  },
+  {
+    "experiment": "experiment3",
+    "mode": "conditional",
+    "attempt": 4,
+    "hypothesis_id": "conditional-h04",
+    "status": "TEST",
+    "hypothesis": "PySnooper's file-output path handling writes trace output to the requested path and preserves the decorated function's return value, but the FileWriter.write method opens the path with the platform-default text encoding, so on a non-UTF-8 locale (LC_ALL=C, PYTHONUTF8=0) writing a trace containing a non-ASCII variable repr raises UnicodeEncodeError instead of producing the trace.",
+    "trigger": "Decorate a function with @pysnooper.snoop(path) where path is a temporary file, the function has a local variable whose repr contains a non-ASCII character (e.g. 'é'), and run under LC_ALL=C with PYTHONUTF8=0 so the default text encoding is ASCII.",
+    "potential_failure": "FileWriter.write opens the output file with open(self.path, 'w'/'a') without an explicit encoding, so the default locale encoding (ASCII under LC_ALL=C) is used; writing the non-ASCII trace line raises UnicodeEncodeError, and the trace is not written to the requested path.",
+    "oracle": {
+      "expected_behavior": "After running the decorated function, the requested output path exists and contains the trace, including the non-ASCII variable value, and the decorated function returns its correct result.",
+      "target_evidence": "pysnooper/tracer.py FileWriter.write uses open(self.path, 'w' if self.overwrite else 'a') with no encoding argument; get_write_function routes path outputs to FileWriter; tests/test_pysnooper.py test_file_output and test_no_overwrite_by_default assert trace content at the requested path; README documents @pysnooper.snoop('/my/log/file.log').",
+      "historical_evidence": "PySnooper:3 historical unit shows the file-output path branch is a real bug surface (path/output variable mismatch), and cookiecutter:1 shows locale-dependent implicit text encoding is a real failure mechanism; combined they suggest probing path-output encoding behavior.",
+      "confidence": 0.6
+    },
+    "applicability_decisions": [
+      {
+        "history_id": "cookiecutter:1",
+        "decision": "WEAK",
+        "reason": "The mechanism (locale-dependent implicit text encoding) transfers to PySnooper's FileWriter.write, which also calls open() without an explicit encoding. However, the historical context is JSON context loading, not trace file writing, so the target-side oracle must be established from PySnooper source and ordinary tests rather than from the historical unit itself."
+      },
+      {
+        "history_id": "PySnooper:3",
+        "decision": "SUPPORTED",
+        "reason": "Same target, same public file-output path branch. The historical failure mechanism (wrong path variable) differs from the encoding mechanism, but the unit establishes that the path-output branch is a real bug surface and that the ordinary tests assert trace content at the requested path, giving a target-side oracle for file-output behavior."
+      }
+    ],
+    "hypothesis_frozen": true,
+    "generation_visible_files": [
+      "data/experiment2_target_context/PySnooper-1.txt",
+      "data/experiment2_historical_structured.json"
+    ],
+    "source_artifact": "artifacts/experiment2_llm_run1/PySnooper_1/C_attempt_5.json",
+    "hypothesis_sha256": "a9ae48b9d893c88b17406f0c9ec663488f2c39df8465b94da1c40f0ad327fa14"
+  },
+  {
+    "experiment": "experiment3",
+    "mode": "conditional",
+    "attempt": 5,
+    "hypothesis_id": "conditional-h05",
+    "status": "TEST",
+    "hypothesis": "PySnooper's get_source_from_frame decodes source files using the locale-dependent default encoding when no PEP-263 coding declaration is present, so a UTF-8 source file containing non-ASCII characters is mis-decoded (mojibake) under a non-UTF-8 locale, corrupting the traced source line.",
+    "trigger": "Create a temporary module file encoded as UTF-8 whose function body contains a non-ASCII string literal (e.g. 'héllo') and no coding declaration; import it, decorate the function with pysnooper.snoop(string_io), and run it under a non-UTF-8 locale (LC_ALL=C).",
+    "potential_failure": "get_source_from_frame reads the file as bytes and decodes with encoding='ascii' (or the locale default) instead of UTF-8, so the traced source line shows replacement characters or mojibake rather than the original non-ASCII text.",
+    "oracle": {
+      "expected_behavior": "The trace output must contain the exact non-ASCII source line text (e.g. the literal 'héllo') as written in the UTF-8 file, independent of the process locale.",
+      "target_evidence": "pysnooper/tracer.py get_source_from_frame: when source is bytes it sets encoding='ascii' and only overrides it if a PEP-263 coding declaration is found in the first two lines; otherwise it decodes with that encoding. The README and tests (e.g. test_unavailable_source, test_string_io) show source lines are echoed verbatim into trace output, so a mis-decoded line is a functional defect.",
+      "historical_evidence": "cookiecutter:1 shows the same class of locale-dependent implicit text decoding bug (UTF-8 data read with platform default encoding); PySnooper:3 is only weakly related (file-output path variable mismatch).",
+      "confidence": 0.6
+    },
+    "applicability_decisions": [
+      {
+        "history_id": "cookiecutter:1",
+        "decision": "SUPPORTED",
+        "reason": "Same failure mechanism class: implicit locale-dependent text decoding of UTF-8 data. PySnooper's get_source_from_frame decodes bytes with encoding='ascii' unless a PEP-263 declaration exists, which is exactly the locale/default-encoding hazard described. Target-side source provides a concrete oracle (trace output must echo the source line verbatim), and the trigger (UTF-8 file with non-ASCII content, no coding declaration, non-UTF-8 locale) is feasible in the given environment."
+      },
+      {
+        "history_id": "PySnooper:3",
+        "decision": "WEAK",
+        "reason": "It concerns file-output path handling, not source decoding. The invariant (trace written to requested path) is testable but the mechanism does not transfer to the encoding defect, so it only weakly informs the probe and is not used as the primary oracle."
+      }
+    ],
+    "hypothesis_frozen": true,
+    "generation_visible_files": [
+      "data/experiment2_target_context/PySnooper-1.txt",
+      "data/experiment2_historical_structured.json"
+    ],
+    "source_artifact": "artifacts/experiment2_llm/PySnooper_1/C_attempt_4.json",
+    "hypothesis_sha256": "080bc02016cd546877b681eb6e3976c601936656104c3a4d7860f5d665e770c1"
+  }
+]

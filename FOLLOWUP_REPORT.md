@@ -24,3 +24,11 @@ The honest conclusion is: in this retrospectively selected transfer-feasibility 
 Reviewer artifacts: `results/evaluator_audit.md`, `results/experiment2_replication2.csv`, `results/experiment2_replication2_summary.md`, `results/experiment2_cumulative_summary.md`, and `results/failure_analysis_final.md`.
 
 Limitations: one target, 25 total attempts per condition, retrospective history selection, model output/JSON failures, no statistical inference, and no recall denominator.
+
+## Experiment 3 trigger-construction follow-up
+
+The selected intervention is a generic structured trigger planner: freeze a structured-history hypothesis, generate four meaningfully distinct trigger plans, instantiate one executable test per plan, and reuse the existing evaluator. This was chosen because Experiment 2 already localized the main bottleneck to `TRIGGER_TOO_WEAK`, `TRIGGER_WRONG_SHAPE`, P2P, and F2F outcomes. The research comparison and leakage boundary are recorded in `results/trigger_research.md` and `results/trigger_intervention_design.md`.
+
+The implementation and contract tests were completed. The real harness still verifies buggy/fixed separation (`buggy=1`, `fixed=0`). However, the required `DEEPSEEK_API_KEY` was absent from the environment and empty in `.env`, so no new model generation could be run without fabricating evidence or changing models. The conditional C1 offline replay executed five previously stored mechanism-matched hypotheses/tests unchanged: 2 verified `EXCEPTION_F2P`, 1 `F2F`, and 2 `P2P`. C2 trigger planning and natural 3A remain blocked; therefore no claim about mechanism-to-F2P improvement, diversity yield, or budget-normalized benefit is supported.
+
+The complete status is in `results/experiment3_summary.md`, `results/experiment3_budget_analysis.md`, `results/experiment3_failure_analysis.md`, and `results/experiment3_reviewer_report.md`. The single next step justified by the evidence is to provide the required credential and rerun the predeclared commands; no evaluator or prompt changes are needed.

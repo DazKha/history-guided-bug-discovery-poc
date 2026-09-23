@@ -1,6 +1,6 @@
 {
-  "python": "3.13.5 (main, Jun 11 2025, 15:36:57) [Clang 17.0.0 (clang-1700.0.13.3)]",
-  "platform": "macOS-15.5-arm64-arm-64bit-Mach-O",
+  "python": "3.9.18 | packaged by conda-forge | (main, Dec 23 2023, 16:35:41) \n[Clang 16.0.6 ]",
+  "platform": "macOS-15.5-arm64-arm-64bit",
   "git": "git version 2.48.1",
   "docker": "Docker version 27.0.3, build 7d4bcd8",
   "bugsinpy_revision": "11c5f1eea954a42132cfd06bf257766a7963e0fd"
