@@ -1,0 +1,54 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_____________________ test_utf8_source_line_under_c_locale _____________________
+
+tmp_path = PosixPath('/private/var/folders/1j/l08d1p2s6ls9235bnggg20rc0000gn/T/pytest-of-minhkha/pytest-477/test_utf8_source_line_under_c_0')
+locale_env = {'BROWSER_USE_AVAILABLE_BACKENDS': 'chrome,iab', 'BUNDLED_DEBUGPY_PATH': '/Users/minhkha/.cursor/extensions/ms-python.debugpy-2026.6.0-darwin-arm64/bundled/libs/debugpy', 'CLAUDE_CODE_SSE_PORT': '13827', 'CODEX_CI': '1', ...}
+
+    def test_utf8_source_line_under_c_locale(tmp_path, locale_env):
+        module_name = 'locale_mod_file'
+        module_path = tmp_path / (module_name + '.py')
+        log_path = tmp_path / 'snoop.log'
+
+        content = (
+            'import pysnooper\n'
+            '@pysnooper.snoop({log!r})\n'
+            'def f():\n'
+            '    s = "h\u00e9llo"\n'
+            '    return s\n'
+        ).format(log=str(log_path))
+
+        module_path.write_bytes(content.encode('utf-8'))
+
+        driver = textwrap.dedent(
+            '''
+            import sys
+            sys.path.insert(0, {tmp!r})
+            import {mod}
+            result = {mod}.f()
+            assert result == "h\u00e9llo", repr(result)
+            '''
+        ).format(tmp=str(tmp_path), mod=module_name)
+
+        proc = subprocess.run(
+            [sys.executable, '-c', driver],
+            env=locale_env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
+        stdout = proc.stdout.decode('utf-8', 'replace')
+        stderr = proc.stderr.decode('utf-8', 'replace')
+>       assert proc.returncode == 0, (stdout, stderr)
+E       AssertionError: ('', 'Traceback (most recent call last):
+E           File "<string>", line 5, in <module>
+E           File "/Users/minhkha/SidePrj/katal...s)
+E         UnicodeEncodeError: \'ascii\' codec can\'t encode character \'\\xe9\' in position 41: ordinal not in range(128)
+E         ')
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/env39/bin/pytho...s)\nUnicodeEncodeError: \'ascii\' codec can\'t encode character \'\\xe9\' in position 41: ordinal not in range(128)\n').returncode
+
+_generated_eval_conditional-h05-080bc02016-plan-2.py:54: AssertionError
+=========================== short test summary info ============================
+FAILED _generated_eval_conditional-h05-080bc02016-plan-2.py::test_utf8_source_line_under_c_locale
+1 failed in 0.05s

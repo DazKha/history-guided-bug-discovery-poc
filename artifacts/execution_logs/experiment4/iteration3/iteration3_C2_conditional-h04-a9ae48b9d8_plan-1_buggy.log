@@ -1,0 +1,45 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+______________________ test_file_output_non_ascii_locale _______________________
+
+tmp_path = PosixPath('/private/var/folders/1j/l08d1p2s6ls9235bnggg20rc0000gn/T/pytest-of-minhkha/pytest-471/test_file_output_non_ascii_loc0')
+
+    def test_file_output_non_ascii_locale(tmp_path):
+        proc, out_path = _run_script(tmp_path)
+
+        stdout = proc.stdout.decode('utf-8', 'replace')
+        stderr = proc.stderr.decode('utf-8', 'replace')
+
+>       assert proc.returncode == 0, (
+            'subprocess failed with returncode {!r}\nstdout:\n{}\nstderr:\n{}'.format(
+                proc.returncode, stdout, stderr
+            )
+        )
+E       AssertionError: subprocess failed with returncode 1
+E         stdout:
+E
+E         stderr:
+E         Traceback (most recent call last):
+E           File "/private/var/folders/1j/l08d1p2s6ls9235bnggg20rc0000gn/T/pytest-of-minhkha/pytest-471/test_file_output_non_ascii_loc0/snoop_script.py", line 15, in <module>
+E             result = my_function()
+E           File "/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/pysnooper/tracer.py", line 215, in simple_wrapper
+E             return function(*args, **kwargs)
+E           File "/private/var/folders/1j/l08d1p2s6ls9235bnggg20rc0000gn/T/pytest-of-minhkha/pytest-471/test_file_output_non_ascii_loc0/snoop_script.py", line 12, in my_function
+E             value = 'caf\xe9'
+E           File "/private/var/folders/1j/l08d1p2s6ls9235bnggg20rc0000gn/T/pytest-of-minhkha/pytest-471/test_file_output_non_ascii_loc0/snoop_script.py", line 12, in my_function
+E             value = 'caf\xe9'
+E           File "/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/pysnooper/tracer.py", line 375, in trace
+E             self.write(u'{indent}{now_string} {thread_info}{event:9} '
+E           File "/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/pysnooper/tracer.py", line 242, in write
+E             self._write(s)
+E           File "/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/pysnooper/tracer.py", line 134, in write
+E             output_file.write(s)
+E         UnicodeEncodeError: 'ascii' codec can't encode character '\xe9' in position 47: ordinal not in range(128)
+E
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/env39/bin/pytho...s)\nUnicodeEncodeError: \'ascii\' codec can\'t encode character \'\\xe9\' in position 47: ordinal not in range(128)\n').returncode
+
+_generated_eval_conditional-h04-a9ae48b9d8-plan-1.py:69: AssertionError
+=========================== short test summary info ============================
+FAILED _generated_eval_conditional-h04-a9ae48b9d8-plan-1.py::test_file_output_non_ascii_locale
+1 failed in 0.05s

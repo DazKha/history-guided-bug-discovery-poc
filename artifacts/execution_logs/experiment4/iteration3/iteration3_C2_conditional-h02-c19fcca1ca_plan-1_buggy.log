@@ -1,0 +1,51 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+__________________ test_non_ascii_argument_with_ascii_stderr ___________________
+
+    def test_non_ascii_argument_with_ascii_stderr():
+        env = dict(os.environ)
+        env['LC_ALL'] = 'C'
+        env['PYTHONUTF8'] = '0'
+        env['PYTHONCOERCECLOCALE'] = '0'
+
+        completed = subprocess.run(
+            [sys.executable, '-c', SCRIPT],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=env,
+            timeout=30.0,
+        )
+
+        stdout = completed.stdout.decode('utf-8', 'replace')
+        stderr = completed.stderr.decode('utf-8', 'replace')
+
+        lines = {}
+        for line in stdout.splitlines():
+            if line.startswith('RESULT:'):
+                lines['result'] = line[len('RESULT:'):]
+            elif line.startswith('ERROR:'):
+                lines['error'] = line[len('ERROR:'):]
+
+        assert 'result' in lines, (
+            'subprocess did not report a result; stdout=%r stderr=%r'
+            % (stdout, stderr)
+        )
+        assert 'error' in lines, (
+            'subprocess did not report an error state; stdout=%r stderr=%r'
+            % (stdout, stderr)
+        )
+
+>       assert lines['error'] == 'None', (
+            'decorated call raised an exception: %s (stderr=%r)'
+            % (lines['error'], stderr)
+        )
+E       AssertionError: decorated call raised an exception: "UnicodeEncodeError: 'ascii' codec can't encode character '\\xe9' in position 28: ordinal not in range(128)" (stderr='')
+E       assert '"UnicodeEnco...n range(128)"' == 'None'
+E
+E         - None
+E         + "UnicodeEncodeError: 'ascii' codec can't encode character '\\xe9' in position 28: ordinal not in range(128)"
+
+_generated_eval_conditional-h02-c19fcca1ca-plan-1.py:86: AssertionError
+=========================== short test summary info ============================
+FAILED _generated_eval_conditional-h02-c19fcca1ca-plan-1.py::test_non_ascii_argument_with_ascii_stderr
+1 failed in 0.04s

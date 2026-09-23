@@ -1,0 +1,85 @@
+{
+  "experiment": "experiment4",
+  "iteration": 2,
+  "mode": "conditional",
+  "arm": "C2",
+  "hypothesis_id": "conditional-h02-c19fcca1ca",
+  "hypothesis": "When a decorated function is called with a non-ASCII string argument, PySnooper's default stderr output path can raise UnicodeEncodeError because the default write function writes directly to sys.stderr without encoding fallback, causing the decorated function call to fail instead of returning its normal result.",
+  "trigger": "Decorate a function that accepts a non-ASCII string argument with @pysnooper.snoop() using default output, then call it with a non-ASCII string such as 'caf\\u00e9' under a non-UTF-8 stderr encoding.",
+  "oracle": {
+    "expected_behavior": "The decorated function should return its normal result even when its arguments contain non-ASCII characters, and PySnooper should not crash while writing trace output.",
+    "target_evidence": "pysnooper/tracer.py get_write_function defines the default output=None branch as writing directly to sys.stderr and only catches UnicodeEncodeError in the Python 2 fallback path; pysnooper/utils.py provides shitcode for non-ASCII fallback; README documents default stderr output and non-ASCII variable values are part of ordinary tracing.",
+    "historical_evidence": "cookiecutter:1 shows locale-dependent implicit text encoding can corrupt or fail on non-ASCII data; PySnooper:3 shows file-output path handling is a known fragile area, but neither directly establishes the target stderr encoding behavior.",
+    "confidence": 0.55
+  },
+  "hypothesis_sha256": "c19fcca1ca6f1ac998539ccd9c008059015bdca92b9276801c639484bdcfe692",
+  "hypothesis_frozen": true,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "trigger_id": "plan-3",
+  "trigger_type": "PLAN",
+  "trigger_plan": {
+    "hypothesis_id": "conditional-h02-c19fcca1ca",
+    "preconditions": [
+      "Python 3.9.18 runtime with LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0 so sys.stderr uses ASCII encoding.",
+      "pysnooper is importable from the buggy checkout.",
+      "A decorated function accepts a non-ASCII string argument and returns a deterministic value."
+    ],
+    "initial_state": {
+      "stderr_encoding": "ascii",
+      "decorated_function_defined": false,
+      "output_mode": "default stderr",
+      "call_sequence": "first ASCII call, then non-ASCII call"
+    },
+    "actions": [
+      {
+        "type": "set_environment",
+        "description": "Set LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0 and confirm sys.stderr.encoding is ascii."
+      },
+      {
+        "type": "initialize_state",
+        "description": "Import pysnooper and define a decorated function that takes one string argument and returns its length."
+      },
+      {
+        "type": "create_input",
+        "description": "Create the ASCII string 'plain' and the non-ASCII string 'caf\\u00e9'."
+      },
+      {
+        "type": "invoke",
+        "description": "Call the decorated function first with 'plain' to establish normal tracing, then call it with 'caf\\u00e9' and capture any exception."
+      },
+      {
+        "type": "observe",
+        "description": "After the second call, read the captured return value and captured exception from the second call."
+      }
+    ],
+    "expected_invariant": "The decorated function returns the normal result (4) for the non-ASCII call and no UnicodeEncodeError escapes the second call.",
+    "observable": {
+      "source": "pysnooper.tracer.Tracer default stderr write path via @pysnooper.snoop()",
+      "measurement_point": "immediately after the second decorated function call returns or raises",
+      "extraction_method": "capture the second call result and exception in a try/except around the invoke action"
+    },
+    "assertion": {
+      "predicate": "second_result == 4 and second_exception is None",
+      "failure_condition": "The second call raises UnicodeEncodeError or returns a value other than 4.",
+      "rationale": "The invariant is that the default stderr output path must not fail on non-ASCII variable representations even after a prior successful ASCII trace."
+    },
+    "setup": [
+      "Run under LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0.",
+      "Import pysnooper from the buggy checkout.",
+      "Define the decorated function in a module file so source is available."
+    ],
+    "timeout_seconds": 30.0
+  },
+  "repair_attempts": 0,
+  "status": "MODEL_ERROR",
+  "error": "test output is empty or contains forbidden construction",
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 13,
+    "usage": {}
+  },
+  "wall_clock_seconds": 3.138
+}

@@ -1,0 +1,54 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+___________ test_file_output_preserves_non_ascii_under_ascii_locale ____________
+
+tmp_path = PosixPath('/private/var/folders/1j/l08d1p2s6ls9235bnggg20rc0000gn/T/pytest-of-minhkha/pytest-461/test_file_output_preserves_non0')
+
+    def test_file_output_preserves_non_ascii_under_ascii_locale(tmp_path):
+        target = tmp_path / "trace.log"
+        target.write_text("lala", encoding="ascii")
+
+        script = textwrap.dedent(
+            """
+            import sys
+            import pysnooper
+
+            path = sys.argv[1]
+
+            @pysnooper.snoop(path, overwrite=True)
+            def my_function():
+                value = '\u65e5\u672c\u8a9e'
+                return value
+
+            result = my_function()
+            assert result == '\u65e5\u672c\u8a9e'
+            """
+        )
+
+        env = dict(os.environ)
+        env["LC_ALL"] = "C"
+        env["PYTHONUTF8"] = "0"
+        env["PYTHONCOERCECLOCALE"] = "0"
+
+        completed = subprocess.run(
+            [sys.executable, "-c", script, str(target)],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=env,
+        )
+
+        stdout = completed.stdout.decode("utf-8", "replace")
+        stderr = completed.stderr.decode("utf-8", "replace")
+
+>       assert completed.returncode == 0, (
+            "decorated call failed under non-UTF-8 locale; "
+            "stdout=%r stderr=%r" % (stdout, stderr)
+        )
+E       AssertionError: decorated call failed under non-UTF-8 locale; stdout='' stderr='Traceback (most recent call last):\n  File "<string>", line 12, in <module>\n  File "/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/pysnooper/tracer.py", line 215, in simple_wrapper\n    return function(*args, **kwargs)\n  File "<string>", line 10, in my_function\n  File "<string>", line 10, in my_function\n  File "/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/pysnooper/tracer.py", line 317, in trace\n    self.write(\'{indent}{newish_string}{name} = {value_repr}\'.format(\n  File "/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/pysnooper/tracer.py", line 242, in write\n    self._write(s)\n  File "/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/pysnooper/tracer.py", line 134, in write\n    output_file.write(s)\nUnicodeEncodeError: \'ascii\' codec can\'t encode characters in position 25-27: ordinal not in range(128)\n'
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/env39/bin/pytho...write(s)\nUnicodeEncodeError: \'ascii\' codec can\'t encode characters in position 25-27: ordinal not in range(128)\n').returncode
+
+_generated_eval_conditional-h01-e0c8bd3ab2-plan-3.py:43: AssertionError
+=========================== short test summary info ============================
+FAILED _generated_eval_conditional-h01-e0c8bd3ab2-plan-3.py::test_file_output_preserves_non_ascii_under_ascii_locale
+1 failed in 0.05s

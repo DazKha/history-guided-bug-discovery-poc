@@ -1,0 +1,40 @@
+{
+  "experiment": "experiment4",
+  "status": "complete",
+  "classification": "CASE_B_MIXED",
+  "iterations_completed": 3,
+  "frozen_hypotheses": 5,
+  "final_c2": {
+    "valid_plan_hypotheses": 5,
+    "planner_attempts": 6,
+    "generated_tests": 15,
+    "executable_tests": 13,
+    "verified_f2p": 5,
+    "hypotheses_with_f2p": 4,
+    "f2p_per_generated_test": 0.3333333333,
+    "f2p_per_executable_test": 0.3846153846,
+    "executions_per_f2p": 2.6,
+    "llm_calls": 21,
+    "llm_calls_per_f2p": 4.2,
+    "tokens": 326930,
+    "tokens_per_f2p": 65386
+  },
+  "budget_matched_c1": {
+    "generated_tests": 15,
+    "executable_tests": 13,
+    "verified_f2p": 6,
+    "hypotheses_with_f2p": 3,
+    "f2p_per_generated_test": 0.4,
+    "f2p_per_executable_test": 0.4615384615,
+    "executions_per_f2p": 2.1666666667,
+    "llm_calls": 15,
+    "llm_calls_per_f2p": 2.5,
+    "tokens": 15801,
+    "tokens_per_f2p": 2633.5
+  },
+  "harness_check": {"buggy": 1, "fixed": 0},
+  "test_suite": "24 passed",
+  "invalidated_experiment4_runs": [],
+  "artifact_csv": "results/experiment4_results.csv",
+  "latest_commit_before_final_commit": "d74980873bfd7221de0288467092f9170aee38cf"
+}

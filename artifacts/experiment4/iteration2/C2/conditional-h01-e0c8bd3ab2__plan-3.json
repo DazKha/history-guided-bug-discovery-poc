@@ -1,0 +1,94 @@
+{
+  "experiment": "experiment4",
+  "iteration": 2,
+  "mode": "conditional",
+  "arm": "C2",
+  "hypothesis_id": "conditional-h01-e0c8bd3ab2",
+  "hypothesis": "When PySnooper's file-output path is used with a non-ASCII trace string, FileWriter.write opens the output file without an explicit encoding, so on a non-UTF-8 locale the write can fail or corrupt the trace instead of preserving the Unicode text.",
+  "trigger": "Create a temporary output path, decorate a function that assigns a non-ASCII string local variable with @pysnooper.snoop(path), run the function under a non-UTF-8 default text encoding, then read the file back as UTF-8 and assert the non-ASCII value appears.",
+  "oracle": {
+    "expected_behavior": "Tracing to a requested filesystem path must write the trace text to that path and preserve non-ASCII variable representations, independent of the process locale.",
+    "target_evidence": "pysnooper/tracer.py FileWriter.write opens the path with open(self.path, 'w' if self.overwrite else 'a') and no encoding argument; get_write_function routes string/PathLike output to FileWriter; README documents @pysnooper.snoop('/my/log/file.log') and tests/test_pysnooper.py test_file_output exercises path output.",
+    "historical_evidence": "cookiecutter:1 shows locale-dependent implicit text I/O encoding for non-ASCII data; PySnooper:3 shows path-output file writing is a public, tested behavior but does not establish the encoding mechanism.",
+    "confidence": 0.72
+  },
+  "hypothesis_sha256": "e0c8bd3ab2481f840b4ee7e6902b44ec0bee11d05fbea5261ae5ad5af3f1e7c2",
+  "hypothesis_frozen": true,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "trigger_id": "plan-3",
+  "trigger_type": "PLAN",
+  "trigger_plan": {
+    "hypothesis_id": "conditional-h01-e0c8bd3ab2",
+    "preconditions": [
+      "Python 3.9.18 with LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0 so the default text encoding is ASCII",
+      "pysnooper is importable from the buggy checkout",
+      "A writable temporary directory exists"
+    ],
+    "initial_state": {
+      "output_path": "A pathlib.Path object pointing to a fresh non-existent file inside a temporary directory",
+      "default_encoding": "ascii (verified via locale.getpreferredencoding(False))"
+    },
+    "actions": [
+      {
+        "type": "set_environment",
+        "description": "Set LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0 in the process environment before importing pysnooper."
+      },
+      {
+        "type": "create_input",
+        "description": "Define a function decorated with @pysnooper.snoop(path) where path is a pathlib.Path, and whose body assigns a local variable to a non-ASCII string such as '日本語テスト'."
+      },
+      {
+        "type": "invoke",
+        "description": "Call the decorated function so the tracer routes the PathLike output through FileWriter and writes trace lines containing the non-ASCII repr."
+      },
+      {
+        "type": "observe",
+        "description": "After the call returns, read the output file bytes and decode as UTF-8, then check for the non-ASCII substring."
+      }
+    ],
+    "expected_invariant": "When the output is a pathlib.Path, the trace file at that path contains the exact non-ASCII variable representation, decodable as UTF-8, regardless of the process locale.",
+    "observable": {
+      "source": "pysnooper.tracer.get_write_function PathLike branch and FileWriter.write via the public @pysnooper.snoop(path) decorator",
+      "measurement_point": "After the decorated function call completes and the trace file has been closed",
+      "extraction_method": "Read the output file bytes and decode as UTF-8; check whether the non-ASCII value string is present"
+    },
+    "assertion": {
+      "predicate": "The UTF-8 decoded trace file contains the exact non-ASCII string assigned to the local variable when the output argument is a pathlib.Path.",
+      "failure_condition": "The non-ASCII string is absent, replaced by '?', escaped, or the file cannot be decoded as UTF-8.",
+      "rationale": "The PathLike branch is a distinct public interface path that also reaches FileWriter.write without an encoding argument; checking the decoded file content verifies the same locale-dependent Unicode preservation invariant through that path."
+    },
+    "setup": [
+      "Create a temporary directory and choose a non-existent log file path inside it as a pathlib.Path.",
+      "Ensure the environment variables are set before importing pysnooper."
+    ],
+    "timeout_seconds": 30.0
+  },
+  "repair_attempts": 0,
+  "status": "TEST",
+  "test_code": "import os\nimport sys\nimport locale\nimport pathlib\nimport tempfile\n\nimport pytest\n\n\nNON_ASCII_VALUE = '\\u65e5\\u672c\\u8a9e\\u30c6\\u30b9\\u30c8'\n\n\ndef _run_child(output_path):\n    import pysnooper\n\n    @pysnooper.snoop(pathlib.Path(output_path))\n    def my_function():\n        local_value = NON_ASCII_VALUE\n        return local_value\n\n    return my_function()\n\n\ndef test_path_output_preserves_non_ascii_under_ascii_locale(tmp_path):\n    output_path = tmp_path / 'trace.log'\n\n    env = dict(os.environ)\n    env['LC_ALL'] = 'C'\n    env['LANG'] = 'C'\n    env['PYTHONUTF8'] = '0'\n    env['PYTHONCOERCECLOCALE'] = '0'\n\n    import subprocess\n\n    child_code = (\n        'import sys\\n'\n        'sys.path.insert(0, {!r})\\n'\n        'import locale\\n'\n        'assert locale.getpreferredencoding(False).lower() in (\"ascii\", \"us-ascii\"), locale.getpreferredencoding(False)\\n'\n        'import pathlib\\n'\n        'import pysnooper\\n'\n        'NON_ASCII_VALUE = {!r}\\n'\n        '@pysnooper.snoop(pathlib.Path({!r}))\\n'\n        'def my_function():\\n'\n        '    local_value = NON_ASCII_VALUE\\n'\n        '    return local_value\\n'\n        'my_function()\\n'\n    ).format(\n        os.path.dirname(os.path.dirname(os.path.abspath(pysnooper.__file__))),\n        NON_ASCII_VALUE,\n        str(output_path),\n    )\n\n    completed = subprocess.run(\n        [sys.executable, '-c', child_code],\n        env=env,\n        stdout=subprocess.PIPE,\n        stderr=subprocess.PIPE,\n    )\n\n    assert completed.returncode == 0, (\n        'child process failed with return code {}; stderr={!r}'.format(\n            completed.returncode, completed.stderr\n        )\n    )\n\n    raw_bytes = output_path.read_bytes()\n    decoded = raw_bytes.decode('utf-8')\n\n    observation = NON_ASCII_VALUE in decoded\n\n    assert observation, (\n        'expected non-ASCII value {!r} to appear in UTF-8 decoded trace file; '\n        'decoded content was {!r}'.format(NON_ASCII_VALUE, decoded)\n    )\n",
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 9,
+    "retry_index": 0,
+    "latency_seconds": 3.168,
+    "usage": {
+      "prompt_tokens": 16173,
+      "completion_tokens": 661,
+      "total_tokens": 16834,
+      "prompt_tokens_details": {
+        "cached_tokens": 640
+      },
+      "prompt_cache_hit_tokens": 640,
+      "prompt_cache_miss_tokens": 15533
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_id": "conditional-h01-e0c8bd3ab2-plan-3",
+  "test_path": "generated_tests/experiment4/iteration2/C2/conditional-h01-e0c8bd3ab2-plan-3.py",
+  "test_sha256": "e35a82e8fafc114c21e7dca52304fbedf8a66e3d53fa598357221f60793b9633",
+  "wall_clock_seconds": 3.174
+}

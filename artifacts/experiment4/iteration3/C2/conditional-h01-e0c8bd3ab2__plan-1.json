@@ -1,0 +1,82 @@
+{
+  "experiment": "experiment4",
+  "iteration": 3,
+  "mode": "conditional",
+  "arm": "C2",
+  "hypothesis_id": "conditional-h01-e0c8bd3ab2",
+  "hypothesis": "When PySnooper's file-output path is used with a non-ASCII trace string, FileWriter.write opens the output file without an explicit encoding, so on a non-UTF-8 locale the write can fail or corrupt the trace instead of preserving the Unicode text.",
+  "trigger": "Create a temporary output path, decorate a function that assigns a non-ASCII string local variable with @pysnooper.snoop(path), run the function under a non-UTF-8 default text encoding, then read the file back as UTF-8 and assert the non-ASCII value appears.",
+  "oracle": {
+    "expected_behavior": "Tracing to a requested filesystem path must write the trace text to that path and preserve non-ASCII variable representations, independent of the process locale.",
+    "target_evidence": "pysnooper/tracer.py FileWriter.write opens the path with open(self.path, 'w' if self.overwrite else 'a') and no encoding argument; get_write_function routes string/PathLike output to FileWriter; README documents @pysnooper.snoop('/my/log/file.log') and tests/test_pysnooper.py test_file_output exercises path output.",
+    "historical_evidence": "cookiecutter:1 shows locale-dependent implicit text I/O encoding for non-ASCII data; PySnooper:3 shows path-output file writing is a public, tested behavior but does not establish the encoding mechanism.",
+    "confidence": 0.72
+  },
+  "hypothesis_sha256": "e0c8bd3ab2481f840b4ee7e6902b44ec0bee11d05fbea5261ae5ad5af3f1e7c2",
+  "hypothesis_frozen": true,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "trigger_id": "plan-1",
+  "trigger_type": "PLAN",
+  "trigger_plan": {
+    "hypothesis_id": "conditional-h01-e0c8bd3ab2",
+    "preconditions": [
+      "Python 3.9.18 runtime with LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0 so the default text encoding is ASCII.",
+      "pysnooper is importable from the buggy checkout.",
+      "A writable temporary directory exists for the output path."
+    ],
+    "initial_state": {
+      "named_state": "no trace file exists yet at the chosen temporary path; process default encoding is ASCII"
+    },
+    "actions": [
+      {
+        "type": "create_input",
+        "description": "Define a function decorated with @pysnooper.snoop(path) where path is a temporary file path, and the function body assigns a local variable to the non-ASCII string 'café'."
+      },
+      {
+        "type": "set_environment",
+        "description": "Ensure LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0 are set for the process before importing pysnooper."
+      },
+      {
+        "type": "initialize_state",
+        "description": "Import pysnooper and confirm sys.getdefaultencoding() is 'ascii'."
+      },
+      {
+        "type": "invoke",
+        "description": "Call the decorated function once so the tracer writes trace lines containing the repr of the non-ASCII local variable to the file path."
+      },
+      {
+        "type": "observe",
+        "description": "Open the output file with encoding='utf-8' and read its full contents."
+      }
+    ],
+    "expected_invariant": "The trace file contains the exact non-ASCII string 'café' in the variable representation.",
+    "observable": {
+      "source": "FileWriter.write in pysnooper/tracer.py via the public @pysnooper.snoop(path) interface",
+      "measurement_point": "after the decorated function returns and the trace file has been written",
+      "extraction_method": "read the file with open(path, encoding='utf-8') and search for the substring 'café'"
+    },
+    "assertion": {
+      "predicate": "The UTF-8 decoded trace file contains the substring 'café'.",
+      "failure_condition": "The substring 'café' is absent, or the file cannot be decoded as UTF-8, or the decorated call raised UnicodeEncodeError before writing the non-ASCII representation.",
+      "rationale": "If FileWriter.write uses the locale default encoding (ASCII), writing the repr of 'café' either raises UnicodeEncodeError or writes an escaped/replacement form, so the exact non-ASCII text will not be present; its presence demonstrates locale-independent preservation."
+    },
+    "setup": [
+      "Create a temporary directory and choose a file path inside it.",
+      "Set LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0 in the environment.",
+      "Import pysnooper after the environment is set."
+    ],
+    "timeout_seconds": 30.0
+  },
+  "repair_attempts": 0,
+  "status": "MODEL_ERROR",
+  "error": "test output is empty or contains forbidden construction",
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 7,
+    "usage": {}
+  },
+  "wall_clock_seconds": 3.373
+}

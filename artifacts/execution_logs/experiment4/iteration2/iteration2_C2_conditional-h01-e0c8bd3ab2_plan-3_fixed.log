@@ -1,0 +1,41 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+___________ test_path_output_preserves_non_ascii_under_ascii_locale ____________
+
+tmp_path = PosixPath('/private/var/folders/1j/l08d1p2s6ls9235bnggg20rc0000gn/T/pytest-of-minhkha/pytest-415/test_path_output_preserves_non0')
+
+    def test_path_output_preserves_non_ascii_under_ascii_locale(tmp_path):
+        output_path = tmp_path / 'trace.log'
+
+        env = dict(os.environ)
+        env['LC_ALL'] = 'C'
+        env['LANG'] = 'C'
+        env['PYTHONUTF8'] = '0'
+        env['PYTHONCOERCECLOCALE'] = '0'
+
+        import subprocess
+
+        child_code = (
+            'import sys\n'
+            'sys.path.insert(0, {!r})\n'
+            'import locale\n'
+            'assert locale.getpreferredencoding(False).lower() in ("ascii", "us-ascii"), locale.getpreferredencoding(False)\n'
+            'import pathlib\n'
+            'import pysnooper\n'
+            'NON_ASCII_VALUE = {!r}\n'
+            '@pysnooper.snoop(pathlib.Path({!r}))\n'
+            'def my_function():\n'
+            '    local_value = NON_ASCII_VALUE\n'
+            '    return local_value\n'
+            'my_function()\n'
+        ).format(
+>           os.path.dirname(os.path.dirname(os.path.abspath(pysnooper.__file__))),
+            NON_ASCII_VALUE,
+            str(output_path),
+        )
+E       NameError: name 'pysnooper' is not defined
+
+_generated_eval_conditional-h01-e0c8bd3ab2-plan-3.py:49: NameError
+=========================== short test summary info ============================
+FAILED _generated_eval_conditional-h01-e0c8bd3ab2-plan-3.py::test_path_output_preserves_non_ascii_under_ascii_locale
+1 failed in 0.02s

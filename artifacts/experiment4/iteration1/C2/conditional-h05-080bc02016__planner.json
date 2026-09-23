@@ -1,0 +1,201 @@
+{
+  "experiment": "experiment4",
+  "iteration": 1,
+  "mode": "conditional",
+  "arm": "C2",
+  "hypothesis_id": "conditional-h05-080bc02016",
+  "hypothesis": "PySnooper's get_source_from_frame decodes source files using the locale-dependent default encoding when no PEP-263 coding declaration is present, so a UTF-8 source file containing non-ASCII characters is mis-decoded (mojibake) under a non-UTF-8 locale, corrupting the traced source line.",
+  "trigger": "Create a temporary module file encoded as UTF-8 whose function body contains a non-ASCII string literal (e.g. 'héllo') and no coding declaration; import it, decorate the function with pysnooper.snoop(string_io), and run it under a non-UTF-8 locale (LC_ALL=C).",
+  "oracle": {
+    "expected_behavior": "The trace output must contain the exact non-ASCII source line text (e.g. the literal 'héllo') as written in the UTF-8 file, independent of the process locale.",
+    "target_evidence": "pysnooper/tracer.py get_source_from_frame: when source is bytes it sets encoding='ascii' and only overrides it if a PEP-263 coding declaration is found in the first two lines; otherwise it decodes with that encoding. The README and tests (e.g. test_unavailable_source, test_string_io) show source lines are echoed verbatim into trace output, so a mis-decoded line is a functional defect.",
+    "historical_evidence": "cookiecutter:1 shows the same class of locale-dependent implicit text decoding bug (UTF-8 data read with platform default encoding); PySnooper:3 is only weakly related (file-output path variable mismatch).",
+    "confidence": 0.6
+  },
+  "hypothesis_sha256": "080bc02016cd546877b681eb6e3976c601936656104c3a4d7860f5d665e770c1",
+  "hypothesis_frozen": true,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "status": "PLANS",
+  "planner_attempts": [
+    {
+      "attempt": 0,
+      "status": "VALID",
+      "llm": {
+        "model": "deepseek-flash",
+        "request_count": 23,
+        "retry_index": 0,
+        "latency_seconds": 8.202,
+        "usage": {
+          "prompt_tokens": 16542,
+          "completion_tokens": 1741,
+          "total_tokens": 18283,
+          "prompt_tokens_details": {
+            "cached_tokens": 384
+          },
+          "prompt_cache_hit_tokens": 384,
+          "prompt_cache_miss_tokens": 16158
+        },
+        "finish_reason": "stop",
+        "status_code": 200
+      },
+      "wall_clock_seconds": 8.209
+    }
+  ],
+  "planner_repair_attempts": 0,
+  "plans": [
+    {
+      "hypothesis_id": "conditional-h05-080bc02016",
+      "preconditions": [
+        "Python 3.9.18 with LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0 so locale.getpreferredencoding(False) is ANSI_X3.4-1968/ascii",
+        "A temporary module file is written as UTF-8 bytes with no PEP-263 coding declaration and contains a non-ASCII string literal in a function body",
+        "pysnooper is importable from the checkout"
+      ],
+      "initial_state": {
+        "named_state": "temp module file utf8_no_coding.py exists on sys.path containing a snooped function whose body line is: return 'héllo'"
+      },
+      "actions": [
+        {
+          "type": "set_environment",
+          "description": "Set LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0 in the subprocess environment before starting Python"
+        },
+        {
+          "type": "create_input",
+          "description": "Write utf8_no_coding.py as raw UTF-8 bytes: 'import pysnooper\\n@pysnooper.snoop(string_io)\\ndef f():\\n    return \\'h\\xc3\\xa9llo\\'\\n' with no coding declaration"
+        },
+        {
+          "type": "initialize_state",
+          "description": "Create io.StringIO() named string_io and import the module so the decorator registers the function code"
+        },
+        {
+          "type": "invoke",
+          "description": "Call module.f() so the tracer executes and get_source_from_frame reads the file bytes"
+        },
+        {
+          "type": "observe",
+          "description": "Read string_io.getvalue() and locate the trace line containing 'return'"
+        }
+      ],
+      "expected_invariant": "The traced source line for the return statement contains the exact literal 'héllo' as written in the UTF-8 file, not replacement characters or mojibake",
+      "observable": {
+        "source": "pysnooper.tracer.get_source_from_frame via pysnooper.snoop(string_io) trace output",
+        "measurement_point": "after module.f() returns, on the captured StringIO trace text",
+        "extraction_method": "string_io.getvalue() then select the line whose text contains 'return' and inspect the source-line portion"
+      },
+      "assertion": {
+        "predicate": "the selected trace line contains the substring \"héllo\"",
+        "failure_condition": "the trace line contains 'h\\ufffdllo', 'h?llo', or any byte-mangled variant instead of 'héllo'",
+        "rationale": "get_source_from_frame decodes file bytes with encoding='ascii' when no coding declaration exists, so under LC_ALL=C the non-ASCII literal is corrupted; the trace echoes source lines verbatim, making the exact literal the direct observable of correct decoding"
+      },
+      "setup": [
+        "python3.9 subprocess with LC_ALL=C PYTHONUTF8=0 PYTHONCOERCECLOCALE=0",
+        "temporary directory added to sys.path",
+        "pysnooper importable from the checkout"
+      ],
+      "timeout_seconds": 30.0
+    },
+    {
+      "hypothesis_id": "conditional-h05-080bc02016",
+      "preconditions": [
+        "Python 3.9.18 with LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0",
+        "A UTF-8 module file with no coding declaration contains a non-ASCII string literal on a line that also assigns a local variable",
+        "pysnooper is importable"
+      ],
+      "initial_state": {
+        "named_state": "temp module utf8_assign.py exists on sys.path with a snooped function whose body is: msg = 'héllo'"
+      },
+      "actions": [
+        {
+          "type": "set_environment",
+          "description": "Set LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0 in the subprocess environment"
+        },
+        {
+          "type": "create_input",
+          "description": "Write utf8_assign.py as UTF-8 bytes with no coding declaration: 'import pysnooper\\n@pysnooper.snoop(string_io)\\ndef g():\\n    msg = \\'h\\xc3\\xa9llo\\'\\n    return msg\\n'"
+        },
+        {
+          "type": "initialize_state",
+          "description": "Create io.StringIO() named string_io and import the module"
+        },
+        {
+          "type": "invoke",
+          "description": "Call module.g() so the tracer emits the assignment line read from the file"
+        },
+        {
+          "type": "observe",
+          "description": "Read string_io.getvalue() and select the trace line containing 'msg ='"
+        }
+      ],
+      "expected_invariant": "The traced assignment source line contains the exact literal 'héllo' matching the UTF-8 file content",
+      "observable": {
+        "source": "pysnooper.tracer.get_source_from_frame via pysnooper.snoop(string_io) trace output",
+        "measurement_point": "after module.g() returns, on the captured StringIO trace text",
+        "extraction_method": "string_io.getvalue() then select the line containing 'msg =' and inspect its source-line portion"
+      },
+      "assertion": {
+        "predicate": "the selected trace line contains the substring \"héllo\"",
+        "failure_condition": "the trace line shows replacement characters or mojibake for the non-ASCII literal",
+        "rationale": "the assignment line is echoed from get_source_from_frame; if the bytes were decoded with ascii, the literal is corrupted, so exact literal presence measures correct decoding"
+      },
+      "setup": [
+        "python3.9 subprocess with LC_ALL=C PYTHONUTF8=0 PYTHONCOERCECLOCALE=0",
+        "temporary directory added to sys.path",
+        "pysnooper importable from the checkout"
+      ],
+      "timeout_seconds": 30.0
+    },
+    {
+      "hypothesis_id": "conditional-h05-080bc02016",
+      "preconditions": [
+        "Python 3.9.18 with LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0",
+        "A UTF-8 module file with no coding declaration contains a non-ASCII string literal in a function that is invoked through the with-block public interface",
+        "pysnooper is importable"
+      ],
+      "initial_state": {
+        "named_state": "temp module utf8_withblock.py exists on sys.path containing a function h() that uses 'with pysnooper.snoop(string_io):' around a line containing 'héllo'"
+      },
+      "actions": [
+        {
+          "type": "set_environment",
+          "description": "Set LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0 in the subprocess environment"
+        },
+        {
+          "type": "create_input",
+          "description": "Write utf8_withblock.py as UTF-8 bytes with no coding declaration: 'import pysnooper\\ndef h(string_io):\\n    with pysnooper.snoop(string_io):\\n        value = \\'h\\xc3\\xa9llo\\'\\n    return value\\n'"
+        },
+        {
+          "type": "initialize_state",
+          "description": "Create io.StringIO() named string_io and import the module"
+        },
+        {
+          "type": "invoke",
+          "description": "Call module.h(string_io) so the with-block tracer reads and echoes the non-ASCII source line"
+        },
+        {
+          "type": "observe",
+          "description": "Read string_io.getvalue() and select the trace line containing 'value ='"
+        }
+      ],
+      "expected_invariant": "The traced source line inside the with block contains the exact literal 'héllo' from the UTF-8 file",
+      "observable": {
+        "source": "pysnooper.tracer.get_source_from_frame via the pysnooper.snoop() context-manager trace output",
+        "measurement_point": "after module.h(string_io) returns, on the captured StringIO trace text",
+        "extraction_method": "string_io.getvalue() then select the line containing 'value =' and inspect its source-line portion"
+      },
+      "assertion": {
+        "predicate": "the selected trace line contains the substring \"héllo\"",
+        "failure_condition": "the trace line contains replacement characters or mojibake instead of the exact literal",
+        "rationale": "the with-block path also calls get_source_from_frame and echoes the source line, so the same locale-dependent ascii decode corrupts the literal; exact literal presence measures correct decoding through a different public interface path"
+      },
+      "setup": [
+        "python3.9 subprocess with LC_ALL=C PYTHONUTF8=0 PYTHONCOERCECLOCALE=0",
+        "temporary directory added to sys.path",
+        "pysnooper importable from the checkout"
+      ],
+      "timeout_seconds": 30.0
+    }
+  ],
+  "planner_calls": 1
+}

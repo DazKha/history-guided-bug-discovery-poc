@@ -1,0 +1,73 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+________________ test_file_output_non_ascii_under_ascii_locale _________________
+
+tmp_path = PosixPath('/private/var/folders/1j/l08d1p2s6ls9235bnggg20rc0000gn/T/pytest-of-minhkha/pytest-473/test_file_output_non_ascii_und0')
+
+    def test_file_output_non_ascii_under_ascii_locale(tmp_path):
+        trace_path = tmp_path / "trace.log"
+        trace_path.write_bytes(b"lala")
+
+        script = textwrap.dedent(
+            '''
+            import sys
+
+            import pysnooper
+
+            path = sys.argv[1]
+
+            @pysnooper.snoop(path)
+            def my_function():
+                value = u"na\u00efve"
+                return 7
+
+            result = my_function()
+            sys.stdout.write("RESULT:%r\\n" % (result,))
+            '''
+        )
+
+        env = dict(os.environ)
+        env["LC_ALL"] = "C"
+        env["PYTHONUTF8"] = "0"
+        env["PYTHONCOERCECLOCALE"] = "0"
+
+        completed = subprocess.run(
+            [sys.executable, "-c", script, str(trace_path)],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=env,
+            timeout=30.0,
+        )
+
+        stdout = completed.stdout.decode("utf-8", "replace")
+        stderr = completed.stderr.decode("utf-8", "replace")
+
+>       assert completed.returncode == 0, (
+            "subprocess failed with returncode %r\nstdout:\n%s\nstderr:\n%s"
+            % (completed.returncode, stdout, stderr)
+        )
+E       AssertionError: subprocess failed with returncode 1
+E         stdout:
+E
+E         stderr:
+E         Traceback (most recent call last):
+E           File "<string>", line 13, in <module>
+E           File "/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/pysnooper/tracer.py", line 215, in simple_wrapper
+E             return function(*args, **kwargs)
+E           File "<string>", line 11, in my_function
+E           File "<string>", line 11, in my_function
+E           File "/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/pysnooper/tracer.py", line 317, in trace
+E             self.write('{indent}{newish_string}{name} = {value_repr}'.format(
+E           File "/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/pysnooper/tracer.py", line 242, in write
+E             self._write(s)
+E           File "/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/pysnooper/tracer.py", line 134, in write
+E             output_file.write(s)
+E         UnicodeEncodeError: 'ascii' codec can't encode character '\xef' in position 27: ordinal not in range(128)
+E
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/env39/bin/pytho...s)\nUnicodeEncodeError: \'ascii\' codec can\'t encode character \'\\xef\' in position 27: ordinal not in range(128)\n').returncode
+
+_generated_eval_conditional-h04-a9ae48b9d8-plan-2.py:45: AssertionError
+=========================== short test summary info ============================
+FAILED _generated_eval_conditional-h04-a9ae48b9d8-plan-2.py::test_file_output_non_ascii_under_ascii_locale
+1 failed in 0.05s

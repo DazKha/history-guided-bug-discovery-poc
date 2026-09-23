@@ -1,0 +1,49 @@
+{
+  "experiment": "experiment4",
+  "iteration": 3,
+  "mode": "conditional",
+  "arm": "C1_BUDGETED",
+  "hypothesis_id": "conditional-h02-c19fcca1ca",
+  "hypothesis": "When a decorated function is called with a non-ASCII string argument, PySnooper's default stderr output path can raise UnicodeEncodeError because the default write function writes directly to sys.stderr without encoding fallback, causing the decorated function call to fail instead of returning its normal result.",
+  "trigger": "Decorate a function that accepts a non-ASCII string argument with @pysnooper.snoop() using default output, then call it with a non-ASCII string such as 'caf\\u00e9' under a non-UTF-8 stderr encoding.",
+  "oracle": {
+    "expected_behavior": "The decorated function should return its normal result even when its arguments contain non-ASCII characters, and PySnooper should not crash while writing trace output.",
+    "target_evidence": "pysnooper/tracer.py get_write_function defines the default output=None branch as writing directly to sys.stderr and only catches UnicodeEncodeError in the Python 2 fallback path; pysnooper/utils.py provides shitcode for non-ASCII fallback; README documents default stderr output and non-ASCII variable values are part of ordinary tracing.",
+    "historical_evidence": "cookiecutter:1 shows locale-dependent implicit text encoding can corrupt or fail on non-ASCII data; PySnooper:3 shows file-output path handling is a known fragile area, but neither directly establishes the target stderr encoding behavior.",
+    "confidence": 0.55
+  },
+  "hypothesis_sha256": "c19fcca1ca6f1ac998539ccd9c008059015bdca92b9276801c639484bdcfe692",
+  "hypothesis_frozen": true,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "trigger_id": "direct",
+  "trigger_type": "DIRECT",
+  "replicate": 1,
+  "repair_attempts": 0,
+  "status": "TEST",
+  "test_code": "import io\nimport sys\n\nimport pytest\n\nimport pysnooper\n\n\ndef test_snoop_default_stderr_non_ascii_argument_does_not_raise(monkeypatch):\n    \"\"\"A decorated function must return normally when called with a non-ASCII\n    string argument, even if sys.stderr cannot encode that character.\n\n    The hypothesis claims that PySnooper's default output path writes directly\n    to sys.stderr without an encoding fallback, so a non-UTF-8 stderr encoding\n    makes the decorated call raise UnicodeEncodeError instead of returning.\n    \"\"\"\n\n    class AsciiOnlyStderr(io.TextIOBase):\n        \"\"\"A stderr-like stream that rejects any non-ASCII character.\"\"\"\n\n        encoding = \"ascii\"\n\n        def __init__(self):\n            self._chunks = []\n\n        def write(self, s):\n            # Mimic a real text stream with an ASCII encoding: encoding a\n            # non-ASCII character raises UnicodeEncodeError.\n            s.encode(self.encoding)\n            self._chunks.append(s)\n            return len(s)\n\n        def flush(self):\n            pass\n\n        def isatty(self):\n            return False\n\n        def getvalue(self):\n            return \"\".join(self._chunks)\n\n    fake_stderr = AsciiOnlyStderr()\n    monkeypatch.setattr(sys, \"stderr\", fake_stderr)\n\n    @pysnooper.snoop()\n    def echo(value):\n        return value\n\n    result = echo(\"caf\\u00e9\")\n\n    assert result == \"caf\\u00e9\"\n",
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 4,
+    "retry_index": 0,
+    "latency_seconds": 2.015,
+    "usage": {
+      "prompt_tokens": 525,
+      "completion_tokens": 413,
+      "total_tokens": 938,
+      "prompt_tokens_details": {
+        "cached_tokens": 384
+      },
+      "prompt_cache_hit_tokens": 384,
+      "prompt_cache_miss_tokens": 141
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_id": "conditional-h02-c19fcca1ca-direct",
+  "test_path": "generated_tests/experiment4/iteration3/C1_BUDGETED/conditional-h02-c19fcca1ca-direct.py",
+  "test_sha256": "0b7bf10036f5a296eec593f65e1b461e19704682c0938ea877b6b44400815ef7",
+  "wall_clock_seconds": 2.019
+}

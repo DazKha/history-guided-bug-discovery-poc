@@ -1,0 +1,207 @@
+{
+  "experiment": "experiment4",
+  "iteration": 3,
+  "mode": "conditional",
+  "arm": "C2",
+  "hypothesis_id": "conditional-h02-c19fcca1ca",
+  "hypothesis": "When a decorated function is called with a non-ASCII string argument, PySnooper's default stderr output path can raise UnicodeEncodeError because the default write function writes directly to sys.stderr without encoding fallback, causing the decorated function call to fail instead of returning its normal result.",
+  "trigger": "Decorate a function that accepts a non-ASCII string argument with @pysnooper.snoop() using default output, then call it with a non-ASCII string such as 'caf\\u00e9' under a non-UTF-8 stderr encoding.",
+  "oracle": {
+    "expected_behavior": "The decorated function should return its normal result even when its arguments contain non-ASCII characters, and PySnooper should not crash while writing trace output.",
+    "target_evidence": "pysnooper/tracer.py get_write_function defines the default output=None branch as writing directly to sys.stderr and only catches UnicodeEncodeError in the Python 2 fallback path; pysnooper/utils.py provides shitcode for non-ASCII fallback; README documents default stderr output and non-ASCII variable values are part of ordinary tracing.",
+    "historical_evidence": "cookiecutter:1 shows locale-dependent implicit text encoding can corrupt or fail on non-ASCII data; PySnooper:3 shows file-output path handling is a known fragile area, but neither directly establishes the target stderr encoding behavior.",
+    "confidence": 0.55
+  },
+  "hypothesis_sha256": "c19fcca1ca6f1ac998539ccd9c008059015bdca92b9276801c639484bdcfe692",
+  "hypothesis_frozen": true,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "status": "PLANS",
+  "planner_attempts": [
+    {
+      "attempt": 0,
+      "status": "VALID",
+      "llm": {
+        "model": "deepseek-flash",
+        "request_count": 10,
+        "retry_index": 0,
+        "latency_seconds": 8.264,
+        "usage": {
+          "prompt_tokens": 16506,
+          "completion_tokens": 2033,
+          "total_tokens": 18539,
+          "prompt_tokens_details": {
+            "cached_tokens": 384
+          },
+          "prompt_cache_hit_tokens": 384,
+          "prompt_cache_miss_tokens": 16122
+        },
+        "finish_reason": "stop",
+        "status_code": 200
+      },
+      "wall_clock_seconds": 8.27
+    }
+  ],
+  "planner_repair_attempts": 0,
+  "plans": [
+    {
+      "hypothesis_id": "conditional-h02-c19fcca1ca",
+      "preconditions": [
+        "Python 3.9.18 runtime with LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0",
+        "sys.stderr is a text stream whose encoding is ASCII (or another non-UTF-8 encoding)",
+        "pysnooper is importable from the buggy checkout",
+        "The decorated function accepts a non-ASCII string argument and returns a deterministic value"
+      ],
+      "initial_state": {
+        "named_state": "default_stderr_ascii_encoding",
+        "value": "sys.stderr.encoding == 'ascii' and no output argument is passed to pysnooper.snoop()"
+      },
+      "actions": [
+        {
+          "type": "set_environment",
+          "description": "Set LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0 before starting the Python process."
+        },
+        {
+          "type": "initialize_state",
+          "description": "Replace sys.stderr with a text wrapper over io.BytesIO using encoding='ascii' and errors='strict' so writes of non-ASCII characters raise UnicodeEncodeError."
+        },
+        {
+          "type": "create_input",
+          "description": "Define a function decorated with @pysnooper.snoop() that takes one string argument and returns the string unchanged."
+        },
+        {
+          "type": "invoke",
+          "description": "Call the decorated function with the non-ASCII argument 'caf\\u00e9'."
+        },
+        {
+          "type": "observe",
+          "description": "Capture the return value of the decorated call and any exception raised during the call."
+        }
+      ],
+      "expected_invariant": "The decorated function returns 'caf\\u00e9' and no UnicodeEncodeError escapes the call.",
+      "observable": {
+        "source": "public pysnooper.snoop decorator and the decorated function call result",
+        "measurement_point": "immediately after the decorated function call returns or raises",
+        "extraction_method": "read the call result variable and the exception type from the try/except around the call"
+      },
+      "assertion": {
+        "predicate": "result == 'caf\\u00e9' and no exception was raised",
+        "failure_condition": "The call raises UnicodeEncodeError, or returns a value other than 'caf\\u00e9'.",
+        "rationale": "The invariant is that tracing must not change the decorated function's normal return value; a UnicodeEncodeError escaping the call directly violates it."
+      },
+      "setup": [
+        "Run under LC_ALL=C with PYTHONUTF8=0 and PYTHONCOERCECLOCALE=0.",
+        "Install/import pysnooper from the buggy checkout.",
+        "Replace sys.stderr with an ASCII strict text stream before invoking."
+      ],
+      "timeout_seconds": 30.0
+    },
+    {
+      "hypothesis_id": "conditional-h02-c19fcca1ca",
+      "preconditions": [
+        "Python 3.9.18 runtime with LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0",
+        "The real process stderr is redirected to a file opened in binary mode, so the underlying file descriptor cannot accept non-ASCII bytes as text",
+        "pysnooper is importable from the buggy checkout",
+        "The decorated function accepts a non-ASCII string argument and returns a deterministic value"
+      ],
+      "initial_state": {
+        "named_state": "real_stderr_redirected_to_binary_file",
+        "value": "sys.stderr is the default TextIOWrapper over a binary file descriptor with ASCII encoding"
+      },
+      "actions": [
+        {
+          "type": "set_environment",
+          "description": "Set LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0 and redirect the process stderr to a temporary file before Python starts."
+        },
+        {
+          "type": "initialize_state",
+          "description": "Confirm sys.stderr.encoding is 'ascii' or otherwise non-UTF-8; do not replace sys.stderr."
+        },
+        {
+          "type": "create_input",
+          "description": "Define a function decorated with @pysnooper.snoop() that takes one string argument and returns the string unchanged."
+        },
+        {
+          "type": "invoke",
+          "description": "Call the decorated function with the non-ASCII argument 'caf\\u00e9'."
+        },
+        {
+          "type": "observe",
+          "description": "Capture the return value of the decorated call and any exception raised during the call."
+        }
+      ],
+      "expected_invariant": "The decorated function returns 'caf\\u00e9' and no UnicodeEncodeError escapes the call.",
+      "observable": {
+        "source": "public pysnooper.snoop decorator and the decorated function call result",
+        "measurement_point": "immediately after the decorated function call returns or raises",
+        "extraction_method": "read the call result variable and the exception type from the try/except around the call"
+      },
+      "assertion": {
+        "predicate": "result == 'caf\\u00e9' and no exception was raised",
+        "failure_condition": "The call raises UnicodeEncodeError, or returns a value other than 'caf\\u00e9'.",
+        "rationale": "Using the real process stderr under a C locale exercises the default output path without substituting a synthetic stream; the invariant is that tracing must not alter the decorated function's return."
+      },
+      "setup": [
+        "Run under LC_ALL=C with PYTHONUTF8=0 and PYTHONCOERCECLOCALE=0.",
+        "Redirect process stderr to a temporary file before Python starts.",
+        "Install/import pysnooper from the buggy checkout."
+      ],
+      "timeout_seconds": 30.0
+    },
+    {
+      "hypothesis_id": "conditional-h02-c19fcca1ca",
+      "preconditions": [
+        "Python 3.9.18 runtime with LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0",
+        "sys.stderr is a text stream whose encoding is ASCII (or another non-UTF-8 encoding)",
+        "pysnooper is importable from the buggy checkout",
+        "The decorated function is a generator that accepts a non-ASCII string argument"
+      ],
+      "initial_state": {
+        "named_state": "default_stderr_ascii_encoding_generator",
+        "value": "sys.stderr.encoding == 'ascii' and no output argument is passed to pysnooper.snoop()"
+      },
+      "actions": [
+        {
+          "type": "set_environment",
+          "description": "Set LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0 before starting the Python process."
+        },
+        {
+          "type": "initialize_state",
+          "description": "Replace sys.stderr with a text wrapper over io.BytesIO using encoding='ascii' and errors='strict' so writes of non-ASCII characters raise UnicodeEncodeError."
+        },
+        {
+          "type": "create_input",
+          "description": "Define a generator function decorated with @pysnooper.snoop() that takes one string argument, yields it, and returns it."
+        },
+        {
+          "type": "invoke",
+          "description": "Call the decorated generator with 'caf\\u00e9' and exhaust it with next() until StopIteration."
+        },
+        {
+          "type": "observe",
+          "description": "Capture the yielded value, the StopIteration value, and any exception raised during iteration."
+        }
+      ],
+      "expected_invariant": "The generator yields 'caf\\u00e9' and completes without a UnicodeEncodeError escaping iteration.",
+      "observable": {
+        "source": "public pysnooper.snoop decorator applied to a generator function",
+        "measurement_point": "during and after exhausting the decorated generator",
+        "extraction_method": "read the yielded value and the StopIteration value from the iteration loop, and the exception type from the try/except"
+      },
+      "assertion": {
+        "predicate": "the first yielded value == 'caf\\u00e9' and no exception was raised during iteration",
+        "failure_condition": "Iteration raises UnicodeEncodeError, or the yielded value is not 'caf\\u00e9'.",
+        "rationale": "The generator wrapper path also uses the default stderr write function; the invariant is that tracing must not break generator semantics or the yielded value."
+      },
+      "setup": [
+        "Run under LC_ALL=C with PYTHONUTF8=0 and PYTHONCOERCECLOCALE=0.",
+        "Install/import pysnooper from the buggy checkout.",
+        "Replace sys.stderr with an ASCII strict text stream before invoking."
+      ],
+      "timeout_seconds": 30.0
+    }
+  ],
+  "planner_calls": 1
+}

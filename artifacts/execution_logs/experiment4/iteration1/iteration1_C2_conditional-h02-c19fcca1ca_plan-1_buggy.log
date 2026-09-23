@@ -1,0 +1,63 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+__________________ test_non_ascii_argument_with_ascii_stderr ___________________
+
+s = "Starting var:.. s = 'caf\xe9'\\n"
+
+    def write(s):
+        stderr = sys.stderr
+        try:
+>           stderr.write(s)
+E           UnicodeEncodeError: 'ascii' codec can't encode character '\xe9' in position 24: ordinal not in range(128)
+
+pysnooper/tracer.py:111: UnicodeEncodeError
+
+During handling of the above exception, another exception occurred:
+
+    def test_non_ascii_argument_with_ascii_stderr():
+        """Decorated function with non-ASCII arg must return normally under ascii stderr."""
+        original_stderr = sys.stderr
+        buffer = io.BytesIO()
+        ascii_stderr = io.TextIOWrapper(buffer, encoding='ascii', errors='strict')
+        sys.stderr = ascii_stderr
+        try:
+            @pysnooper.snoop()
+            def f(s):
+                return s
+
+>           result = f('caf\u00e9')
+
+_generated_eval_conditional-h02-c19fcca1ca-plan-1.py:20:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+pysnooper/tracer.py:215: in simple_wrapper
+    return function(*args, **kwargs)
+_generated_eval_conditional-h02-c19fcca1ca-plan-1.py:16: in f
+    @pysnooper.snoop()
+pysnooper/tracer.py:317: in trace
+    self.write('{indent}{newish_string}{name} = {value_repr}'.format(
+pysnooper/tracer.py:242: in write
+    self._write(s)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+s = "Starting var:.. s = 'caf\xe9'\\n"
+
+    def write(s):
+        stderr = sys.stderr
+        try:
+            stderr.write(s)
+        except UnicodeEncodeError:
+            # God damn Python 2
+>           stderr.write(utils.shitcode(s))
+E           UnicodeEncodeError: 'ascii' codec can't encode character '\xe9' in position 24: ordinal not in range(128)
+
+pysnooper/tracer.py:114: UnicodeEncodeError
+=============================== warnings summary ===============================
+pysnooper/variables.py:3
+pysnooper/variables.py:3
+  /Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/pysnooper/variables.py:3: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated since Python 3.3, and in 3.10 it will stop working
+    from collections import Mapping, Sequence
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED _generated_eval_conditional-h02-c19fcca1ca-plan-1.py::test_non_ascii_argument_with_ascii_stderr
+1 failed, 2 warnings in 0.03s

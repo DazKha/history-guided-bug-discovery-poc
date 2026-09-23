@@ -1,0 +1,49 @@
+{
+  "experiment": "experiment4",
+  "iteration": 3,
+  "mode": "conditional",
+  "arm": "C1_BUDGETED",
+  "hypothesis_id": "conditional-h05-080bc02016",
+  "hypothesis": "PySnooper's get_source_from_frame decodes source files using the locale-dependent default encoding when no PEP-263 coding declaration is present, so a UTF-8 source file containing non-ASCII characters is mis-decoded (mojibake) under a non-UTF-8 locale, corrupting the traced source line.",
+  "trigger": "Create a temporary module file encoded as UTF-8 whose function body contains a non-ASCII string literal (e.g. 'héllo') and no coding declaration; import it, decorate the function with pysnooper.snoop(string_io), and run it under a non-UTF-8 locale (LC_ALL=C).",
+  "oracle": {
+    "expected_behavior": "The trace output must contain the exact non-ASCII source line text (e.g. the literal 'héllo') as written in the UTF-8 file, independent of the process locale.",
+    "target_evidence": "pysnooper/tracer.py get_source_from_frame: when source is bytes it sets encoding='ascii' and only overrides it if a PEP-263 coding declaration is found in the first two lines; otherwise it decodes with that encoding. The README and tests (e.g. test_unavailable_source, test_string_io) show source lines are echoed verbatim into trace output, so a mis-decoded line is a functional defect.",
+    "historical_evidence": "cookiecutter:1 shows the same class of locale-dependent implicit text decoding bug (UTF-8 data read with platform default encoding); PySnooper:3 is only weakly related (file-output path variable mismatch).",
+    "confidence": 0.6
+  },
+  "hypothesis_sha256": "080bc02016cd546877b681eb6e3976c601936656104c3a4d7860f5d665e770c1",
+  "hypothesis_frozen": true,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "trigger_id": "direct-3",
+  "trigger_type": "DIRECT",
+  "replicate": 3,
+  "repair_attempts": 0,
+  "status": "TEST",
+  "test_code": "import io\nimport os\nimport subprocess\nimport sys\nimport textwrap\n\nimport pytest\n\n\n@pytest.mark.skipif(\n    sys.platform.startswith(\"win\"),\n    reason=\"LC_ALL=C locale semantics are POSIX-specific\",\n)\ndef test_utf8_source_line_preserved_under_c_locale(tmp_path):\n    \"\"\"A UTF-8 source file with non-ASCII text and no coding declaration\n    must be echoed verbatim into the trace even when the process locale is C.\n    \"\"\"\n    module_path = tmp_path / \"utf8_target_module.py\"\n    module_path.write_text(\n        textwrap.dedent(\n            '''\\\n            import pysnooper\n\n            @pysnooper.snoop()\n            def greet():\n                message = \"h\\u00e9llo\"\n                return message\n            '''\n        ),\n        encoding=\"utf-8\",\n    )\n\n    driver_path = tmp_path / \"driver.py\"\n    driver_path.write_text(\n        textwrap.dedent(\n            '''\\\n            import io\n            import sys\n\n            import pysnooper\n\n            import utf8_target_module\n\n            stream = io.StringIO()\n            utf8_target_module.greet = pysnooper.snoop(stream)(\n                utf8_target_module.greet.__wrapped__\n            )\n            utf8_target_module.greet()\n            sys.stdout.write(stream.getvalue())\n            '''\n        ),\n        encoding=\"utf-8\",\n    )\n\n    env = dict(os.environ)\n    env[\"LC_ALL\"] = \"C\"\n    env[\"LANG\"] = \"C\"\n    env[\"PYTHONPATH\"] = str(tmp_path) + os.pathsep + env.get(\"PYTHONPATH\", \"\")\n    env[\"PYTHONIOENCODING\"] = \"utf-8\"\n\n    result = subprocess.run(\n        [sys.executable, str(driver_path)],\n        cwd=str(tmp_path),\n        env=env,\n        stdout=subprocess.PIPE,\n        stderr=subprocess.PIPE,\n    )\n\n    stdout = result.stdout.decode(\"utf-8\", errors=\"replace\")\n    stderr = result.stderr.decode(\"utf-8\", errors=\"replace\")\n\n    assert result.returncode == 0, (\n        \"driver failed under LC_ALL=C:\\n\"\n        \"stdout:\\n%s\\nstderr:\\n%s\" % (stdout, stderr)\n    )\n\n    assert \"h\\u00e9llo\" in stdout, (\n        \"Expected the exact non-ASCII source text 'h\\u00e9llo' to appear \"\n        \"verbatim in the trace output under LC_ALL=C, but it did not.\\n\"\n        \"Trace output was:\\n%s\" % stdout\n    )\n\n    assert \"h\\ufffd\" not in stdout and \"h\\u00c3\\u00a9llo\" not in stdout, (\n        \"Trace output contains mojibake/replacement characters for the \"\n        \"non-ASCII source line under LC_ALL=C:\\n%s\" % stdout\n    )\n",
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 15,
+    "retry_index": 0,
+    "latency_seconds": 3.316,
+    "usage": {
+      "prompt_tokens": 583,
+      "completion_tokens": 781,
+      "total_tokens": 1364,
+      "prompt_tokens_details": {
+        "cached_tokens": 384
+      },
+      "prompt_cache_hit_tokens": 384,
+      "prompt_cache_miss_tokens": 199
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_id": "conditional-h05-080bc02016-direct-3",
+  "test_path": "generated_tests/experiment4/iteration3/C1_BUDGETED/conditional-h05-080bc02016-direct-3.py",
+  "test_sha256": "3036cf425238d9a2380eccb1e912af0ecad02b4c92f013e2c2bbccbf7a10646d",
+  "wall_clock_seconds": 3.318
+}

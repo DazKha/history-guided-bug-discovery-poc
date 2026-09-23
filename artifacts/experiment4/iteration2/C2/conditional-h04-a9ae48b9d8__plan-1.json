@@ -1,0 +1,100 @@
+{
+  "experiment": "experiment4",
+  "iteration": 2,
+  "mode": "conditional",
+  "arm": "C2",
+  "hypothesis_id": "conditional-h04-a9ae48b9d8",
+  "hypothesis": "PySnooper's file-output path handling writes trace output to the requested path and preserves the decorated function's return value, but the FileWriter.write method opens the path with the platform-default text encoding, so on a non-UTF-8 locale (LC_ALL=C, PYTHONUTF8=0) writing a trace containing a non-ASCII variable repr raises UnicodeEncodeError instead of producing the trace.",
+  "trigger": "Decorate a function with @pysnooper.snoop(path) where path is a temporary file, the function has a local variable whose repr contains a non-ASCII character (e.g. 'é'), and run under LC_ALL=C with PYTHONUTF8=0 so the default text encoding is ASCII.",
+  "oracle": {
+    "expected_behavior": "After running the decorated function, the requested output path exists and contains the trace, including the non-ASCII variable value, and the decorated function returns its correct result.",
+    "target_evidence": "pysnooper/tracer.py FileWriter.write uses open(self.path, 'w' if self.overwrite else 'a') with no encoding argument; get_write_function routes path outputs to FileWriter; tests/test_pysnooper.py test_file_output and test_no_overwrite_by_default assert trace content at the requested path; README documents @pysnooper.snoop('/my/log/file.log').",
+    "historical_evidence": "PySnooper:3 historical unit shows the file-output path branch is a real bug surface (path/output variable mismatch), and cookiecutter:1 shows locale-dependent implicit text encoding is a real failure mechanism; combined they suggest probing path-output encoding behavior.",
+    "confidence": 0.6
+  },
+  "hypothesis_sha256": "a9ae48b9d893c88b17406f0c9ec663488f2c39df8465b94da1c40f0ad327fa14",
+  "hypothesis_frozen": true,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "trigger_id": "plan-1",
+  "trigger_type": "PLAN",
+  "trigger_plan": {
+    "hypothesis_id": "conditional-h04-a9ae48b9d8",
+    "preconditions": [
+      "Python 3.9.18 runtime with LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0 so the default text encoding is ASCII.",
+      "pysnooper is importable from the buggy checkout.",
+      "A writable temporary directory exists for the output path."
+    ],
+    "initial_state": {
+      "output_path": "A non-existent temporary file path ending in .log",
+      "locale_encoding": "ASCII (LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0)",
+      "decorated_function": "Not yet defined"
+    },
+    "actions": [
+      {
+        "type": "set_environment",
+        "description": "Set LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0 in the process environment before importing pysnooper."
+      },
+      {
+        "type": "create_input",
+        "description": "Create a temporary directory and choose a non-existent file path inside it as the trace output path."
+      },
+      {
+        "type": "initialize_state",
+        "description": "Import pysnooper and define a function decorated with @pysnooper.snoop(output_path) whose body assigns a local variable to the string 'café' and returns 42."
+      },
+      {
+        "type": "invoke",
+        "description": "Call the decorated function with no arguments."
+      },
+      {
+        "type": "observe",
+        "description": "After the call, read the output file at output_path and capture the function return value."
+      }
+    ],
+    "expected_invariant": "The decorated function returns 42 and the requested output path exists and contains the trace text including the non-ASCII value 'café'.",
+    "observable": {
+      "source": "pysnooper.tracer.FileWriter.write via @pysnooper.snoop(path)",
+      "measurement_point": "After the decorated function call completes, read the file at the requested output path and the returned value.",
+      "extraction_method": "Open the output path with encoding='utf-8' and read its full text; capture the function return value from the call expression."
+    },
+    "assertion": {
+      "predicate": "return_value == 42 and output_path exists and 'café' appears in the file text read from output_path.",
+      "failure_condition": "The call raises UnicodeEncodeError, or the output path is missing, or the file text does not contain 'café', or the return value is not 42.",
+      "rationale": "The invariant requires both preservation of the decorated function result and successful writing of the non-ASCII trace to the requested path; measuring the file content after the invoke directly tests the FileWriter encoding behavior."
+    },
+    "setup": [
+      "Ensure the process environment has LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0.",
+      "Create a temporary directory for the output file.",
+      "Import pysnooper from the buggy checkout."
+    ],
+    "timeout_seconds": 30.0
+  },
+  "repair_attempts": 0,
+  "status": "TEST",
+  "test_code": "import os\nimport sys\nimport subprocess\nimport textwrap\n\nimport pytest\n\n\nCHILD_SCRIPT = textwrap.dedent(\n    '''\n    import os\n    import sys\n    import tempfile\n\n    import pysnooper\n\n    tmpdir = tempfile.mkdtemp(prefix=\"pysnooper_encoding_\")\n    output_path = os.path.join(tmpdir, \"trace.log\")\n\n    @pysnooper.snoop(output_path)\n    def my_function():\n        value = \"caf\\u00e9\"\n        return 42\n\n    return_value = my_function()\n\n    with open(output_path, \"r\", encoding=\"utf-8\") as output_file:\n        file_text = output_file.read()\n\n    sys.stdout.write(repr((return_value, os.path.exists(output_path), file_text)))\n    '''\n)\n\n\ndef test_file_output_non_ascii_under_ascii_locale():\n    env = dict(os.environ)\n    env[\"LC_ALL\"] = \"C\"\n    env[\"PYTHONUTF8\"] = \"0\"\n    env[\"PYTHONCOERCECLOCALE\"] = \"0\"\n\n    completed = subprocess.run(\n        [sys.executable, \"-c\", CHILD_SCRIPT],\n        stdout=subprocess.PIPE,\n        stderr=subprocess.PIPE,\n        env=env,\n    )\n\n    stdout_text = completed.stdout.decode(\"utf-8\", \"replace\")\n    stderr_text = completed.stderr.decode(\"utf-8\", \"replace\")\n\n    assert completed.returncode == 0, (\n        \"child process failed with return code {!r}; stderr:\\n{}\".format(\n            completed.returncode, stderr_text\n        )\n    )\n\n    return_value, output_path_exists, file_text = eval(stdout_text)\n\n    observation = (return_value, output_path_exists, \"caf\\u00e9\" in file_text)\n\n    assert observation == (42, True, True), (\n        \"expected (42, True, True) but observed {!r}; stderr:\\n{}\".format(\n            observation, stderr_text\n        )\n    )\n",
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 20,
+    "retry_index": 0,
+    "latency_seconds": 2.782,
+    "usage": {
+      "prompt_tokens": 16245,
+      "completion_tokens": 547,
+      "total_tokens": 16792,
+      "prompt_tokens_details": {
+        "cached_tokens": 128
+      },
+      "prompt_cache_hit_tokens": 128,
+      "prompt_cache_miss_tokens": 16117
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_id": "conditional-h04-a9ae48b9d8-plan-1",
+  "test_path": "generated_tests/experiment4/iteration2/C2/conditional-h04-a9ae48b9d8-plan-1.py",
+  "test_sha256": "e17d37b9f73f804180f9a00c4c02a6f91a9c7694d0936508474b0eb799011649",
+  "wall_clock_seconds": 2.784
+}

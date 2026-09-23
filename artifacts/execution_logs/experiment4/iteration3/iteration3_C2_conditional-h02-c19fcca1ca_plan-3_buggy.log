@@ -1,0 +1,40 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+____________ test_non_ascii_generator_argument_with_default_stderr _____________
+
+ascii_stderr_env = {'BROWSER_USE_AVAILABLE_BACKENDS': 'chrome,iab', 'BUNDLED_DEBUGPY_PATH': '/Users/minhkha/.cursor/extensions/ms-python.debugpy-2026.6.0-darwin-arm64/bundled/libs/debugpy', 'CLAUDE_CODE_SSE_PORT': '13827', 'CODEX_CI': '1', ...}
+
+    def test_non_ascii_generator_argument_with_default_stderr(ascii_stderr_env):
+        completed = subprocess.run(
+            [sys.executable, '-c', SCRIPT],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=ascii_stderr_env,
+            timeout=30.0,
+        )
+        stdout_text = completed.stdout.decode('utf-8', 'replace')
+        stderr_text = completed.stderr.decode('utf-8', 'replace')
+
+        values = {}
+        for line in stdout_text.splitlines():
+            if '=' in line:
+                key, _, value = line.partition('=')
+                values[key] = value
+
+        assert completed.returncode == 0, (
+            'subprocess failed with returncode %r; stderr=%r'
+            % (completed.returncode, stderr_text)
+        )
+>       assert values.get('YIELDED') == repr(['caf\u00e9']), (
+            'unexpected yielded values: %r' % (values.get('YIELDED'),)
+        )
+E       AssertionError: unexpected yielded values: '[]'
+E       assert '[]' == "['caf\xe9']"
+E
+E         - ['caf\xe9']
+E         + []
+
+_generated_eval_conditional-h02-c19fcca1ca-plan-3.py:92: AssertionError
+=========================== short test summary info ============================
+FAILED _generated_eval_conditional-h02-c19fcca1ca-plan-3.py::test_non_ascii_generator_argument_with_default_stderr
+1 failed in 0.05s

@@ -1,0 +1,29 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+__________________ test_non_ascii_argument_with_ascii_stderr ___________________
+
+    def test_non_ascii_argument_with_ascii_stderr():
+        proc = _run_child({
+            'LC_ALL': 'C',
+            'LANG': 'C',
+            'PYTHONUTF8': '0',
+            'PYTHONCOERCECLOCALE': '0',
+        })
+
+        result, exception_name = _parse_child_stdout(proc.stdout)
+
+        observation = (result, exception_name)
+>       assert observation == ('4', 'None'), (
+            'decorated function with non-ASCII argument did not return normally; '
+            'stdout=%r stderr=%r' % (proc.stdout, proc.stderr)
+        )
+E       AssertionError: decorated function with non-ASCII argument did not return normally; stdout=b'' stderr=b'  File "<string>", line 2\n    import sys\nIndentationError: unexpected indent\n'
+E       assert (None, None) == ('4', 'None')
+E
+E         At index 0 diff: None != '4'
+E         Use -v to get more diff
+
+_generated_eval_conditional-h02-c19fcca1ca-plan-1.py:67: AssertionError
+=========================== short test summary info ============================
+FAILED _generated_eval_conditional-h02-c19fcca1ca-plan-1.py::test_non_ascii_argument_with_ascii_stderr
+1 failed in 0.03s

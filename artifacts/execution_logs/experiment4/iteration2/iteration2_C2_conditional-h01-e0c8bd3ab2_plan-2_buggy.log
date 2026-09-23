@@ -1,0 +1,60 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+___________ test_file_output_preserves_non_ascii_under_ascii_locale ____________
+
+    def test_file_output_preserves_non_ascii_under_ascii_locale():
+        # Precondition: the process default text encoding must be ASCII for this
+        # hypothesis to be exercised. If the environment cannot provide it, skip.
+        default_encoding = locale.getpreferredencoding(False)
+        if default_encoding.lower().replace('-', '') not in ('ascii', 'usascii'):
+            pytest.skip(
+                'requires a non-UTF-8 (ASCII) default text encoding, got %r'
+                % (default_encoding,)
+            )
+
+        import pysnooper
+
+        with tempfile.TemporaryDirectory(prefix='pysnooper_encoding_') as folder:
+            output_path = os.path.join(folder, 'trace.log')
+            assert not os.path.exists(output_path)
+
+            @pysnooper.snoop(output_path, overwrite=True)
+            def my_function():
+                value = NON_ASCII_VALUE
+                return value
+
+>           first_result = my_function()
+
+_generated_eval_conditional-h01-e0c8bd3ab2-plan-2.py:33:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+pysnooper/tracer.py:215: in simple_wrapper
+    return function(*args, **kwargs)
+_generated_eval_conditional-h01-e0c8bd3ab2-plan-2.py:31: in my_function
+    return value
+_generated_eval_conditional-h01-e0c8bd3ab2-plan-2.py:31: in my_function
+    return value
+pysnooper/tracer.py:317: in trace
+    self.write('{indent}{newish_string}{name} = {value_repr}'.format(
+pysnooper/tracer.py:242: in write
+    self._write(s)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <pysnooper.tracer.FileWriter object at 0x103518880>
+s = "New var:....... value = 'na\xefve caf\xe9'\\n"
+
+    def write(self, s):
+        with open(self.path, 'w' if self.overwrite else 'a') as output_file:
+>           output_file.write(s)
+E           UnicodeEncodeError: 'ascii' codec can't encode character '\xef' in position 27: ordinal not in range(128)
+
+pysnooper/tracer.py:134: UnicodeEncodeError
+=============================== warnings summary ===============================
+_generated_eval_conditional-h01-e0c8bd3ab2-plan-2.py::test_file_output_preserves_non_ascii_under_ascii_locale
+_generated_eval_conditional-h01-e0c8bd3ab2-plan-2.py::test_file_output_preserves_non_ascii_under_ascii_locale
+  /Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/pysnooper/variables.py:3: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated since Python 3.3, and in 3.10 it will stop working
+    from collections import Mapping, Sequence
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED _generated_eval_conditional-h01-e0c8bd3ab2-plan-2.py::test_file_output_preserves_non_ascii_under_ascii_locale
+1 failed, 2 warnings in 0.03s

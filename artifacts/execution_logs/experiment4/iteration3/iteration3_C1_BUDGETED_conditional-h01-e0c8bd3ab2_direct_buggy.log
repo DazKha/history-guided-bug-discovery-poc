@@ -1,0 +1,55 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+__________ test_file_output_preserves_non_ascii_under_non_utf8_locale __________
+
+tmp_path = PosixPath('/private/var/folders/1j/l08d1p2s6ls9235bnggg20rc0000gn/T/pytest-of-minhkha/pytest-481/test_file_output_preserves_non0')
+
+    def test_file_output_preserves_non_ascii_under_non_utf8_locale(tmp_path):
+        """Tracing to a path must preserve non-ASCII text regardless of locale.
+
+        Runs a child interpreter with a non-UTF-8 default text encoding
+        (LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0) and asserts that the
+        non-ASCII local variable value appears in the trace file when read back
+        as UTF-8.
+        """
+        out_path = tmp_path / "trace.log"
+        script = textwrap.dedent(
+            """
+            import sys
+            import pysnooper
+
+            @pysnooper.snoop({path!r})
+            def f():
+                value = "caf\u00e9 \u2603"
+                return value
+
+            f()
+            """
+        ).format(path=str(out_path))
+
+        env = dict(os.environ)
+        env["LC_ALL"] = "C"
+        env["LANG"] = "C"
+        env["PYTHONUTF8"] = "0"
+        env["PYTHONCOERCECLOCALE"] = "0"
+        env.pop("PYTHONIOENCODING", None)
+
+        proc = subprocess.run(
+            [sys.executable, "-c", script],
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+
+>       assert proc.returncode == 0, (
+            "child process failed under non-UTF-8 locale; "
+            "stderr=%r stdout=%r" % (proc.stderr, proc.stdout)
+        )
+E       AssertionError: child process failed under non-UTF-8 locale; stderr='Traceback (most recent call last):\n  File "<string>", line 10, in <module>\n  File "/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/pysnooper/tracer.py", line 215, in simple_wrapper\n    return function(*args, **kwargs)\n  File "<string>", line 8, in f\n  File "<string>", line 8, in f\n  File "/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/pysnooper/tracer.py", line 317, in trace\n    self.write(\'{indent}{newish_string}{name} = {value_repr}\'.format(\n  File "/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/pysnooper/tracer.py", line 242, in write\n    self._write(s)\n  File "/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/pysnooper/tracer.py", line 134, in write\n    output_file.write(s)\nUnicodeEncodeError: \'ascii\' codec can\'t encode character \'\\xe9\' in position 28: ordinal not in range(128)\n' stdout=''
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/env39/bin/pytho...s)\nUnicodeEncodeError: \'ascii\' codec can\'t encode character \'\\xe9\' in position 28: ordinal not in range(128)\n').returncode
+
+_generated_eval_conditional-h01-e0c8bd3ab2-direct.py:44: AssertionError
+=========================== short test summary info ============================
+FAILED _generated_eval_conditional-h01-e0c8bd3ab2-direct.py::test_file_output_preserves_non_ascii_under_non_utf8_locale
+1 failed in 0.05s

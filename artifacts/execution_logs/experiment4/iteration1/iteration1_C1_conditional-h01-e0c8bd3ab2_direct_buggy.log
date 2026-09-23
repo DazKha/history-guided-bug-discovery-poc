@@ -1,0 +1,54 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+__________ test_file_output_preserves_non_ascii_under_non_utf8_locale __________
+
+    def test_file_output_preserves_non_ascii_under_non_utf8_locale():
+        """
+        Tracing to a filesystem path must preserve non-ASCII variable representations
+        independent of the process locale.
+        """
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_path = os.path.join(tmpdir, "trace.log")
+            script = textwrap.dedent(
+                f'''
+                import pysnooper
+
+                @pysnooper.snoop({out_path!r})
+                def f():
+                    value = "caf\u00e9"
+                    return value
+
+                f()
+                '''
+            )
+            script_path = os.path.join(tmpdir, "script.py")
+            with open(script_path, "w", encoding="utf-8") as fh:
+                fh.write(script)
+
+            env = os.environ.copy()
+            env["LC_ALL"] = "C"
+            env["LANG"] = "C"
+            env["PYTHONUTF8"] = "0"
+            env["PYTHONIOENCODING"] = "ascii"
+
+            result = subprocess.run(
+                [sys.executable, script_path],
+                env=env,
+                capture_output=True,
+                text=True,
+            )
+
+>           assert result.returncode == 0, (
+                f"Tracing to a file failed under non-UTF-8 locale.\n"
+                f"stdout: {result.stdout!r}\nstderr: {result.stderr!r}"
+            )
+E           AssertionError: Tracing to a file failed under non-UTF-8 locale.
+E             stdout: ''
+E             stderr: 'Traceback (most recent call last):\n  File "/var/folders/1j/l08d1p2s6ls9235bnggg20rc0000gn/T/tmp2s9ubi54/script.py", line 9, in <module>\n    f()\n  File "/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/pysnooper/tracer.py", line 215, in simple_wrapper\n    return function(*args, **kwargs)\n  File "/var/folders/1j/l08d1p2s6ls9235bnggg20rc0000gn/T/tmp2s9ubi54/script.py", line 6, in f\n    value = "caf\\xe9"\n  File "/var/folders/1j/l08d1p2s6ls9235bnggg20rc0000gn/T/tmp2s9ubi54/script.py", line 6, in f\n    value = "caf\\xe9"\n  File "/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/pysnooper/tracer.py", line 375, in trace\n    self.write(u\'{indent}{now_string} {thread_info}{event:9} \'\n  File "/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/pysnooper/tracer.py", line 242, in write\n    self._write(s)\n  File "/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/pysnooper/tracer.py", line 134, in write\n    output_file.write(s)\nUnicodeEncodeError: \'ascii\' codec can\'t encode character \'\\xe9\' in position 47: ordinal not in range(128)\n'
+E           assert 1 == 0
+E            +  where 1 = CompletedProcess(args=['/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/env39/bin/pytho...s)\nUnicodeEncodeError: \'ascii\' codec can\'t encode character \'\\xe9\' in position 47: ordinal not in range(128)\n').returncode
+
+_generated_eval_conditional-h01-e0c8bd3ab2-direct.py:44: AssertionError
+=========================== short test summary info ============================
+FAILED _generated_eval_conditional-h01-e0c8bd3ab2-direct.py::test_file_output_preserves_non_ascii_under_non_utf8_locale
+1 failed in 0.05s

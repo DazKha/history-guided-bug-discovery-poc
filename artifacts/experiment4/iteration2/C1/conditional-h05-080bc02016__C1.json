@@ -1,0 +1,48 @@
+{
+  "experiment": "experiment4",
+  "iteration": 2,
+  "mode": "conditional",
+  "arm": "C1",
+  "hypothesis_id": "conditional-h05-080bc02016",
+  "hypothesis": "PySnooper's get_source_from_frame decodes source files using the locale-dependent default encoding when no PEP-263 coding declaration is present, so a UTF-8 source file containing non-ASCII characters is mis-decoded (mojibake) under a non-UTF-8 locale, corrupting the traced source line.",
+  "trigger": "Create a temporary module file encoded as UTF-8 whose function body contains a non-ASCII string literal (e.g. 'héllo') and no coding declaration; import it, decorate the function with pysnooper.snoop(string_io), and run it under a non-UTF-8 locale (LC_ALL=C).",
+  "oracle": {
+    "expected_behavior": "The trace output must contain the exact non-ASCII source line text (e.g. the literal 'héllo') as written in the UTF-8 file, independent of the process locale.",
+    "target_evidence": "pysnooper/tracer.py get_source_from_frame: when source is bytes it sets encoding='ascii' and only overrides it if a PEP-263 coding declaration is found in the first two lines; otherwise it decodes with that encoding. The README and tests (e.g. test_unavailable_source, test_string_io) show source lines are echoed verbatim into trace output, so a mis-decoded line is a functional defect.",
+    "historical_evidence": "cookiecutter:1 shows the same class of locale-dependent implicit text decoding bug (UTF-8 data read with platform default encoding); PySnooper:3 is only weakly related (file-output path variable mismatch).",
+    "confidence": 0.6
+  },
+  "hypothesis_sha256": "080bc02016cd546877b681eb6e3976c601936656104c3a4d7860f5d665e770c1",
+  "hypothesis_frozen": true,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "trigger_id": "direct",
+  "trigger_type": "DIRECT",
+  "repair_attempts": 0,
+  "status": "TEST",
+  "test_code": "import io\nimport os\nimport subprocess\nimport sys\nimport textwrap\n\nimport pytest\n\n\nMODULE_SOURCE = textwrap.dedent(\n    '''\\\n    def greet():\n        value = \"h\\u00e9llo\"\n        return value\n    '''\n)\n\n\nRUNNER_SOURCE = textwrap.dedent(\n    '''\\\n    import io\n    import sys\n\n    import pysnooper\n\n    import target_module\n\n    stream = io.StringIO()\n    decorated = pysnooper.snoop(stream)(target_module.greet)\n    decorated()\n    sys.stdout.write(stream.getvalue())\n    '''\n)\n\n\ndef _write(path, text):\n    with open(path, \"w\", encoding=\"utf-8\") as handle:\n        handle.write(text)\n\n\ndef test_utf8_source_line_is_not_mojibake_under_c_locale(tmp_path):\n    module_path = tmp_path / \"target_module.py\"\n    runner_path = tmp_path / \"runner.py\"\n\n    _write(str(module_path), MODULE_SOURCE)\n    _write(str(runner_path), RUNNER_SOURCE)\n\n    env = dict(os.environ)\n    env[\"LC_ALL\"] = \"C\"\n    env[\"LANG\"] = \"C\"\n    env[\"PYTHONIOENCODING\"] = \"utf-8\"\n    env[\"PYTHONPATH\"] = str(tmp_path) + os.pathsep + env.get(\"PYTHONPATH\", \"\")\n\n    completed = subprocess.run(\n        [sys.executable, str(runner_path)],\n        cwd=str(tmp_path),\n        env=env,\n        stdout=subprocess.PIPE,\n        stderr=subprocess.PIPE,\n    )\n\n    stdout = completed.stdout.decode(\"utf-8\", errors=\"replace\")\n    stderr = completed.stderr.decode(\"utf-8\", errors=\"replace\")\n\n    assert completed.returncode == 0, (\n        \"runner failed under LC_ALL=C\\nstdout:\\n%s\\nstderr:\\n%s\" % (stdout, stderr)\n    )\n\n    assert \"h\\u00e9llo\" in stdout, (\n        \"expected the exact non-ASCII source text 'h\\u00e9llo' in the trace output \"\n        \"under LC_ALL=C, but got:\\n%s\" % stdout\n    )\n\n    assert \"\\ufffd\" not in stdout, (\n        \"trace output contains replacement characters, indicating the UTF-8 source \"\n        \"line was mis-decoded under LC_ALL=C:\\n%s\" % stdout\n    )\n",
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 5,
+    "retry_index": 0,
+    "latency_seconds": 6.515,
+    "usage": {
+      "prompt_tokens": 583,
+      "completion_tokens": 648,
+      "total_tokens": 1231,
+      "prompt_tokens_details": {
+        "cached_tokens": 384
+      },
+      "prompt_cache_hit_tokens": 384,
+      "prompt_cache_miss_tokens": 199
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_id": "conditional-h05-080bc02016-direct",
+  "test_path": "generated_tests/experiment4/iteration2/C1/conditional-h05-080bc02016-direct.py",
+  "test_sha256": "65cb9eb818dc42f6469ea308d1dc880d2a9149c7bcd4afbce49920a14955bd8a",
+  "wall_clock_seconds": 6.518
+}

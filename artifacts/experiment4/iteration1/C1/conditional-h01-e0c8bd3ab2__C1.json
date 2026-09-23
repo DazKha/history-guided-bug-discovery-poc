@@ -1,0 +1,48 @@
+{
+  "experiment": "experiment4",
+  "iteration": 1,
+  "mode": "conditional",
+  "arm": "C1",
+  "hypothesis_id": "conditional-h01-e0c8bd3ab2",
+  "hypothesis": "When PySnooper's file-output path is used with a non-ASCII trace string, FileWriter.write opens the output file without an explicit encoding, so on a non-UTF-8 locale the write can fail or corrupt the trace instead of preserving the Unicode text.",
+  "trigger": "Create a temporary output path, decorate a function that assigns a non-ASCII string local variable with @pysnooper.snoop(path), run the function under a non-UTF-8 default text encoding, then read the file back as UTF-8 and assert the non-ASCII value appears.",
+  "oracle": {
+    "expected_behavior": "Tracing to a requested filesystem path must write the trace text to that path and preserve non-ASCII variable representations, independent of the process locale.",
+    "target_evidence": "pysnooper/tracer.py FileWriter.write opens the path with open(self.path, 'w' if self.overwrite else 'a') and no encoding argument; get_write_function routes string/PathLike output to FileWriter; README documents @pysnooper.snoop('/my/log/file.log') and tests/test_pysnooper.py test_file_output exercises path output.",
+    "historical_evidence": "cookiecutter:1 shows locale-dependent implicit text I/O encoding for non-ASCII data; PySnooper:3 shows path-output file writing is a public, tested behavior but does not establish the encoding mechanism.",
+    "confidence": 0.72
+  },
+  "hypothesis_sha256": "e0c8bd3ab2481f840b4ee7e6902b44ec0bee11d05fbea5261ae5ad5af3f1e7c2",
+  "hypothesis_frozen": true,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "trigger_id": "direct",
+  "trigger_type": "DIRECT",
+  "repair_attempts": 0,
+  "status": "TEST",
+  "test_code": "import os\nimport sys\nimport tempfile\nimport subprocess\nimport textwrap\n\n\ndef test_file_output_preserves_non_ascii_under_non_utf8_locale():\n    \"\"\"\n    Tracing to a filesystem path must preserve non-ASCII variable representations\n    independent of the process locale.\n    \"\"\"\n    with tempfile.TemporaryDirectory() as tmpdir:\n        out_path = os.path.join(tmpdir, \"trace.log\")\n        script = textwrap.dedent(\n            f'''\n            import pysnooper\n\n            @pysnooper.snoop({out_path!r})\n            def f():\n                value = \"caf\\u00e9\"\n                return value\n\n            f()\n            '''\n        )\n        script_path = os.path.join(tmpdir, \"script.py\")\n        with open(script_path, \"w\", encoding=\"utf-8\") as fh:\n            fh.write(script)\n\n        env = os.environ.copy()\n        env[\"LC_ALL\"] = \"C\"\n        env[\"LANG\"] = \"C\"\n        env[\"PYTHONUTF8\"] = \"0\"\n        env[\"PYTHONIOENCODING\"] = \"ascii\"\n\n        result = subprocess.run(\n            [sys.executable, script_path],\n            env=env,\n            capture_output=True,\n            text=True,\n        )\n\n        assert result.returncode == 0, (\n            f\"Tracing to a file failed under non-UTF-8 locale.\\n\"\n            f\"stdout: {result.stdout!r}\\nstderr: {result.stderr!r}\"\n        )\n\n        with open(out_path, \"r\", encoding=\"utf-8\") as fh:\n            trace_text = fh.read()\n\n        assert \"caf\\u00e9\" in trace_text, (\n            f\"Non-ASCII value 'caf\\u00e9' was not preserved in trace output.\\n\"\n            f\"Trace contents: {trace_text!r}\"\n        )\n",
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 1,
+    "retry_index": 0,
+    "latency_seconds": 2.289,
+    "usage": {
+      "prompt_tokens": 575,
+      "completion_tokens": 522,
+      "total_tokens": 1097,
+      "prompt_tokens_details": {
+        "cached_tokens": 384
+      },
+      "prompt_cache_hit_tokens": 384,
+      "prompt_cache_miss_tokens": 191
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_id": "conditional-h01-e0c8bd3ab2-direct",
+  "test_path": "generated_tests/experiment4/iteration1/C1/conditional-h01-e0c8bd3ab2-direct.py",
+  "test_sha256": "fc35fbd6c0a295696ef1224f9de54b1098745d2e6e789a4d7c077ada6a2ef280",
+  "wall_clock_seconds": 2.292
+}

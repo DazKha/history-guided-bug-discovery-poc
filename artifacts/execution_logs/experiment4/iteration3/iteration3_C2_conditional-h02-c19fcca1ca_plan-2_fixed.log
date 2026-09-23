@@ -1,0 +1,44 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+______________ test_non_ascii_argument_with_default_stderr_output ______________
+
+tmp_path = PosixPath('/private/var/folders/1j/l08d1p2s6ls9235bnggg20rc0000gn/T/pytest-of-minhkha/pytest-464/test_non_ascii_argument_with_d0')
+
+    def test_non_ascii_argument_with_default_stderr_output(tmp_path):
+        script_path = tmp_path / 'snoop_non_ascii.py'
+        script_path.write_text(SCRIPT)
+        stderr_path = tmp_path / 'stderr.log'
+
+        env = dict(os.environ)
+        env['LC_ALL'] = 'C'
+        env['PYTHONUTF8'] = '0'
+        env['PYTHONCOERCECLOCALE'] = '0'
+
+        with open(str(stderr_path), 'wb') as stderr_file:
+            completed = subprocess.run(
+                [sys.executable, str(script_path)],
+                stdout=subprocess.PIPE,
+                stderr=stderr_file,
+                env=env,
+                cwd=str(tmp_path),
+                timeout=30.0,
+            )
+
+        stdout_text = completed.stdout.decode('utf-8', 'replace')
+        observed = {}
+        for line in stdout_text.splitlines():
+            if '=' in line:
+                key, _, value = line.partition('=')
+                observed[key] = value
+
+>       assert observed.get('RESULT') == repr('caf\u00e9'), observed
+E       AssertionError: {}
+E       assert None == "'caf\xe9'"
+E        +  where None = <built-in method get of dict object at 0x10666b800>('RESULT')
+E        +    where <built-in method get of dict object at 0x10666b800> = {}.get
+E        +  and   "'caf\xe9'" = repr('caf\xe9')
+
+_generated_eval_conditional-h02-c19fcca1ca-plan-2.py:58: AssertionError
+=========================== short test summary info ============================
+FAILED _generated_eval_conditional-h02-c19fcca1ca-plan-2.py::test_non_ascii_argument_with_default_stderr_output
+1 failed in 0.07s

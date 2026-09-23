@@ -1,0 +1,98 @@
+{
+  "experiment": "experiment4",
+  "iteration": 1,
+  "mode": "conditional",
+  "arm": "C2",
+  "hypothesis_id": "conditional-h04-a9ae48b9d8",
+  "hypothesis": "PySnooper's file-output path handling writes trace output to the requested path and preserves the decorated function's return value, but the FileWriter.write method opens the path with the platform-default text encoding, so on a non-UTF-8 locale (LC_ALL=C, PYTHONUTF8=0) writing a trace containing a non-ASCII variable repr raises UnicodeEncodeError instead of producing the trace.",
+  "trigger": "Decorate a function with @pysnooper.snoop(path) where path is a temporary file, the function has a local variable whose repr contains a non-ASCII character (e.g. 'é'), and run under LC_ALL=C with PYTHONUTF8=0 so the default text encoding is ASCII.",
+  "oracle": {
+    "expected_behavior": "After running the decorated function, the requested output path exists and contains the trace, including the non-ASCII variable value, and the decorated function returns its correct result.",
+    "target_evidence": "pysnooper/tracer.py FileWriter.write uses open(self.path, 'w' if self.overwrite else 'a') with no encoding argument; get_write_function routes path outputs to FileWriter; tests/test_pysnooper.py test_file_output and test_no_overwrite_by_default assert trace content at the requested path; README documents @pysnooper.snoop('/my/log/file.log').",
+    "historical_evidence": "PySnooper:3 historical unit shows the file-output path branch is a real bug surface (path/output variable mismatch), and cookiecutter:1 shows locale-dependent implicit text encoding is a real failure mechanism; combined they suggest probing path-output encoding behavior.",
+    "confidence": 0.6
+  },
+  "hypothesis_sha256": "a9ae48b9d893c88b17406f0c9ec663488f2c39df8465b94da1c40f0ad327fa14",
+  "hypothesis_frozen": true,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "trigger_id": "plan-2",
+  "trigger_type": "PLAN",
+  "trigger_plan": {
+    "hypothesis_id": "conditional-h04-a9ae48b9d8",
+    "preconditions": [
+      "Same ASCII-default locale environment",
+      "pysnooper importable",
+      "A pre-existing file at the target path containing ASCII text 'lala'"
+    ],
+    "initial_state": {
+      "named_state": "Target path /tmp/pysnooper_plan2/foo.log already exists with content 'lala' and no trailing newline"
+    },
+    "actions": [
+      {
+        "type": "set_environment",
+        "description": "Set env LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0"
+      },
+      {
+        "type": "create_input",
+        "description": "Write 'lala' to /tmp/pysnooper_plan2/foo.log"
+      },
+      {
+        "type": "initialize_state",
+        "description": "Define a function decorated with @pysnooper.snoop('/tmp/pysnooper_plan2/foo.log') (overwrite default False) whose body sets local variable name = 'na\\u00efve' and returns name"
+      },
+      {
+        "type": "invoke",
+        "description": "Call the decorated function once and capture its return value"
+      },
+      {
+        "type": "observe",
+        "description": "Read /tmp/pysnooper_plan2/foo.log as UTF-8 and check it starts with 'lala' and contains 'na\\u00efve'"
+      }
+    ],
+    "expected_invariant": "The decorated function returns 'na\\u00efve' and the append-mode file starts with the pre-existing 'lala' followed by a trace containing the non-ASCII repr",
+    "observable": {
+      "source": "pysnooper.tracer.FileWriter.write append branch via @pysnooper.snoop(path)",
+      "measurement_point": "After the decorated call returns",
+      "extraction_method": "open(path,'rb').read().decode('utf-8') and the returned value"
+    },
+    "assertion": {
+      "predicate": "return_value == 'na\\u00efve' AND file content startswith 'lala' AND 'na\\u00efve' in file content",
+      "failure_condition": "UnicodeEncodeError during append, or pre-existing content lost, or non-ASCII trace absent",
+      "rationale": "Exercises the append-mode open path with a non-ASCII repr under ASCII default encoding, distinguishing append behavior from overwrite while measuring the same encoding invariant"
+    },
+    "setup": [
+      "mkdir -p /tmp/pysnooper_plan2",
+      "export LC_ALL=C PYTHONUTF8=0 PYTHONCOERCECLOCALE=0",
+      "printf 'lala' > /tmp/pysnooper_plan2/foo.log"
+    ],
+    "timeout_seconds": 30.0
+  },
+  "repair_attempts": 0,
+  "status": "TEST",
+  "test_code": "import os\nimport subprocess\nimport sys\nimport textwrap\n\nimport pytest\n\n\nTARGET_DIR = \"/tmp/pysnooper_plan2\"\nTARGET_PATH = os.path.join(TARGET_DIR, \"foo.log\")\n\n\n@pytest.fixture(autouse=True)\ndef _ascii_locale_env():\n    os.environ[\"LC_ALL\"] = \"C\"\n    os.environ[\"PYTHONUTF8\"] = \"0\"\n    os.environ[\"PYTHONCOERCECLOCALE\"] = \"0\"\n    yield\n\n\ndef test_file_output_append_non_ascii_repr_under_ascii_locale():\n    os.makedirs(TARGET_DIR, exist_ok=True)\n    with open(TARGET_PATH, \"w\") as f:\n        f.write(\"lala\")\n\n    script = textwrap.dedent(\n        '''\n        import sys\n        import pysnooper\n\n        @pysnooper.snoop(\"/tmp/pysnooper_plan2/foo.log\")\n        def my_function():\n            name = \"na\\\\u00efve\"\n            return name\n\n        result = my_function()\n        sys.stdout.write(repr(result))\n        '''\n    )\n\n    env = dict(os.environ)\n    env[\"LC_ALL\"] = \"C\"\n    env[\"PYTHONUTF8\"] = \"0\"\n    env[\"PYTHONCOERCECLOCALE\"] = \"0\"\n\n    proc = subprocess.run(\n        [sys.executable, \"-c\", script],\n        env=env,\n        stdout=subprocess.PIPE,\n        stderr=subprocess.PIPE,\n        timeout=30.0,\n    )\n\n    assert proc.returncode == 0, (\n        \"decorated call failed under ASCII locale: \"\n        + proc.stderr.decode(\"utf-8\", \"replace\")\n    )\n    assert proc.stdout.decode(\"utf-8\") == repr(\"na\\u00efve\")\n\n    with open(TARGET_PATH, \"rb\") as f:\n        content = f.read().decode(\"utf-8\")\n\n    assert content.startswith(\"lala\")\n    assert \"na\\u00efve\" in content\n",
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 21,
+    "retry_index": 0,
+    "latency_seconds": 3.789,
+    "usage": {
+      "prompt_tokens": 16029,
+      "completion_tokens": 564,
+      "total_tokens": 16593,
+      "prompt_tokens_details": {
+        "cached_tokens": 512
+      },
+      "prompt_cache_hit_tokens": 512,
+      "prompt_cache_miss_tokens": 15517
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_id": "conditional-h04-a9ae48b9d8-plan-2",
+  "test_path": "generated_tests/experiment4/iteration1/C2/conditional-h04-a9ae48b9d8-plan-2.py",
+  "test_sha256": "4101c7fa9989d9ab2696b9d121697f43890a4d6db0698bc3aa7c41f1cb1dcbbf",
+  "wall_clock_seconds": 3.792
+}

@@ -1,0 +1,100 @@
+{
+  "experiment": "experiment4",
+  "iteration": 1,
+  "mode": "conditional",
+  "arm": "C2",
+  "hypothesis_id": "conditional-h02-c19fcca1ca",
+  "hypothesis": "When a decorated function is called with a non-ASCII string argument, PySnooper's default stderr output path can raise UnicodeEncodeError because the default write function writes directly to sys.stderr without encoding fallback, causing the decorated function call to fail instead of returning its normal result.",
+  "trigger": "Decorate a function that accepts a non-ASCII string argument with @pysnooper.snoop() using default output, then call it with a non-ASCII string such as 'caf\\u00e9' under a non-UTF-8 stderr encoding.",
+  "oracle": {
+    "expected_behavior": "The decorated function should return its normal result even when its arguments contain non-ASCII characters, and PySnooper should not crash while writing trace output.",
+    "target_evidence": "pysnooper/tracer.py get_write_function defines the default output=None branch as writing directly to sys.stderr and only catches UnicodeEncodeError in the Python 2 fallback path; pysnooper/utils.py provides shitcode for non-ASCII fallback; README documents default stderr output and non-ASCII variable values are part of ordinary tracing.",
+    "historical_evidence": "cookiecutter:1 shows locale-dependent implicit text encoding can corrupt or fail on non-ASCII data; PySnooper:3 shows file-output path handling is a known fragile area, but neither directly establishes the target stderr encoding behavior.",
+    "confidence": 0.55
+  },
+  "hypothesis_sha256": "c19fcca1ca6f1ac998539ccd9c008059015bdca92b9276801c639484bdcfe692",
+  "hypothesis_frozen": true,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "trigger_id": "plan-3",
+  "trigger_type": "PLAN",
+  "trigger_plan": {
+    "hypothesis_id": "conditional-h02-c19fcca1ca",
+    "preconditions": [
+      "Python 3.9.18 with LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0",
+      "sys.stderr is a TextIOWrapper whose encoding is 'ascii'",
+      "pysnooper is importable from the buggy checkout"
+    ],
+    "initial_state": {
+      "stderr_encoding": "ascii",
+      "decorated_function": "not yet defined",
+      "output_mode": "default (None)"
+    },
+    "actions": [
+      {
+        "type": "set_environment",
+        "description": "Set LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0 in the process environment before starting Python."
+      },
+      {
+        "type": "initialize_state",
+        "description": "Replace sys.stderr with a new io.TextIOWrapper over a BytesIO buffer using encoding='ascii', errors='strict'."
+      },
+      {
+        "type": "create_input",
+        "description": "Define a function h(s) that returns s, and decorate it with @pysnooper.snoop(prefix='caf\\u00e9 ') using default output."
+      },
+      {
+        "type": "invoke",
+        "description": "Call the decorated function with the non-ASCII string 'caf\\u00e9'."
+      },
+      {
+        "type": "observe",
+        "description": "Capture the return value of the call and any exception raised."
+      }
+    ],
+    "expected_invariant": "The decorated function returns 'caf\\u00e9' and no UnicodeEncodeError propagates.",
+    "observable": {
+      "source": "pysnooper.tracer.Tracer.write prefix formatting and get_write_function default branch writing to sys.stderr",
+      "measurement_point": "immediately after the decorated call returns or raises",
+      "extraction_method": "read the call result or exception type from the invoking frame"
+    },
+    "assertion": {
+      "predicate": "result == 'caf\\u00e9' and no UnicodeEncodeError was raised",
+      "failure_condition": "a UnicodeEncodeError is raised during the decorated call, or the returned value differs from the input",
+      "rationale": "The prefix is prepended to every trace line before writing to stderr; a non-ASCII prefix on an ascii stderr exercises the same default write path and must not abort the decorated call."
+    },
+    "setup": [
+      "Run under LC_ALL=C with PYTHONUTF8=0 and PYTHONCOERCECLOCALE=0",
+      "Replace sys.stderr with an ascii TextIOWrapper before calling the decorated function",
+      "Import pysnooper from the buggy checkout"
+    ],
+    "timeout_seconds": 30.0
+  },
+  "repair_attempts": 0,
+  "status": "TEST",
+  "test_code": "import io\nimport sys\n\nimport pytest\n\nimport pysnooper\n\n\ndef test_non_ascii_prefix_with_ascii_stderr():\n    \"\"\"\n    Frozen hypothesis: When a decorated function is called with a non-ASCII\n    string argument, PySnooper's default stderr output path can raise\n    UnicodeEncodeError because the default write function writes directly to\n    sys.stderr without encoding fallback, causing the decorated function call\n    to fail instead of returning its normal result.\n\n    Trigger plan:\n      - Replace sys.stderr with an ascii TextIOWrapper over a BytesIO buffer.\n      - Define h(s) returning s, decorated with @pysnooper.snoop(prefix='caf\\u00e9 ').\n      - Call h('caf\\u00e9').\n      - Assert result == 'caf\\u00e9' and no UnicodeEncodeError propagates.\n    \"\"\"\n    original_stderr = sys.stderr\n    buffer = io.BytesIO()\n    ascii_stderr = io.TextIOWrapper(buffer, encoding='ascii', errors='strict')\n    sys.stderr = ascii_stderr\n    try:\n        @pysnooper.snoop(prefix='caf\\u00e9 ')\n        def h(s):\n            return s\n\n        result = h('caf\\u00e9')\n    finally:\n        sys.stderr = original_stderr\n\n    assert result == 'caf\\u00e9'\n",
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 13,
+    "retry_index": 0,
+    "latency_seconds": 2.062,
+    "usage": {
+      "prompt_tokens": 15943,
+      "completion_tokens": 365,
+      "total_tokens": 16308,
+      "prompt_tokens_details": {
+        "cached_tokens": 640
+      },
+      "prompt_cache_hit_tokens": 640,
+      "prompt_cache_miss_tokens": 15303
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_id": "conditional-h02-c19fcca1ca-plan-3",
+  "test_path": "generated_tests/experiment4/iteration1/C2/conditional-h02-c19fcca1ca-plan-3.py",
+  "test_sha256": "057b03a681968e22a352bc881a24bf75a0e41cefa71f29a18b37873984cee385",
+  "wall_clock_seconds": 2.065
+}

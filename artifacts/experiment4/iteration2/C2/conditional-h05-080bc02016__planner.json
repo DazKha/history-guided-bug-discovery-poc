@@ -1,0 +1,212 @@
+{
+  "experiment": "experiment4",
+  "iteration": 2,
+  "mode": "conditional",
+  "arm": "C2",
+  "hypothesis_id": "conditional-h05-080bc02016",
+  "hypothesis": "PySnooper's get_source_from_frame decodes source files using the locale-dependent default encoding when no PEP-263 coding declaration is present, so a UTF-8 source file containing non-ASCII characters is mis-decoded (mojibake) under a non-UTF-8 locale, corrupting the traced source line.",
+  "trigger": "Create a temporary module file encoded as UTF-8 whose function body contains a non-ASCII string literal (e.g. 'héllo') and no coding declaration; import it, decorate the function with pysnooper.snoop(string_io), and run it under a non-UTF-8 locale (LC_ALL=C).",
+  "oracle": {
+    "expected_behavior": "The trace output must contain the exact non-ASCII source line text (e.g. the literal 'héllo') as written in the UTF-8 file, independent of the process locale.",
+    "target_evidence": "pysnooper/tracer.py get_source_from_frame: when source is bytes it sets encoding='ascii' and only overrides it if a PEP-263 coding declaration is found in the first two lines; otherwise it decodes with that encoding. The README and tests (e.g. test_unavailable_source, test_string_io) show source lines are echoed verbatim into trace output, so a mis-decoded line is a functional defect.",
+    "historical_evidence": "cookiecutter:1 shows the same class of locale-dependent implicit text decoding bug (UTF-8 data read with platform default encoding); PySnooper:3 is only weakly related (file-output path variable mismatch).",
+    "confidence": 0.6
+  },
+  "hypothesis_sha256": "080bc02016cd546877b681eb6e3976c601936656104c3a4d7860f5d665e770c1",
+  "hypothesis_frozen": true,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "status": "PLANS",
+  "planner_attempts": [
+    {
+      "attempt": 0,
+      "status": "VALID",
+      "llm": {
+        "model": "deepseek-flash",
+        "request_count": 23,
+        "retry_index": 0,
+        "latency_seconds": 7.849,
+        "usage": {
+          "prompt_tokens": 16557,
+          "completion_tokens": 2065,
+          "total_tokens": 18622,
+          "prompt_tokens_details": {
+            "cached_tokens": 384
+          },
+          "prompt_cache_hit_tokens": 384,
+          "prompt_cache_miss_tokens": 16173
+        },
+        "finish_reason": "stop",
+        "status_code": 200
+      },
+      "wall_clock_seconds": 7.859
+    }
+  ],
+  "planner_repair_attempts": 0,
+  "plans": [
+    {
+      "hypothesis_id": "conditional-h05-080bc02016",
+      "preconditions": [
+        "Python 3.9.18 with LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0",
+        "pysnooper is importable from the checkout",
+        "A temporary directory is writable and importable via sys.path"
+      ],
+      "initial_state": {
+        "locale": "LC_ALL=C",
+        "python_utf8_mode": "disabled",
+        "source_cache": "empty",
+        "module_imported": false
+      },
+      "actions": [
+        {
+          "type": "set_environment",
+          "description": "Set LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0 in the process environment before importing pysnooper."
+        },
+        {
+          "type": "create_input",
+          "description": "Write a temporary module file 'utf8mod.py' encoded as UTF-8 with no PEP-263 coding declaration; its function body contains the non-ASCII string literal 'héllo' on a line that will be traced."
+        },
+        {
+          "type": "initialize_state",
+          "description": "Add the temporary directory to sys.path and import the module so its __loader__ is a normal SourceFileLoader."
+        },
+        {
+          "type": "invoke",
+          "description": "Decorate the module function with pysnooper.snoop(string_io) and call it so the tracer executes and emits the source line containing 'héllo'."
+        },
+        {
+          "type": "observe",
+          "description": "Read string_io.getvalue() after the decorated call returns and inspect the trace line corresponding to the non-ASCII source line."
+        }
+      ],
+      "expected_invariant": "The trace output contains the exact non-ASCII source line text 'héllo' as written in the UTF-8 file, independent of the process locale.",
+      "observable": {
+        "source": "pysnooper.snoop(string_io) trace output via io.StringIO",
+        "measurement_point": "after the decorated function call completes and the tracer has written the line entry",
+        "extraction_method": "string_io.getvalue() then search for the substring 'héllo' in the emitted trace lines"
+      },
+      "assertion": {
+        "predicate": "string_io.getvalue() contains the exact substring 'héllo' and does not contain the replacement character '\\ufffd' on the traced source line.",
+        "failure_condition": "The trace line shows mojibake or replacement characters instead of 'héllo', indicating the source was decoded with a non-UTF-8 encoding.",
+        "rationale": "The invariant is that source lines are echoed verbatim; measuring the emitted trace after invoke directly tests whether get_source_from_frame decoded the UTF-8 bytes correctly under LC_ALL=C."
+      },
+      "setup": [
+        "Create a temporary directory and add it to sys.path.",
+        "Write utf8mod.py with UTF-8 encoding and no coding declaration.",
+        "Import pysnooper and io."
+      ],
+      "timeout_seconds": 30.0
+    },
+    {
+      "hypothesis_id": "conditional-h05-080bc02016",
+      "preconditions": [
+        "Python 3.9.18 with LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0",
+        "pysnooper is importable from the checkout",
+        "A temporary directory is writable and importable via sys.path"
+      ],
+      "initial_state": {
+        "locale": "LC_ALL=C",
+        "python_utf8_mode": "disabled",
+        "source_cache": "empty",
+        "module_imported": false,
+        "tracer_output": "stderr captured"
+      },
+      "actions": [
+        {
+          "type": "set_environment",
+          "description": "Set LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0 in the process environment before importing pysnooper."
+        },
+        {
+          "type": "create_input",
+          "description": "Write a temporary module file 'utf8mod2.py' encoded as UTF-8 with no coding declaration; its function body contains the non-ASCII string literal 'héllo' on a traced line."
+        },
+        {
+          "type": "initialize_state",
+          "description": "Add the temporary directory to sys.path and import the module."
+        },
+        {
+          "type": "invoke",
+          "description": "Decorate the module function with pysnooper.snoop() writing to stderr and call it while stderr is captured."
+        },
+        {
+          "type": "observe",
+          "description": "Read the captured stderr text after the decorated call returns and inspect the trace line for the non-ASCII source line."
+        }
+      ],
+      "expected_invariant": "The stderr trace output contains the exact non-ASCII source line text 'héllo' as written in the UTF-8 file, independent of the process locale.",
+      "observable": {
+        "source": "pysnooper.snoop() default stderr trace output",
+        "measurement_point": "after the decorated function call completes and the tracer has written the line entry to stderr",
+        "extraction_method": "capture stderr into a buffer and search the captured text for the substring 'héllo'"
+      },
+      "assertion": {
+        "predicate": "The captured stderr text contains the exact substring 'héllo' and does not contain the replacement character '\\ufffd' on the traced source line.",
+        "failure_condition": "The stderr trace line shows mojibake or replacement characters instead of 'héllo', indicating the source was decoded with a non-UTF-8 encoding.",
+        "rationale": "The default public output path is stderr; measuring captured stderr after invoke tests the same get_source_from_frame decoding invariant through a different public interface path than StringIO."
+      },
+      "setup": [
+        "Create a temporary directory and add it to sys.path.",
+        "Write utf8mod2.py with UTF-8 encoding and no coding declaration.",
+        "Import pysnooper and a stderr capture helper."
+      ],
+      "timeout_seconds": 30.0
+    },
+    {
+      "hypothesis_id": "conditional-h05-080bc02016",
+      "preconditions": [
+        "Python 3.9.18 with LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0",
+        "pysnooper is importable from the checkout",
+        "A temporary directory is writable and importable via sys.path"
+      ],
+      "initial_state": {
+        "locale": "LC_ALL=C",
+        "python_utf8_mode": "disabled",
+        "source_cache": "empty",
+        "module_imported": false,
+        "output_file": "absent"
+      },
+      "actions": [
+        {
+          "type": "set_environment",
+          "description": "Set LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0 in the process environment before importing pysnooper."
+        },
+        {
+          "type": "create_input",
+          "description": "Write a temporary module file 'utf8mod3.py' encoded as UTF-8 with no coding declaration; its function body contains the non-ASCII string literal 'héllo' on a traced line."
+        },
+        {
+          "type": "initialize_state",
+          "description": "Add the temporary directory to sys.path and import the module."
+        },
+        {
+          "type": "invoke",
+          "description": "Decorate the module function with pysnooper.snoop(path) pointing to a temporary log file and call it so the tracer writes the trace to that file."
+        },
+        {
+          "type": "observe",
+          "description": "Open the temporary log file after the decorated call returns and inspect the trace line for the non-ASCII source line."
+        }
+      ],
+      "expected_invariant": "The trace file contains the exact non-ASCII source line text 'héllo' as written in the UTF-8 file, independent of the process locale.",
+      "observable": {
+        "source": "pysnooper.snoop(path) file output",
+        "measurement_point": "after the decorated function call completes and the tracer has written the line entry to the log file",
+        "extraction_method": "read the log file text and search for the substring 'héllo'"
+      },
+      "assertion": {
+        "predicate": "The log file text contains the exact substring 'héllo' and does not contain the replacement character '\\ufffd' on the traced source line.",
+        "failure_condition": "The log file trace line shows mojibake or replacement characters instead of 'héllo', indicating the source was decoded with a non-UTF-8 encoding.",
+        "rationale": "The file-output public path exercises the same get_source_from_frame decoding invariant while changing the output sink and file I/O sequence, confirming the corruption is in source decoding rather than stream handling."
+      },
+      "setup": [
+        "Create a temporary directory and add it to sys.path.",
+        "Write utf8mod3.py with UTF-8 encoding and no coding declaration.",
+        "Import pysnooper and prepare a temporary log file path."
+      ],
+      "timeout_seconds": 30.0
+    }
+  ],
+  "planner_calls": 1
+}

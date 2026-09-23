@@ -1,0 +1,76 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+______________ test_pathlike_output_non_ascii_under_ascii_locale _______________
+
+    def test_pathlike_output_non_ascii_under_ascii_locale():
+        # Preconditions: ASCII-default locale environment.
+        # The execution environment is documented as LC_ALL=C, PYTHONUTF8=0,
+        # PYTHONCOERCECLOCALE=0.  Verify the default text encoding is ASCII so the
+        # trigger precondition is actually reached; otherwise skip.
+        import locale
+        preferred = locale.getpreferredencoding(False)
+        if preferred.lower().replace('-', '') not in ('ascii', 'usascii'):
+            pytest.skip(
+                'Default text encoding is %r, not ASCII; cannot reach the '
+                'non-UTF-8 locale precondition.' % (preferred,)
+            )
+
+        # pysnooper must be importable (it is imported at module load).
+        assert pysnooper is not None
+
+        # Create the directory and ensure no file exists at the output path.
+        if OUTPUT_DIR.exists():
+            shutil.rmtree(str(OUTPUT_DIR))
+        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        if OUTPUT_PATH.exists():
+            OUTPUT_PATH.unlink()
+        assert not OUTPUT_PATH.exists()
+
+        # Construct a pathlib.Path output argument (PathLike, not str).
+        output_path = pathlib.Path(str(OUTPUT_PATH))
+        assert isinstance(output_path, pathlib.Path)
+
+        # Define a function decorated with @pysnooper.snoop(Path(...)) whose body
+        # sets a local variable whose repr contains a non-ASCII character and
+        # returns greeting.upper().
+        @pysnooper.snoop(output_path)
+        def my_function():
+            greeting = 'h\u00e9llo'
+            return greeting.upper()
+
+        # Invoke the decorated function once and capture its return value.
+>       return_value = my_function()
+
+_generated_eval_conditional-h04-a9ae48b9d8-plan-3.py:52:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+pysnooper/tracer.py:215: in simple_wrapper
+    return function(*args, **kwargs)
+_generated_eval_conditional-h04-a9ae48b9d8-plan-3.py:49: in my_function
+    return greeting.upper()
+_generated_eval_conditional-h04-a9ae48b9d8-plan-3.py:49: in my_function
+    return greeting.upper()
+pysnooper/tracer.py:317: in trace
+    self.write('{indent}{newish_string}{name} = {value_repr}'.format(
+pysnooper/tracer.py:242: in write
+    self._write(s)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <pysnooper.tracer.FileWriter object at 0x104935f10>
+s = "New var:....... greeting = 'h\xe9llo'\\n"
+
+    def write(self, s):
+        with open(self.path, 'w' if self.overwrite else 'a') as output_file:
+>           output_file.write(s)
+E           UnicodeEncodeError: 'ascii' codec can't encode character '\xe9' in position 29: ordinal not in range(128)
+
+pysnooper/tracer.py:134: UnicodeEncodeError
+=============================== warnings summary ===============================
+pysnooper/variables.py:3
+pysnooper/variables.py:3
+  /Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/pysnooper/variables.py:3: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated since Python 3.3, and in 3.10 it will stop working
+    from collections import Mapping, Sequence
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED _generated_eval_conditional-h04-a9ae48b9d8-plan-3.py::test_pathlike_output_non_ascii_under_ascii_locale
+1 failed, 2 warnings in 0.03s

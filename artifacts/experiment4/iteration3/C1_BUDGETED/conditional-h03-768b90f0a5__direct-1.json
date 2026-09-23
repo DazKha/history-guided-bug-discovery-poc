@@ -1,0 +1,49 @@
+{
+  "experiment": "experiment4",
+  "iteration": 3,
+  "mode": "conditional",
+  "arm": "C1_BUDGETED",
+  "hypothesis_id": "conditional-h03-768b90f0a5",
+  "hypothesis": "PySnooper's get_source_from_frame decodes source files using the platform default encoding when no PEP-263 coding declaration is present, so a UTF-8 source file containing non-ASCII characters will be mis-decoded (mojibake) under a non-UTF-8 locale such as LC_ALL=C, causing the traced source line to differ from the actual source text.",
+  "trigger": "Create a temporary module file encoded as UTF-8 whose function body contains a non-ASCII string literal (e.g. 'héllo') with no coding declaration, import it, and run a @pysnooper.snoop() decorated function under LC_ALL=C so the default locale encoding is ASCII.",
+  "oracle": {
+    "expected_behavior": "The trace output for the line containing the non-ASCII literal must contain the exact Unicode text 'héllo' as written in the UTF-8 source file, independent of the process locale.",
+    "target_evidence": "pysnooper/tracer.py get_source_from_frame: when source is read as bytes it sets encoding='ascii' and only overrides it if a PEP-263 coding comment is found in the first two lines; otherwise it decodes with pycompat.text_type(sline, encoding, 'replace'). The README documents that snoop output shows the actual source line, and ordinary tests (e.g. test_string_io, test_file_output) assert exact source-line text in the trace, establishing that source lines must faithfully reflect the file.",
+    "historical_evidence": "cookiecutter:1 shows the same class of locale-dependent implicit text decoding bug (implicit open using platform default encoding) fixed by making the encoding explicit UTF-8; PySnooper:3 is a weaker file-output path bug that only partially transfers.",
+    "confidence": 0.72
+  },
+  "hypothesis_sha256": "768b90f0a584e3ab99782b4766e6a8e28474486ecb76eeab883184fac7f32c1c",
+  "hypothesis_frozen": true,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "trigger_id": "direct",
+  "trigger_type": "DIRECT",
+  "replicate": 1,
+  "repair_attempts": 0,
+  "status": "TEST",
+  "test_code": "import os\nimport sys\nimport tempfile\nimport subprocess\nimport textwrap\n\n\ndef test_utf8_source_without_coding_declaration_under_c_locale():\n    \"\"\"\n    PySnooper's get_source_from_frame decodes source files using the platform default\n    encoding when no PEP-263 coding declaration is present.  Under LC_ALL=C the\n    default encoding is ASCII, so a UTF-8 source file containing non-ASCII characters\n    is mis-decoded (mojibake).  The trace output must still contain the exact Unicode\n    text 'héllo' as written in the source file.\n    \"\"\"\n    # Create a temporary directory for the test module and its output.\n    with tempfile.TemporaryDirectory() as tmpdir:\n        module_path = os.path.join(tmpdir, \"utf8_source_module.py\")\n        output_path = os.path.join(tmpdir, \"trace_output.txt\")\n\n        # Write a UTF-8 encoded module with a non-ASCII string literal and no coding\n        # declaration.  The function is decorated with @pysnooper.snoop() and writes\n        # the trace to a file so we can inspect it after the subprocess finishes.\n        source = textwrap.dedent(\n            '''\\\n            import pysnooper\n\n            @pysnooper.snoop(\"{output_path}\")\n            def greet():\n                message = \"héllo\"\n                return message\n\n            greet()\n            '''\n        ).format(output_path=output_path)\n\n        with open(module_path, \"w\", encoding=\"utf-8\") as f:\n            f.write(source)\n\n        # Run the module in a subprocess with LC_ALL=C so that the default locale\n        # encoding is ASCII.  This forces the buggy decoding path in PySnooper.\n        env = os.environ.copy()\n        env[\"LC_ALL\"] = \"C\"\n        env[\"LANG\"] = \"C\"\n        env[\"PYTHONIOENCODING\"] = \"utf-8\"\n\n        result = subprocess.run(\n            [sys.executable, module_path],\n            cwd=tmpdir,\n            env=env,\n            capture_output=True,\n            text=True,\n            encoding=\"utf-8\",\n        )\n\n        # The subprocess should succeed; if it fails, the test cannot evaluate the\n        # hypothesis.\n        assert result.returncode == 0, (\n            f\"Subprocess failed with return code {result.returncode}.\\n\"\n            f\"stdout: {result.stdout}\\nstderr: {result.stderr}\"\n        )\n\n        # Read the trace output produced by PySnooper.\n        with open(output_path, \"r\", encoding=\"utf-8\") as f:\n            trace_output = f.read()\n\n        # The trace must contain the exact Unicode text 'héllo' as written in the\n        # UTF-8 source file.  If the bug is present, the non-ASCII bytes are decoded\n        # as ASCII with 'replace', producing 'h\\ufffdllo' instead.\n        assert \"héllo\" in trace_output, (\n            \"Trace output does not contain the exact Unicode text 'héllo'.\\n\"\n            \"This indicates that the source line was mis-decoded under LC_ALL=C.\\n\"\n            f\"Trace output:\\n{trace_output}\"\n        )\n\n        # Additionally, ensure the mojibake replacement character is not present in\n        # the line that should contain the literal.\n        assert \"h\\ufffdllo\" not in trace_output, (\n            \"Trace output contains the replacement character U+FFFD instead of 'é', \"\n            \"confirming the locale-dependent decoding bug.\\n\"\n            f\"Trace output:\\n{trace_output}\"\n        )\n",
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 7,
+    "retry_index": 0,
+    "latency_seconds": 3.651,
+    "usage": {
+      "prompt_tokens": 641,
+      "completion_tokens": 908,
+      "total_tokens": 1549,
+      "prompt_tokens_details": {
+        "cached_tokens": 507
+      },
+      "prompt_cache_hit_tokens": 507,
+      "prompt_cache_miss_tokens": 134
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_id": "conditional-h03-768b90f0a5-direct",
+  "test_path": "generated_tests/experiment4/iteration3/C1_BUDGETED/conditional-h03-768b90f0a5-direct.py",
+  "test_sha256": "cb8179e6c5df194d2216b810acd327dbf96a22415fd38c3335a5f722e3855c83",
+  "wall_clock_seconds": 3.653
+}

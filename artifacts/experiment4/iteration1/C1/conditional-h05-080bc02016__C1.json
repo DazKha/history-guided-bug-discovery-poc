@@ -1,0 +1,48 @@
+{
+  "experiment": "experiment4",
+  "iteration": 1,
+  "mode": "conditional",
+  "arm": "C1",
+  "hypothesis_id": "conditional-h05-080bc02016",
+  "hypothesis": "PySnooper's get_source_from_frame decodes source files using the locale-dependent default encoding when no PEP-263 coding declaration is present, so a UTF-8 source file containing non-ASCII characters is mis-decoded (mojibake) under a non-UTF-8 locale, corrupting the traced source line.",
+  "trigger": "Create a temporary module file encoded as UTF-8 whose function body contains a non-ASCII string literal (e.g. 'héllo') and no coding declaration; import it, decorate the function with pysnooper.snoop(string_io), and run it under a non-UTF-8 locale (LC_ALL=C).",
+  "oracle": {
+    "expected_behavior": "The trace output must contain the exact non-ASCII source line text (e.g. the literal 'héllo') as written in the UTF-8 file, independent of the process locale.",
+    "target_evidence": "pysnooper/tracer.py get_source_from_frame: when source is bytes it sets encoding='ascii' and only overrides it if a PEP-263 coding declaration is found in the first two lines; otherwise it decodes with that encoding. The README and tests (e.g. test_unavailable_source, test_string_io) show source lines are echoed verbatim into trace output, so a mis-decoded line is a functional defect.",
+    "historical_evidence": "cookiecutter:1 shows the same class of locale-dependent implicit text decoding bug (UTF-8 data read with platform default encoding); PySnooper:3 is only weakly related (file-output path variable mismatch).",
+    "confidence": 0.6
+  },
+  "hypothesis_sha256": "080bc02016cd546877b681eb6e3976c601936656104c3a4d7860f5d665e770c1",
+  "hypothesis_frozen": true,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "trigger_id": "direct",
+  "trigger_type": "DIRECT",
+  "repair_attempts": 0,
+  "status": "TEST",
+  "test_code": "import io\nimport os\nimport sys\nimport tempfile\nimport textwrap\nimport importlib.util\nimport locale\nimport pytest\n\nimport pysnooper\n\n\ndef _load_module_from_path(module_name, file_path):\n    spec = importlib.util.spec_from_file_location(module_name, file_path)\n    module = importlib.util.module_from_spec(spec)\n    sys.modules[module_name] = module\n    spec.loader.exec_module(module)\n    return module\n\n\ndef test_get_source_from_frame_utf8_non_ascii_under_c_locale(tmp_path):\n    \"\"\"\n    PySnooper's get_source_from_frame should decode UTF-8 source files\n    correctly even when the process locale is not UTF-8.\n    \"\"\"\n    source = textwrap.dedent('''\\\n        def greet():\n            message = \"h\\u00e9llo\"\n            return message\n    ''')\n\n    module_path = tmp_path / \"utf8_module.py\"\n    module_path.write_text(source, encoding=\"utf-8\")\n\n    old_locale = locale.setlocale(locale.LC_ALL)\n    try:\n        try:\n            locale.setlocale(locale.LC_ALL, \"C\")\n        except locale.Error:\n            pytest.skip(\"C locale is not available on this platform\")\n\n        module = _load_module_from_path(\"utf8_module\", str(module_path))\n\n        output = io.StringIO()\n        decorated = pysnooper.snoop(output)(module.greet)\n        decorated()\n\n        trace = output.getvalue()\n        assert \"h\\u00e9llo\" in trace, (\n            \"Expected the exact non-ASCII source text 'h\\u00e9llo' in trace output, \"\n            \"but got:\\n\" + trace\n        )\n    finally:\n        locale.setlocale(locale.LC_ALL, old_locale)\n",
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 5,
+    "retry_index": 0,
+    "latency_seconds": 2.332,
+    "usage": {
+      "prompt_tokens": 583,
+      "completion_tokens": 469,
+      "total_tokens": 1052,
+      "prompt_tokens_details": {
+        "cached_tokens": 384
+      },
+      "prompt_cache_hit_tokens": 384,
+      "prompt_cache_miss_tokens": 199
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_id": "conditional-h05-080bc02016-direct",
+  "test_path": "generated_tests/experiment4/iteration1/C1/conditional-h05-080bc02016-direct.py",
+  "test_sha256": "6ee4e6a4a6bd1152abf8954dc95eb4e157463d842d6c93c6187f0f89efe8a4df",
+  "wall_clock_seconds": 2.34
+}

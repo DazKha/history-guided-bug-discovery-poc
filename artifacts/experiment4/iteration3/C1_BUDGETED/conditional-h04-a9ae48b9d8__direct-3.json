@@ -1,0 +1,49 @@
+{
+  "experiment": "experiment4",
+  "iteration": 3,
+  "mode": "conditional",
+  "arm": "C1_BUDGETED",
+  "hypothesis_id": "conditional-h04-a9ae48b9d8",
+  "hypothesis": "PySnooper's file-output path handling writes trace output to the requested path and preserves the decorated function's return value, but the FileWriter.write method opens the path with the platform-default text encoding, so on a non-UTF-8 locale (LC_ALL=C, PYTHONUTF8=0) writing a trace containing a non-ASCII variable repr raises UnicodeEncodeError instead of producing the trace.",
+  "trigger": "Decorate a function with @pysnooper.snoop(path) where path is a temporary file, the function has a local variable whose repr contains a non-ASCII character (e.g. 'é'), and run under LC_ALL=C with PYTHONUTF8=0 so the default text encoding is ASCII.",
+  "oracle": {
+    "expected_behavior": "After running the decorated function, the requested output path exists and contains the trace, including the non-ASCII variable value, and the decorated function returns its correct result.",
+    "target_evidence": "pysnooper/tracer.py FileWriter.write uses open(self.path, 'w' if self.overwrite else 'a') with no encoding argument; get_write_function routes path outputs to FileWriter; tests/test_pysnooper.py test_file_output and test_no_overwrite_by_default assert trace content at the requested path; README documents @pysnooper.snoop('/my/log/file.log').",
+    "historical_evidence": "PySnooper:3 historical unit shows the file-output path branch is a real bug surface (path/output variable mismatch), and cookiecutter:1 shows locale-dependent implicit text encoding is a real failure mechanism; combined they suggest probing path-output encoding behavior.",
+    "confidence": 0.6
+  },
+  "hypothesis_sha256": "a9ae48b9d893c88b17406f0c9ec663488f2c39df8465b94da1c40f0ad327fa14",
+  "hypothesis_frozen": true,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "trigger_id": "direct-3",
+  "trigger_type": "DIRECT",
+  "replicate": 3,
+  "repair_attempts": 0,
+  "status": "TEST",
+  "test_code": "import os\nimport subprocess\nimport sys\nimport tempfile\nimport textwrap\n\n\ndef test_file_output_non_ascii_under_ascii_locale():\n    \"\"\"Trace output to a path must be written even when the trace contains\n    non-ASCII characters and the process runs under an ASCII default encoding.\n\n    The frozen hypothesis claims FileWriter.write opens the output path without\n    an explicit encoding, so under LC_ALL=C / PYTHONUTF8=0 the default text\n    encoding is ASCII and writing a non-ASCII variable repr raises\n    UnicodeEncodeError instead of producing the trace.\n    \"\"\"\n    with tempfile.TemporaryDirectory() as tmpdir:\n        out_path = os.path.join(tmpdir, \"trace.log\")\n        script_path = os.path.join(tmpdir, \"run_snoop.py\")\n\n        script = textwrap.dedent(\n            \"\"\"\n            import sys\n            import pysnooper\n\n            out_path = sys.argv[1]\n\n            @pysnooper.snoop(out_path)\n            def f():\n                value = 'caf\\\\u00e9'\n                return 42\n\n            result = f()\n            assert result == 42, result\n            \"\"\"\n        )\n        with open(script_path, \"w\", encoding=\"utf-8\") as fh:\n            fh.write(script)\n\n        env = dict(os.environ)\n        env[\"LC_ALL\"] = \"C\"\n        env[\"LANG\"] = \"C\"\n        env[\"PYTHONUTF8\"] = \"0\"\n        env[\"PYTHONIOENCODING\"] = \"ascii\"\n\n        proc = subprocess.run(\n            [sys.executable, script_path, out_path],\n            env=env,\n            stdout=subprocess.PIPE,\n            stderr=subprocess.PIPE,\n        )\n\n        stderr = proc.stderr.decode(\"utf-8\", \"replace\")\n\n        assert proc.returncode == 0, (\n            \"Decorated function run failed under ASCII locale; \"\n            \"stderr was:\\n\" + stderr\n        )\n        assert os.path.exists(out_path), (\n            \"Trace output path was not created; stderr was:\\n\" + stderr\n        )\n\n        with open(out_path, \"rb\") as fh:\n            raw = fh.read()\n        text = raw.decode(\"utf-8\", \"replace\")\n\n        assert \"caf\\u00e9\" in text, (\n            \"Trace at requested path does not contain the non-ASCII variable \"\n            \"value; file contents were:\\n\" + text\n        )\n",
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 12,
+    "retry_index": 0,
+    "latency_seconds": 2.803,
+    "usage": {
+      "prompt_tokens": 605,
+      "completion_tokens": 652,
+      "total_tokens": 1257,
+      "prompt_tokens_details": {
+        "cached_tokens": 384
+      },
+      "prompt_cache_hit_tokens": 384,
+      "prompt_cache_miss_tokens": 221
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_id": "conditional-h04-a9ae48b9d8-direct-3",
+  "test_path": "generated_tests/experiment4/iteration3/C1_BUDGETED/conditional-h04-a9ae48b9d8-direct-3.py",
+  "test_sha256": "5aa3147fc46585cc2d5e9a19cddd9960db96e15cab4e64b3287a30533595b5c6",
+  "wall_clock_seconds": 2.805
+}

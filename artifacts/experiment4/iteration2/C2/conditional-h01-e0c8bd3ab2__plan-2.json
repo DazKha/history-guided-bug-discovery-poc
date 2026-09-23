@@ -1,0 +1,95 @@
+{
+  "experiment": "experiment4",
+  "iteration": 2,
+  "mode": "conditional",
+  "arm": "C2",
+  "hypothesis_id": "conditional-h01-e0c8bd3ab2",
+  "hypothesis": "When PySnooper's file-output path is used with a non-ASCII trace string, FileWriter.write opens the output file without an explicit encoding, so on a non-UTF-8 locale the write can fail or corrupt the trace instead of preserving the Unicode text.",
+  "trigger": "Create a temporary output path, decorate a function that assigns a non-ASCII string local variable with @pysnooper.snoop(path), run the function under a non-UTF-8 default text encoding, then read the file back as UTF-8 and assert the non-ASCII value appears.",
+  "oracle": {
+    "expected_behavior": "Tracing to a requested filesystem path must write the trace text to that path and preserve non-ASCII variable representations, independent of the process locale.",
+    "target_evidence": "pysnooper/tracer.py FileWriter.write opens the path with open(self.path, 'w' if self.overwrite else 'a') and no encoding argument; get_write_function routes string/PathLike output to FileWriter; README documents @pysnooper.snoop('/my/log/file.log') and tests/test_pysnooper.py test_file_output exercises path output.",
+    "historical_evidence": "cookiecutter:1 shows locale-dependent implicit text I/O encoding for non-ASCII data; PySnooper:3 shows path-output file writing is a public, tested behavior but does not establish the encoding mechanism.",
+    "confidence": 0.72
+  },
+  "hypothesis_sha256": "e0c8bd3ab2481f840b4ee7e6902b44ec0bee11d05fbea5261ae5ad5af3f1e7c2",
+  "hypothesis_frozen": true,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "trigger_id": "plan-2",
+  "trigger_type": "PLAN",
+  "trigger_plan": {
+    "hypothesis_id": "conditional-h01-e0c8bd3ab2",
+    "preconditions": [
+      "Python 3.9.18 with LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0 so the default text encoding is ASCII",
+      "pysnooper is importable from the buggy checkout",
+      "A writable temporary directory exists"
+    ],
+    "initial_state": {
+      "output_path": "A fresh non-existent file path inside a temporary directory",
+      "overwrite_flag": "True so the first write truncates and subsequent writes append",
+      "default_encoding": "ascii (verified via locale.getpreferredencoding(False))"
+    },
+    "actions": [
+      {
+        "type": "set_environment",
+        "description": "Set LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0 in the process environment before importing pysnooper."
+      },
+      {
+        "type": "create_input",
+        "description": "Define a function decorated with @pysnooper.snoop(path, overwrite=True) whose body assigns a local variable to a non-ASCII string such as 'naïve café'."
+      },
+      {
+        "type": "invoke",
+        "description": "Call the decorated function twice so the first call truncates the file and the second appends, exercising the overwrite state transition in FileWriter."
+      },
+      {
+        "type": "observe",
+        "description": "After both calls return, read the output file bytes and decode as UTF-8, then check for the non-ASCII substring."
+      }
+    ],
+    "expected_invariant": "With overwrite=True, the trace file still contains the exact non-ASCII variable representation after multiple writes, decodable as UTF-8, regardless of the process locale.",
+    "observable": {
+      "source": "pysnooper.tracer.FileWriter.write via the public @pysnooper.snoop(path, overwrite=True) decorator",
+      "measurement_point": "After the second decorated function call completes and the trace file has been closed",
+      "extraction_method": "Read the output file bytes and decode as UTF-8; check whether the non-ASCII value string is present"
+    },
+    "assertion": {
+      "predicate": "The UTF-8 decoded trace file contains the exact non-ASCII string assigned to the local variable after the overwrite-and-append sequence.",
+      "failure_condition": "The non-ASCII string is absent, replaced by '?', escaped, or the file cannot be decoded as UTF-8.",
+      "rationale": "The overwrite branch changes the open mode from 'a' to 'w' but still omits encoding, so the locale-dependent failure should reproduce on the first write; checking after the second call also verifies the append path preserves Unicode."
+    },
+    "setup": [
+      "Create a temporary directory and choose a non-existent log file path inside it.",
+      "Ensure the environment variables are set before importing pysnooper."
+    ],
+    "timeout_seconds": 30.0
+  },
+  "repair_attempts": 0,
+  "status": "TEST",
+  "test_code": "import os\nimport sys\nimport locale\nimport tempfile\n\nimport pytest\n\n\nNON_ASCII_VALUE = 'na\\u00efve caf\\u00e9'\n\n\ndef test_file_output_preserves_non_ascii_under_ascii_locale():\n    # Precondition: the process default text encoding must be ASCII for this\n    # hypothesis to be exercised. If the environment cannot provide it, skip.\n    default_encoding = locale.getpreferredencoding(False)\n    if default_encoding.lower().replace('-', '') not in ('ascii', 'usascii'):\n        pytest.skip(\n            'requires a non-UTF-8 (ASCII) default text encoding, got %r'\n            % (default_encoding,)\n        )\n\n    import pysnooper\n\n    with tempfile.TemporaryDirectory(prefix='pysnooper_encoding_') as folder:\n        output_path = os.path.join(folder, 'trace.log')\n        assert not os.path.exists(output_path)\n\n        @pysnooper.snoop(output_path, overwrite=True)\n        def my_function():\n            value = NON_ASCII_VALUE\n            return value\n\n        first_result = my_function()\n        second_result = my_function()\n        assert first_result == NON_ASCII_VALUE\n        assert second_result == NON_ASCII_VALUE\n\n        with open(output_path, 'rb') as output_file:\n            raw_bytes = output_file.read()\n        decoded_trace = raw_bytes.decode('utf-8')\n\n        observation = decoded_trace\n        assert NON_ASCII_VALUE in observation, (\n            'expected non-ASCII value %r to be preserved in the UTF-8 decoded '\n            'trace file, but it was absent; decoded trace was:\\n%r'\n            % (NON_ASCII_VALUE, observation)\n        )\n",
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 8,
+    "retry_index": 0,
+    "latency_seconds": 2.409,
+    "usage": {
+      "prompt_tokens": 16183,
+      "completion_tokens": 438,
+      "total_tokens": 16621,
+      "prompt_tokens_details": {
+        "cached_tokens": 640
+      },
+      "prompt_cache_hit_tokens": 640,
+      "prompt_cache_miss_tokens": 15543
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_id": "conditional-h01-e0c8bd3ab2-plan-2",
+  "test_path": "generated_tests/experiment4/iteration2/C2/conditional-h01-e0c8bd3ab2-plan-2.py",
+  "test_sha256": "aedc0388488d2b8543972744a4dc52a0737c0090de584ef4ecdcdf41958ed769",
+  "wall_clock_seconds": 2.413
+}

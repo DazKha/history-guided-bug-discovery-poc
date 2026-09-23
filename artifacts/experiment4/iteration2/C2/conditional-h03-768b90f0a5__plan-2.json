@@ -1,0 +1,99 @@
+{
+  "experiment": "experiment4",
+  "iteration": 2,
+  "mode": "conditional",
+  "arm": "C2",
+  "hypothesis_id": "conditional-h03-768b90f0a5",
+  "hypothesis": "PySnooper's get_source_from_frame decodes source files using the platform default encoding when no PEP-263 coding declaration is present, so a UTF-8 source file containing non-ASCII characters will be mis-decoded (mojibake) under a non-UTF-8 locale such as LC_ALL=C, causing the traced source line to differ from the actual source text.",
+  "trigger": "Create a temporary module file encoded as UTF-8 whose function body contains a non-ASCII string literal (e.g. 'héllo') with no coding declaration, import it, and run a @pysnooper.snoop() decorated function under LC_ALL=C so the default locale encoding is ASCII.",
+  "oracle": {
+    "expected_behavior": "The trace output for the line containing the non-ASCII literal must contain the exact Unicode text 'héllo' as written in the UTF-8 source file, independent of the process locale.",
+    "target_evidence": "pysnooper/tracer.py get_source_from_frame: when source is read as bytes it sets encoding='ascii' and only overrides it if a PEP-263 coding comment is found in the first two lines; otherwise it decodes with pycompat.text_type(sline, encoding, 'replace'). The README documents that snoop output shows the actual source line, and ordinary tests (e.g. test_string_io, test_file_output) assert exact source-line text in the trace, establishing that source lines must faithfully reflect the file.",
+    "historical_evidence": "cookiecutter:1 shows the same class of locale-dependent implicit text decoding bug (implicit open using platform default encoding) fixed by making the encoding explicit UTF-8; PySnooper:3 is a weaker file-output path bug that only partially transfers.",
+    "confidence": 0.72
+  },
+  "hypothesis_sha256": "768b90f0a584e3ab99782b4766e6a8e28474486ecb76eeab883184fac7f32c1c",
+  "hypothesis_frozen": true,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "trigger_id": "plan-2",
+  "trigger_type": "PLAN",
+  "trigger_plan": {
+    "hypothesis_id": "conditional-h03-768b90f0a5",
+    "preconditions": [
+      "Python 3.9.18 with LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0",
+      "pysnooper importable from the buggy checkout",
+      "A temporary directory is writable and importable via sys.path"
+    ],
+    "initial_state": {
+      "locale_encoding": "ascii",
+      "module_file_encoding": "utf-8 without PEP-263 coding declaration",
+      "source_cache": "empty"
+    },
+    "actions": [
+      {
+        "type": "set_environment",
+        "description": "Set LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0 in the subprocess environment."
+      },
+      {
+        "type": "create_input",
+        "description": "Write a temporary module file utf8mod.py encoded as UTF-8 containing a @pysnooper.snoop() decorated function whose body has the literal 'héllo' and no coding declaration."
+      },
+      {
+        "type": "initialize_state",
+        "description": "Add the temporary directory to sys.path and import utf8mod so the module loader has no cached source."
+      },
+      {
+        "type": "invoke",
+        "description": "Call utf8mod.traced() with a StringIO output stream passed to snoop so the trace is captured in memory."
+      },
+      {
+        "type": "observe",
+        "description": "Read the StringIO value after the call completes."
+      }
+    ],
+    "expected_invariant": "The in-memory trace line for the non-ASCII literal contains the exact Unicode text 'héllo' as written in the UTF-8 source file.",
+    "observable": {
+      "source": "pysnooper tracer StringIO output",
+      "measurement_point": "after utf8mod.traced() returns",
+      "extraction_method": "read the StringIO value and search the trace line for the literal 'héllo'"
+    },
+    "assertion": {
+      "predicate": "The StringIO trace output contains the substring 'héllo' and does not contain 'h\\ufffdllo'.",
+      "failure_condition": "The StringIO trace output contains U+FFFD replacement characters instead of 'é'.",
+      "rationale": "The same get_source_from_frame decoding path is exercised, but the observable is the public stream interface rather than stderr; checking the exact literal measures the invariant."
+    },
+    "setup": [
+      "Create a temporary directory and write utf8mod.py with UTF-8 encoding.",
+      "Run the invocation in a subprocess with LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0."
+    ],
+    "timeout_seconds": 30.0
+  },
+  "repair_attempts": 0,
+  "status": "TEST",
+  "test_code": "import io\nimport os\nimport subprocess\nimport sys\nimport textwrap\n\nimport pytest\n\n\nMODULE_SOURCE = textwrap.dedent(\n    u'''\\\n    import io\n    import pysnooper\n\n    @pysnooper.snoop(io.StringIO())\n    def traced():\n        value = 'h\\u00e9llo'\n        return value\n    '''\n)\n\n\nCHILD_SCRIPT = textwrap.dedent(\n    u'''\\\n    import io\n    import os\n    import sys\n\n    sys.path.insert(0, sys.argv[1])\n\n    import pysnooper\n\n    import utf8mod\n\n    stream = io.StringIO()\n\n    @pysnooper.snoop(stream)\n    def traced():\n        value = 'h\\u00e9llo'\n        return value\n\n    result = traced()\n    assert result == 'h\\u00e9llo'\n\n    output = stream.getvalue()\n    sys.stdout.buffer.write(output.encode('utf-8'))\n    '''\n)\n\n\ndef test_utf8_source_line_is_not_mojibake_under_c_locale(tmp_path):\n    module_path = tmp_path / 'utf8mod.py'\n    module_path.write_bytes(MODULE_SOURCE.encode('utf-8'))\n\n    env = dict(os.environ)\n    env['LC_ALL'] = 'C'\n    env['LANG'] = 'C'\n    env['PYTHONUTF8'] = '0'\n    env['PYTHONCOERCECLOCALE'] = '0'\n    env['PYTHONIOENCODING'] = 'utf-8'\n\n    completed = subprocess.run(\n        [sys.executable, '-c', CHILD_SCRIPT, str(tmp_path)],\n        stdout=subprocess.PIPE,\n        stderr=subprocess.PIPE,\n        env=env,\n        timeout=30.0,\n    )\n\n    stderr_text = completed.stderr.decode('utf-8', 'replace')\n    assert completed.returncode == 0, stderr_text\n\n    trace_output = completed.stdout.decode('utf-8')\n\n    observation = trace_output\n\n    assert 'h\\u00e9llo' in observation\n    assert 'h\\ufffdllo' not in observation\n",
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 17,
+    "retry_index": 0,
+    "latency_seconds": 2.449,
+    "usage": {
+      "prompt_tokens": 16199,
+      "completion_tokens": 564,
+      "total_tokens": 16763,
+      "prompt_tokens_details": {
+        "cached_tokens": 896
+      },
+      "prompt_cache_hit_tokens": 896,
+      "prompt_cache_miss_tokens": 15303
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_id": "conditional-h03-768b90f0a5-plan-2",
+  "test_path": "generated_tests/experiment4/iteration2/C2/conditional-h03-768b90f0a5-plan-2.py",
+  "test_sha256": "e333c7a18ba3a1587301a5c766f4e9d2abd514f921044fce793dc478c6acddfb",
+  "wall_clock_seconds": 2.452
+}

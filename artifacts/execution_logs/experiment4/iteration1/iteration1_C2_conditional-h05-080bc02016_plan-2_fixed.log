@@ -1,0 +1,54 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_____________________ test_utf8_source_line_under_c_locale _____________________
+
+tmp_path = PosixPath('/private/var/folders/1j/l08d1p2s6ls9235bnggg20rc0000gn/T/pytest-of-minhkha/pytest-405/test_utf8_source_line_under_c_0')
+
+    def test_utf8_source_line_under_c_locale(tmp_path):
+        module_path = tmp_path / 'utf8_assign.py'
+        module_path.write_bytes(MODULE_SOURCE.encode('utf-8'))
+
+        driver_path = tmp_path / 'driver.py'
+        driver_path.write_text(DRIVER, encoding='utf-8')
+
+        env = dict(os.environ)
+        env['LC_ALL'] = 'C'
+        env['LANG'] = 'C'
+        env['PYTHONUTF8'] = '0'
+        env['PYTHONCOERCECLOCALE'] = '0'
+        env['PYTHONPATH'] = os.pathsep.join(
+            [str(tmp_path)] + ([env['PYTHONPATH']] if env.get('PYTHONPATH') else [])
+        )
+
+        proc = subprocess.run(
+            [sys.executable, str(driver_path)],
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=30.0,
+        )
+
+        stdout = proc.stdout.decode('utf-8', 'replace')
+        stderr = proc.stderr.decode('utf-8', 'replace')
+
+>       assert proc.returncode == 0, (
+            'driver failed\nstdout:\n%s\nstderr:\n%s' % (stdout, stderr)
+        )
+E       AssertionError: driver failed
+E         stdout:
+E
+E         stderr:
+E         Traceback (most recent call last):
+E           File "/private/var/folders/1j/l08d1p2s6ls9235bnggg20rc0000gn/T/pytest-of-minhkha/pytest-405/test_utf8_source_line_under_c_0/driver.py", line 8, in <module>
+E             import utf8_assign
+E           File "/private/var/folders/1j/l08d1p2s6ls9235bnggg20rc0000gn/T/pytest-of-minhkha/pytest-405/test_utf8_source_line_under_c_0/utf8_assign.py", line 2, in <module>
+E             @pysnooper.snoop(string_io)
+E         NameError: name 'string_io' is not defined
+E
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-fixed/PySnooper/env39/bin/pytho...utf8_assign.py", line 2, in <module>\n    @pysnooper.snoop(string_io)\nNameError: name \'string_io\' is not defined\n').returncode
+
+_generated_eval_conditional-h05-080bc02016-plan-2.py:63: AssertionError
+=========================== short test summary info ============================
+FAILED _generated_eval_conditional-h05-080bc02016-plan-2.py::test_utf8_source_line_under_c_locale
+1 failed in 0.05s

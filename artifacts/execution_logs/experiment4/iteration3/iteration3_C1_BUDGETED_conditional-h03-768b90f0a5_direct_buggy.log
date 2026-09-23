@@ -1,0 +1,84 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+__________ test_utf8_source_without_coding_declaration_under_c_locale __________
+
+    def test_utf8_source_without_coding_declaration_under_c_locale():
+        """
+        PySnooper's get_source_from_frame decodes source files using the platform default
+        encoding when no PEP-263 coding declaration is present.  Under LC_ALL=C the
+        default encoding is ASCII, so a UTF-8 source file containing non-ASCII characters
+        is mis-decoded (mojibake).  The trace output must still contain the exact Unicode
+        text 'h\xe9llo' as written in the source file.
+        """
+        # Create a temporary directory for the test module and its output.
+        with tempfile.TemporaryDirectory() as tmpdir:
+            module_path = os.path.join(tmpdir, "utf8_source_module.py")
+            output_path = os.path.join(tmpdir, "trace_output.txt")
+
+            # Write a UTF-8 encoded module with a non-ASCII string literal and no coding
+            # declaration.  The function is decorated with @pysnooper.snoop() and writes
+            # the trace to a file so we can inspect it after the subprocess finishes.
+            source = textwrap.dedent(
+                '''\
+                import pysnooper
+
+                @pysnooper.snoop("{output_path}")
+                def greet():
+                    message = "h\xe9llo"
+                    return message
+
+                greet()
+                '''
+            ).format(output_path=output_path)
+
+            with open(module_path, "w", encoding="utf-8") as f:
+                f.write(source)
+
+            # Run the module in a subprocess with LC_ALL=C so that the default locale
+            # encoding is ASCII.  This forces the buggy decoding path in PySnooper.
+            env = os.environ.copy()
+            env["LC_ALL"] = "C"
+            env["LANG"] = "C"
+            env["PYTHONIOENCODING"] = "utf-8"
+
+            result = subprocess.run(
+                [sys.executable, module_path],
+                cwd=tmpdir,
+                env=env,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+            )
+
+            # The subprocess should succeed; if it fails, the test cannot evaluate the
+            # hypothesis.
+>           assert result.returncode == 0, (
+                f"Subprocess failed with return code {result.returncode}.\n"
+                f"stdout: {result.stdout}\nstderr: {result.stderr}"
+            )
+E           AssertionError: Subprocess failed with return code 1.
+E             stdout:
+E             stderr: Traceback (most recent call last):
+E               File "/var/folders/1j/l08d1p2s6ls9235bnggg20rc0000gn/T/tmpburmkfux/utf8_source_module.py", line 8, in <module>
+E                 greet()
+E               File "/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/pysnooper/tracer.py", line 215, in simple_wrapper
+E                 return function(*args, **kwargs)
+E               File "/var/folders/1j/l08d1p2s6ls9235bnggg20rc0000gn/T/tmpburmkfux/utf8_source_module.py", line 5, in greet
+E                 message = "h\xe9llo"
+E               File "/var/folders/1j/l08d1p2s6ls9235bnggg20rc0000gn/T/tmpburmkfux/utf8_source_module.py", line 5, in greet
+E                 message = "h\xe9llo"
+E               File "/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/pysnooper/tracer.py", line 375, in trace
+E                 self.write(u'{indent}{now_string} {thread_info}{event:9} '
+E               File "/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/pysnooper/tracer.py", line 242, in write
+E                 self._write(s)
+E               File "/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/pysnooper/tracer.py", line 134, in write
+E                 output_file.write(s)
+E             UnicodeEncodeError: 'ascii' codec can't encode character '\xe9' in position 47: ordinal not in range(128)
+E
+E           assert 1 == 0
+E            +  where 1 = CompletedProcess(args=['/Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/env39/bin/pytho...s)\nUnicodeEncodeError: \'ascii\' codec can\'t encode character \'\\xe9\' in position 47: ordinal not in range(128)\n').returncode
+
+_generated_eval_conditional-h03-768b90f0a5-direct.py:58: AssertionError
+=========================== short test summary info ============================
+FAILED _generated_eval_conditional-h03-768b90f0a5-direct.py::test_utf8_source_without_coding_declaration_under_c_locale
+1 failed in 0.05s

@@ -1,0 +1,102 @@
+{
+  "experiment": "experiment4",
+  "iteration": 2,
+  "mode": "conditional",
+  "arm": "C2",
+  "hypothesis_id": "conditional-h05-080bc02016",
+  "hypothesis": "PySnooper's get_source_from_frame decodes source files using the locale-dependent default encoding when no PEP-263 coding declaration is present, so a UTF-8 source file containing non-ASCII characters is mis-decoded (mojibake) under a non-UTF-8 locale, corrupting the traced source line.",
+  "trigger": "Create a temporary module file encoded as UTF-8 whose function body contains a non-ASCII string literal (e.g. 'héllo') and no coding declaration; import it, decorate the function with pysnooper.snoop(string_io), and run it under a non-UTF-8 locale (LC_ALL=C).",
+  "oracle": {
+    "expected_behavior": "The trace output must contain the exact non-ASCII source line text (e.g. the literal 'héllo') as written in the UTF-8 file, independent of the process locale.",
+    "target_evidence": "pysnooper/tracer.py get_source_from_frame: when source is bytes it sets encoding='ascii' and only overrides it if a PEP-263 coding declaration is found in the first two lines; otherwise it decodes with that encoding. The README and tests (e.g. test_unavailable_source, test_string_io) show source lines are echoed verbatim into trace output, so a mis-decoded line is a functional defect.",
+    "historical_evidence": "cookiecutter:1 shows the same class of locale-dependent implicit text decoding bug (UTF-8 data read with platform default encoding); PySnooper:3 is only weakly related (file-output path variable mismatch).",
+    "confidence": 0.6
+  },
+  "hypothesis_sha256": "080bc02016cd546877b681eb6e3976c601936656104c3a4d7860f5d665e770c1",
+  "hypothesis_frozen": true,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "trigger_id": "plan-2",
+  "trigger_type": "PLAN",
+  "trigger_plan": {
+    "hypothesis_id": "conditional-h05-080bc02016",
+    "preconditions": [
+      "Python 3.9.18 with LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0",
+      "pysnooper is importable from the checkout",
+      "A temporary directory is writable and importable via sys.path"
+    ],
+    "initial_state": {
+      "locale": "LC_ALL=C",
+      "python_utf8_mode": "disabled",
+      "source_cache": "empty",
+      "module_imported": false,
+      "tracer_output": "stderr captured"
+    },
+    "actions": [
+      {
+        "type": "set_environment",
+        "description": "Set LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0 in the process environment before importing pysnooper."
+      },
+      {
+        "type": "create_input",
+        "description": "Write a temporary module file 'utf8mod2.py' encoded as UTF-8 with no coding declaration; its function body contains the non-ASCII string literal 'héllo' on a traced line."
+      },
+      {
+        "type": "initialize_state",
+        "description": "Add the temporary directory to sys.path and import the module."
+      },
+      {
+        "type": "invoke",
+        "description": "Decorate the module function with pysnooper.snoop() writing to stderr and call it while stderr is captured."
+      },
+      {
+        "type": "observe",
+        "description": "Read the captured stderr text after the decorated call returns and inspect the trace line for the non-ASCII source line."
+      }
+    ],
+    "expected_invariant": "The stderr trace output contains the exact non-ASCII source line text 'héllo' as written in the UTF-8 file, independent of the process locale.",
+    "observable": {
+      "source": "pysnooper.snoop() default stderr trace output",
+      "measurement_point": "after the decorated function call completes and the tracer has written the line entry to stderr",
+      "extraction_method": "capture stderr into a buffer and search the captured text for the substring 'héllo'"
+    },
+    "assertion": {
+      "predicate": "The captured stderr text contains the exact substring 'héllo' and does not contain the replacement character '\\ufffd' on the traced source line.",
+      "failure_condition": "The stderr trace line shows mojibake or replacement characters instead of 'héllo', indicating the source was decoded with a non-UTF-8 encoding.",
+      "rationale": "The default public output path is stderr; measuring captured stderr after invoke tests the same get_source_from_frame decoding invariant through a different public interface path than StringIO."
+    },
+    "setup": [
+      "Create a temporary directory and add it to sys.path.",
+      "Write utf8mod2.py with UTF-8 encoding and no coding declaration.",
+      "Import pysnooper and a stderr capture helper."
+    ],
+    "timeout_seconds": 30.0
+  },
+  "repair_attempts": 0,
+  "status": "TEST",
+  "test_code": "import io\nimport os\nimport sys\nimport textwrap\nimport subprocess\n\nimport pytest\n\n\nMODULE_SOURCE = textwrap.dedent(\n    u'''\\\n    import pysnooper\n\n    @pysnooper.snoop()\n    def f():\n        x = 'h\\u00e9llo'\n        return x\n    '''\n)\n\n\nCHILD_SCRIPT = textwrap.dedent(\n    u'''\\\n    import io\n    import os\n    import sys\n\n    sys.path.insert(0, {tmpdir!r})\n\n    import pysnooper\n\n    import utf8mod2\n\n    captured = io.StringIO()\n    original_stderr = sys.stderr\n    sys.stderr = captured\n    try:\n        result = utf8mod2.f()\n    finally:\n        sys.stderr = original_stderr\n\n    sys.stdout.buffer.write(captured.getvalue().encode('utf-8'))\n    sys.stdout.buffer.write(b'\\\\n---RESULT---\\\\n')\n    sys.stdout.buffer.write(repr(result).encode('utf-8'))\n    '''\n)\n\n\ndef test_utf8_source_line_under_c_locale(tmp_path):\n    module_path = tmp_path / 'utf8mod2.py'\n    module_path.write_bytes(MODULE_SOURCE.encode('utf-8'))\n\n    script_path = tmp_path / 'child_runner.py'\n    script_path.write_text(\n        CHILD_SCRIPT.format(tmpdir=str(tmp_path)), encoding='utf-8'\n    )\n\n    env = dict(os.environ)\n    env['LC_ALL'] = 'C'\n    env['LANG'] = 'C'\n    env['PYTHONUTF8'] = '0'\n    env['PYTHONCOERCECLOCALE'] = '0'\n    env['PYTHONIOENCODING'] = 'utf-8'\n\n    completed = subprocess.run(\n        [sys.executable, str(script_path)],\n        stdout=subprocess.PIPE,\n        stderr=subprocess.PIPE,\n        env=env,\n        timeout=30.0,\n    )\n\n    stdout_bytes = completed.stdout\n    assert completed.returncode == 0, (\n        'child process failed: returncode={!r} stderr={!r}'.format(\n            completed.returncode, completed.stderr\n        )\n    )\n\n    marker = b'\\n---RESULT---\\n'\n    assert marker in stdout_bytes, (\n        'child did not emit result marker; stdout={!r}'.format(stdout_bytes)\n    )\n    trace_bytes, _, result_bytes = stdout_bytes.partition(marker)\n    trace_text = trace_bytes.decode('utf-8')\n    result_text = result_bytes.decode('utf-8')\n\n    assert result_text == repr(u'h\\u00e9llo'), (\n        'unexpected function result: {!r}'.format(result_text)\n    )\n\n    observed_trace = trace_text\n    expected_substring = u'h\\u00e9llo'\n    replacement_char = u'\\ufffd'\n\n    assert expected_substring in observed_trace, (\n        'expected exact non-ASCII source text {!r} in trace output, '\n        'got: {!r}'.format(expected_substring, observed_trace)\n    )\n    assert replacement_char not in observed_trace, (\n        'trace output contains replacement character {!r}: {!r}'.format(\n            replacement_char, observed_trace\n        )\n    )\n",
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 25,
+    "retry_index": 0,
+    "latency_seconds": 3.549,
+    "usage": {
+      "prompt_tokens": 16195,
+      "completion_tokens": 855,
+      "total_tokens": 17050,
+      "prompt_tokens_details": {
+        "cached_tokens": 640
+      },
+      "prompt_cache_hit_tokens": 640,
+      "prompt_cache_miss_tokens": 15555
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_id": "conditional-h05-080bc02016-plan-2",
+  "test_path": "generated_tests/experiment4/iteration2/C2/conditional-h05-080bc02016-plan-2.py",
+  "test_sha256": "c1681a0a0a789b65ffd7bf08de788062854ec5ce6967b91943bb08838d6a6143",
+  "wall_clock_seconds": 3.55
+}

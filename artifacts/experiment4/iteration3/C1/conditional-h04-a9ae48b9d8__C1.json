@@ -1,0 +1,48 @@
+{
+  "experiment": "experiment4",
+  "iteration": 3,
+  "mode": "conditional",
+  "arm": "C1",
+  "hypothesis_id": "conditional-h04-a9ae48b9d8",
+  "hypothesis": "PySnooper's file-output path handling writes trace output to the requested path and preserves the decorated function's return value, but the FileWriter.write method opens the path with the platform-default text encoding, so on a non-UTF-8 locale (LC_ALL=C, PYTHONUTF8=0) writing a trace containing a non-ASCII variable repr raises UnicodeEncodeError instead of producing the trace.",
+  "trigger": "Decorate a function with @pysnooper.snoop(path) where path is a temporary file, the function has a local variable whose repr contains a non-ASCII character (e.g. 'é'), and run under LC_ALL=C with PYTHONUTF8=0 so the default text encoding is ASCII.",
+  "oracle": {
+    "expected_behavior": "After running the decorated function, the requested output path exists and contains the trace, including the non-ASCII variable value, and the decorated function returns its correct result.",
+    "target_evidence": "pysnooper/tracer.py FileWriter.write uses open(self.path, 'w' if self.overwrite else 'a') with no encoding argument; get_write_function routes path outputs to FileWriter; tests/test_pysnooper.py test_file_output and test_no_overwrite_by_default assert trace content at the requested path; README documents @pysnooper.snoop('/my/log/file.log').",
+    "historical_evidence": "PySnooper:3 historical unit shows the file-output path branch is a real bug surface (path/output variable mismatch), and cookiecutter:1 shows locale-dependent implicit text encoding is a real failure mechanism; combined they suggest probing path-output encoding behavior.",
+    "confidence": 0.6
+  },
+  "hypothesis_sha256": "a9ae48b9d893c88b17406f0c9ec663488f2c39df8465b94da1c40f0ad327fa14",
+  "hypothesis_frozen": true,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "trigger_id": "direct",
+  "trigger_type": "DIRECT",
+  "repair_attempts": 0,
+  "status": "TEST",
+  "test_code": "import os\nimport subprocess\nimport sys\nimport textwrap\n\nimport pytest\n\n\ndef test_file_output_non_ascii_under_ascii_locale(tmp_path):\n    \"\"\"Trace output to a file must be written even when the trace contains\n    non-ASCII characters and the process runs under an ASCII default encoding.\n\n    The frozen hypothesis claims FileWriter.write opens the output path without\n    an explicit encoding, so under LC_ALL=C / PYTHONUTF8=0 a non-ASCII variable\n    repr raises UnicodeEncodeError and the trace is not written.\n    \"\"\"\n    out_path = tmp_path / \"trace.log\"\n\n    script = textwrap.dedent(\n        \"\"\"\n        import pysnooper\n\n        @pysnooper.snoop({path!r})\n        def f():\n            value = 'caf\\u00e9'\n            return value\n\n        result = f()\n        assert result == 'caf\\u00e9', result\n        \"\"\"\n    ).format(path=str(out_path))\n\n    env = dict(os.environ)\n    env[\"LC_ALL\"] = \"C\"\n    env[\"LANG\"] = \"C\"\n    env[\"PYTHONUTF8\"] = \"0\"\n    env[\"PYTHONIOENCODING\"] = \"ascii\"\n\n    proc = subprocess.run(\n        [sys.executable, \"-c\", script],\n        env=env,\n        capture_output=True,\n        text=True,\n    )\n\n    assert proc.returncode == 0, (\n        \"Decorated function run failed under ASCII locale.\\n\"\n        \"stdout: {!r}\\nstderr: {!r}\".format(proc.stdout, proc.stderr)\n    )\n\n    assert out_path.exists(), (\n        \"Trace output file was not created at the requested path {!r}.\\n\"\n        \"stdout: {!r}\\nstderr: {!r}\".format(\n            str(out_path), proc.stdout, proc.stderr\n        )\n    )\n\n    content = out_path.read_text(encoding=\"utf-8\")\n    assert \"caf\\u00e9\" in content, (\n        \"Trace output did not contain the non-ASCII variable value.\\n\"\n        \"content: {!r}\".format(content)\n    )\n",
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 4,
+    "retry_index": 0,
+    "latency_seconds": 3.348,
+    "usage": {
+      "prompt_tokens": 605,
+      "completion_tokens": 585,
+      "total_tokens": 1190,
+      "prompt_tokens_details": {
+        "cached_tokens": 384
+      },
+      "prompt_cache_hit_tokens": 384,
+      "prompt_cache_miss_tokens": 221
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_id": "conditional-h04-a9ae48b9d8-direct",
+  "test_path": "generated_tests/experiment4/iteration3/C1/conditional-h04-a9ae48b9d8-direct.py",
+  "test_sha256": "680aeac13109fb46064e2d47560613b9b066d3b03ce361a7c36644e824ee1284",
+  "wall_clock_seconds": 3.349
+}

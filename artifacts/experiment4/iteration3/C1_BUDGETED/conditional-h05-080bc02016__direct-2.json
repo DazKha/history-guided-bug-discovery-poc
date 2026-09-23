@@ -1,0 +1,49 @@
+{
+  "experiment": "experiment4",
+  "iteration": 3,
+  "mode": "conditional",
+  "arm": "C1_BUDGETED",
+  "hypothesis_id": "conditional-h05-080bc02016",
+  "hypothesis": "PySnooper's get_source_from_frame decodes source files using the locale-dependent default encoding when no PEP-263 coding declaration is present, so a UTF-8 source file containing non-ASCII characters is mis-decoded (mojibake) under a non-UTF-8 locale, corrupting the traced source line.",
+  "trigger": "Create a temporary module file encoded as UTF-8 whose function body contains a non-ASCII string literal (e.g. 'héllo') and no coding declaration; import it, decorate the function with pysnooper.snoop(string_io), and run it under a non-UTF-8 locale (LC_ALL=C).",
+  "oracle": {
+    "expected_behavior": "The trace output must contain the exact non-ASCII source line text (e.g. the literal 'héllo') as written in the UTF-8 file, independent of the process locale.",
+    "target_evidence": "pysnooper/tracer.py get_source_from_frame: when source is bytes it sets encoding='ascii' and only overrides it if a PEP-263 coding declaration is found in the first two lines; otherwise it decodes with that encoding. The README and tests (e.g. test_unavailable_source, test_string_io) show source lines are echoed verbatim into trace output, so a mis-decoded line is a functional defect.",
+    "historical_evidence": "cookiecutter:1 shows the same class of locale-dependent implicit text decoding bug (UTF-8 data read with platform default encoding); PySnooper:3 is only weakly related (file-output path variable mismatch).",
+    "confidence": 0.6
+  },
+  "hypothesis_sha256": "080bc02016cd546877b681eb6e3976c601936656104c3a4d7860f5d665e770c1",
+  "hypothesis_frozen": true,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "trigger_id": "direct-2",
+  "trigger_type": "DIRECT",
+  "replicate": 2,
+  "repair_attempts": 0,
+  "status": "TEST",
+  "test_code": "import io\nimport os\nimport subprocess\nimport sys\nimport textwrap\n\nimport pytest\n\n\ndef test_get_source_from_frame_decodes_utf8_without_coding_declaration(tmp_path):\n    \"\"\"PySnooper must echo the exact UTF-8 source line under a non-UTF-8 locale.\n\n    The temporary module is written as UTF-8 with a non-ASCII string literal and\n    no PEP-263 coding declaration.  It is imported and traced in a subprocess\n    whose locale is forced to C (ASCII default encoding), then the trace output\n    is checked for the exact non-ASCII source text.\n    \"\"\"\n    module_name = \"pysnooper_utf8_locale_probe\"\n    module_path = tmp_path / (module_name + \".py\")\n    module_path.write_bytes(\n        textwrap.dedent(\n            \"\"\"\\\n            import io\n            import pysnooper\n\n\n            def greet():\n                message = 'h\\u00e9llo'\n                return message\n\n\n            def run():\n                stream = io.StringIO()\n                traced = pysnooper.snoop(stream)(greet)\n                traced()\n                return stream.getvalue()\n            \"\"\"\n        ).encode(\"utf-8\")\n    )\n\n    driver = textwrap.dedent(\n        \"\"\"\\\n        import sys\n        sys.path.insert(0, {path!r})\n        import {module} as probe\n        sys.stdout.write(probe.run())\n        \"\"\"\n    ).format(path=str(tmp_path), module=module_name)\n\n    env = dict(os.environ)\n    env[\"LC_ALL\"] = \"C\"\n    env[\"LANG\"] = \"C\"\n    env[\"PYTHONIOENCODING\"] = \"utf-8\"\n\n    completed = subprocess.run(\n        [sys.executable, \"-c\", driver],\n        stdout=subprocess.PIPE,\n        stderr=subprocess.PIPE,\n        env=env,\n    )\n\n    assert completed.returncode == 0, completed.stderr.decode(\"utf-8\", \"replace\")\n\n    trace_output = completed.stdout.decode(\"utf-8\", \"replace\")\n\n    # The traced source line must contain the exact non-ASCII literal as written\n    # in the UTF-8 file, not a mojibake or replacement-character rendering.\n    assert \"message = 'h\\u00e9llo'\" in trace_output, trace_output\n    assert \"\\ufffd\" not in trace_output, trace_output\n",
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 14,
+    "retry_index": 0,
+    "latency_seconds": 2.982,
+    "usage": {
+      "prompt_tokens": 583,
+      "completion_tokens": 630,
+      "total_tokens": 1213,
+      "prompt_tokens_details": {
+        "cached_tokens": 384
+      },
+      "prompt_cache_hit_tokens": 384,
+      "prompt_cache_miss_tokens": 199
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_id": "conditional-h05-080bc02016-direct-2",
+  "test_path": "generated_tests/experiment4/iteration3/C1_BUDGETED/conditional-h05-080bc02016-direct-2.py",
+  "test_sha256": "0700d94c65134b692617f82bc146c63687eb97ac07d07540a8314304a687f27b",
+  "wall_clock_seconds": 2.986
+}

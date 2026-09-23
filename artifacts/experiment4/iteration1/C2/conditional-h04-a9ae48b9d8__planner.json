@@ -1,0 +1,201 @@
+{
+  "experiment": "experiment4",
+  "iteration": 1,
+  "mode": "conditional",
+  "arm": "C2",
+  "hypothesis_id": "conditional-h04-a9ae48b9d8",
+  "hypothesis": "PySnooper's file-output path handling writes trace output to the requested path and preserves the decorated function's return value, but the FileWriter.write method opens the path with the platform-default text encoding, so on a non-UTF-8 locale (LC_ALL=C, PYTHONUTF8=0) writing a trace containing a non-ASCII variable repr raises UnicodeEncodeError instead of producing the trace.",
+  "trigger": "Decorate a function with @pysnooper.snoop(path) where path is a temporary file, the function has a local variable whose repr contains a non-ASCII character (e.g. 'é'), and run under LC_ALL=C with PYTHONUTF8=0 so the default text encoding is ASCII.",
+  "oracle": {
+    "expected_behavior": "After running the decorated function, the requested output path exists and contains the trace, including the non-ASCII variable value, and the decorated function returns its correct result.",
+    "target_evidence": "pysnooper/tracer.py FileWriter.write uses open(self.path, 'w' if self.overwrite else 'a') with no encoding argument; get_write_function routes path outputs to FileWriter; tests/test_pysnooper.py test_file_output and test_no_overwrite_by_default assert trace content at the requested path; README documents @pysnooper.snoop('/my/log/file.log').",
+    "historical_evidence": "PySnooper:3 historical unit shows the file-output path branch is a real bug surface (path/output variable mismatch), and cookiecutter:1 shows locale-dependent implicit text encoding is a real failure mechanism; combined they suggest probing path-output encoding behavior.",
+    "confidence": 0.6
+  },
+  "hypothesis_sha256": "a9ae48b9d893c88b17406f0c9ec663488f2c39df8465b94da1c40f0ad327fa14",
+  "hypothesis_frozen": true,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "status": "PLANS",
+  "planner_attempts": [
+    {
+      "attempt": 0,
+      "status": "VALID",
+      "llm": {
+        "model": "deepseek-flash",
+        "request_count": 19,
+        "retry_index": 0,
+        "latency_seconds": 7.052,
+        "usage": {
+          "prompt_tokens": 16564,
+          "completion_tokens": 1683,
+          "total_tokens": 18247,
+          "prompt_tokens_details": {
+            "cached_tokens": 384
+          },
+          "prompt_cache_hit_tokens": 384,
+          "prompt_cache_miss_tokens": 16180
+        },
+        "finish_reason": "stop",
+        "status_code": 200
+      },
+      "wall_clock_seconds": 7.058
+    }
+  ],
+  "planner_repair_attempts": 0,
+  "plans": [
+    {
+      "hypothesis_id": "conditional-h04-a9ae48b9d8",
+      "preconditions": [
+        "Python 3.9.18 with LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0 so locale.getpreferredencoding(False) is ANSI_X3.4-1968/ASCII",
+        "pysnooper importable from the buggy checkout",
+        "A writable temporary directory exists"
+      ],
+      "initial_state": {
+        "named_state": "No output file exists at the target path; sys.getdefaultencoding() is utf-8 but locale default text encoding is ASCII"
+      },
+      "actions": [
+        {
+          "type": "set_environment",
+          "description": "Set env LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0 for the test process"
+        },
+        {
+          "type": "create_input",
+          "description": "Create a temp file path /tmp/pysnooper_plan1/out.log (directory created, file absent)"
+        },
+        {
+          "type": "initialize_state",
+          "description": "Define a module-level function decorated with @pysnooper.snoop('/tmp/pysnooper_plan1/out.log') whose body assigns local variable s = 'caf\\u00e9' and returns len(s)"
+        },
+        {
+          "type": "invoke",
+          "description": "Call the decorated function once and capture its return value"
+        },
+        {
+          "type": "observe",
+          "description": "Read the bytes of /tmp/pysnooper_plan1/out.log and decode as UTF-8; also record the captured return value"
+        }
+      ],
+      "expected_invariant": "The decorated function returns 4 and the requested path exists containing a trace line with the non-ASCII repr 'caf\\u00e9'",
+      "observable": {
+        "source": "pysnooper.tracer.FileWriter.write via @pysnooper.snoop(path) public API",
+        "measurement_point": "After the decorated function call completes, before any cleanup",
+        "extraction_method": "open(path,'rb').read().decode('utf-8') and inspect the returned value from the call"
+      },
+      "assertion": {
+        "predicate": "return_value == 4 AND path exists AND 'caf\\u00e9' appears in the decoded trace text",
+        "failure_condition": "UnicodeEncodeError raised during the call, or path missing, or trace text lacks the non-ASCII value",
+        "rationale": "Directly exercises the path-output branch with a non-ASCII local repr under an ASCII default encoding, so a missing non-ASCII trace or an encode error falsifies the invariant"
+      },
+      "setup": [
+        "mkdir -p /tmp/pysnooper_plan1",
+        "export LC_ALL=C PYTHONUTF8=0 PYTHONCOERCECLOCALE=0",
+        "python -c 'import locale; print(locale.getpreferredencoding(False))' must print ANSI_X3.4-1968"
+      ],
+      "timeout_seconds": 30.0
+    },
+    {
+      "hypothesis_id": "conditional-h04-a9ae48b9d8",
+      "preconditions": [
+        "Same ASCII-default locale environment",
+        "pysnooper importable",
+        "A pre-existing file at the target path containing ASCII text 'lala'"
+      ],
+      "initial_state": {
+        "named_state": "Target path /tmp/pysnooper_plan2/foo.log already exists with content 'lala' and no trailing newline"
+      },
+      "actions": [
+        {
+          "type": "set_environment",
+          "description": "Set env LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0"
+        },
+        {
+          "type": "create_input",
+          "description": "Write 'lala' to /tmp/pysnooper_plan2/foo.log"
+        },
+        {
+          "type": "initialize_state",
+          "description": "Define a function decorated with @pysnooper.snoop('/tmp/pysnooper_plan2/foo.log') (overwrite default False) whose body sets local variable name = 'na\\u00efve' and returns name"
+        },
+        {
+          "type": "invoke",
+          "description": "Call the decorated function once and capture its return value"
+        },
+        {
+          "type": "observe",
+          "description": "Read /tmp/pysnooper_plan2/foo.log as UTF-8 and check it starts with 'lala' and contains 'na\\u00efve'"
+        }
+      ],
+      "expected_invariant": "The decorated function returns 'na\\u00efve' and the append-mode file starts with the pre-existing 'lala' followed by a trace containing the non-ASCII repr",
+      "observable": {
+        "source": "pysnooper.tracer.FileWriter.write append branch via @pysnooper.snoop(path)",
+        "measurement_point": "After the decorated call returns",
+        "extraction_method": "open(path,'rb').read().decode('utf-8') and the returned value"
+      },
+      "assertion": {
+        "predicate": "return_value == 'na\\u00efve' AND file content startswith 'lala' AND 'na\\u00efve' in file content",
+        "failure_condition": "UnicodeEncodeError during append, or pre-existing content lost, or non-ASCII trace absent",
+        "rationale": "Exercises the append-mode open path with a non-ASCII repr under ASCII default encoding, distinguishing append behavior from overwrite while measuring the same encoding invariant"
+      },
+      "setup": [
+        "mkdir -p /tmp/pysnooper_plan2",
+        "export LC_ALL=C PYTHONUTF8=0 PYTHONCOERCECLOCALE=0",
+        "printf 'lala' > /tmp/pysnooper_plan2/foo.log"
+      ],
+      "timeout_seconds": 30.0
+    },
+    {
+      "hypothesis_id": "conditional-h04-a9ae48b9d8",
+      "preconditions": [
+        "Same ASCII-default locale environment",
+        "pysnooper importable",
+        "A pathlib.Path object is accepted as the output argument"
+      ],
+      "initial_state": {
+        "named_state": "No file at /tmp/pysnooper_plan3/out.log; output argument is a pathlib.Path instance rather than str"
+      },
+      "actions": [
+        {
+          "type": "set_environment",
+          "description": "Set env LC_ALL=C, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0"
+        },
+        {
+          "type": "create_input",
+          "description": "Create directory /tmp/pysnooper_plan3 and construct pathlib.Path('/tmp/pysnooper_plan3/out.log')"
+        },
+        {
+          "type": "initialize_state",
+          "description": "Define a function decorated with @pysnooper.snoop(Path('/tmp/pysnooper_plan3/out.log')) whose body sets local variable greeting = 'h\\u00e9llo' and returns greeting.upper()"
+        },
+        {
+          "type": "invoke",
+          "description": "Call the decorated function once and capture its return value"
+        },
+        {
+          "type": "observe",
+          "description": "Read /tmp/pysnooper_plan3/out.log as UTF-8 and check for 'h\\u00e9llo' and the return value"
+        }
+      ],
+      "expected_invariant": "The decorated function returns 'H\\u00c9LLO' and the Path-typed output path contains the trace including the non-ASCII repr",
+      "observable": {
+        "source": "pysnooper.tracer.get_write_function path branch with pycompat.PathLike input routed to FileWriter",
+        "measurement_point": "After the decorated call returns",
+        "extraction_method": "open(path,'rb').read().decode('utf-8') and the returned value"
+      },
+      "assertion": {
+        "predicate": "return_value == 'H\\u00c9LLO' AND file exists AND 'h\\u00e9llo' in decoded content",
+        "failure_condition": "UnicodeEncodeError, missing file, or non-ASCII trace absent when using a PathLike output",
+        "rationale": "Varies the public interface path (PathLike vs str) while still reaching FileWriter.write, so it tests the same encoding invariant through a different supported input boundary"
+      },
+      "setup": [
+        "mkdir -p /tmp/pysnooper_plan3",
+        "export LC_ALL=C PYTHONUTF8=0 PYTHONCOERCECLOCALE=0",
+        "python -c 'import pathlib; print(pathlib.Path(\"/tmp/pysnooper_plan3/out.log\"))'"
+      ],
+      "timeout_seconds": 30.0
+    }
+  ],
+  "planner_calls": 1
+}

@@ -1,0 +1,95 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_________ test_snoop_default_stderr_non_ascii_argument_does_not_raise __________
+
+self = <_generated_eval_conditional-h02-c19fcca1ca-direct.test_snoop_default_stderr_non_ascii_argument_does_not_raise.<locals>.AsciiOnlyStderr object at 0x1042022e0>
+s = "Starting var:.. value = 'caf\xe9'\\n"
+
+    def write(self, s):
+        # Mimic a real text stream with an ASCII encoding: encoding a
+        # non-ASCII character raises UnicodeEncodeError.
+>       s.encode(self.encoding)
+E       UnicodeEncodeError: 'ascii' codec can't encode character '\xe9' in position 28: ordinal not in range(128)
+
+_generated_eval_conditional-h02-c19fcca1ca-direct.py:29: UnicodeEncodeError
+
+During handling of the above exception, another exception occurred:
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x104202340>
+
+    def test_snoop_default_stderr_non_ascii_argument_does_not_raise(monkeypatch):
+        """A decorated function must return normally when called with a non-ASCII
+        string argument, even if sys.stderr cannot encode that character.
+
+        The hypothesis claims that PySnooper's default output path writes directly
+        to sys.stderr without an encoding fallback, so a non-UTF-8 stderr encoding
+        makes the decorated call raise UnicodeEncodeError instead of returning.
+        """
+
+        class AsciiOnlyStderr(io.TextIOBase):
+            """A stderr-like stream that rejects any non-ASCII character."""
+
+            encoding = "ascii"
+
+            def __init__(self):
+                self._chunks = []
+
+            def write(self, s):
+                # Mimic a real text stream with an ASCII encoding: encoding a
+                # non-ASCII character raises UnicodeEncodeError.
+                s.encode(self.encoding)
+                self._chunks.append(s)
+                return len(s)
+
+            def flush(self):
+                pass
+
+            def isatty(self):
+                return False
+
+            def getvalue(self):
+                return "".join(self._chunks)
+
+        fake_stderr = AsciiOnlyStderr()
+        monkeypatch.setattr(sys, "stderr", fake_stderr)
+
+        @pysnooper.snoop()
+        def echo(value):
+            return value
+
+>       result = echo("caf\u00e9")
+
+_generated_eval_conditional-h02-c19fcca1ca-direct.py:49:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+pysnooper/tracer.py:215: in simple_wrapper
+    return function(*args, **kwargs)
+_generated_eval_conditional-h02-c19fcca1ca-direct.py:45: in echo
+    @pysnooper.snoop()
+pysnooper/tracer.py:317: in trace
+    self.write('{indent}{newish_string}{name} = {value_repr}'.format(
+pysnooper/tracer.py:242: in write
+    self._write(s)
+pysnooper/tracer.py:114: in write
+    stderr.write(utils.shitcode(s))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <_generated_eval_conditional-h02-c19fcca1ca-direct.test_snoop_default_stderr_non_ascii_argument_does_not_raise.<locals>.AsciiOnlyStderr object at 0x1042022e0>
+s = "Starting var:.. value = 'caf\xe9'\\n"
+
+    def write(self, s):
+        # Mimic a real text stream with an ASCII encoding: encoding a
+        # non-ASCII character raises UnicodeEncodeError.
+>       s.encode(self.encoding)
+E       UnicodeEncodeError: 'ascii' codec can't encode character '\xe9' in position 28: ordinal not in range(128)
+
+_generated_eval_conditional-h02-c19fcca1ca-direct.py:29: UnicodeEncodeError
+=============================== warnings summary ===============================
+pysnooper/variables.py:3
+pysnooper/variables.py:3
+  /Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-buggy/PySnooper/pysnooper/variables.py:3: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated since Python 3.3, and in 3.10 it will stop working
+    from collections import Mapping, Sequence
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED _generated_eval_conditional-h02-c19fcca1ca-direct.py::test_snoop_default_stderr_non_ascii_argument_does_not_raise
+1 failed, 2 warnings in 0.03s
