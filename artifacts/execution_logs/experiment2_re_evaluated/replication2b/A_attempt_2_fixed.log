@@ -1,0 +1,34 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+__________________________ test_exception_indentation __________________________
+
+    def test_exception_indentation():
+        string_io = io.StringIO()
+
+        @pysnooper.snoop(string_io)
+        def f():
+            raise ValueError('test error')
+
+        with pytest.raises(ValueError):
+            f()
+
+        output = string_io.getvalue()
+        lines = output.splitlines()
+        # Find the line containing the exception message
+        exception_lines = [line for line in lines if 'ValueError' in line]
+>       assert len(exception_lines) == 1, f'Expected one exception line, got: {exception_lines}'
+E       AssertionError: Expected one exception line, got: ["08:04:20.187543 line        10         raise ValueError('test error')", "08:04:20.187553 exception   10         raise ValueError('test error')", 'ValueError: test error']
+E       assert 3 == 1
+E        +  where 3 = len(["08:04:20.187543 line        10         raise ValueError('test error')", "08:04:20.187553 exception   10         raise ValueError('test error')", 'ValueError: test error'])
+
+_generated_eval_A_attempt_2.py:19: AssertionError
+=============================== warnings summary ===============================
+pysnooper/variables.py:3
+pysnooper/variables.py:3
+  /Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-fixed/PySnooper/pysnooper/variables.py:3: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated since Python 3.3, and in 3.10 it will stop working
+    from collections import Mapping, Sequence
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED _generated_eval_A_attempt_2.py::test_exception_indentation - Assertion...
+1 failed, 2 warnings in 0.02s

@@ -1,0 +1,56 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "C",
+  "condition_name": "STRUCTURED_APPLICABILITY_AWARE",
+  "attempt": 4,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "hypothesis": "When a decorated function's source file is read as bytes and contains a non-ASCII character in a line that is not the first two lines, get_source_from_frame decodes the whole file using the default 'ascii' encoding, causing a UnicodeDecodeError that propagates out of the tracer and breaks the decorated function call.",
+  "trigger": "Create a temporary module whose source file contains a non-ASCII character (e.g. a comment or string with 'é') on a line after the first two lines, import it, decorate a function with pysnooper.snoop(), and call the function.",
+  "potential_failure": "get_source_from_frame reads the file with open(file_name, 'rb') and, because no PEP-263 coding declaration is found in the first two lines, decodes every line with encoding='ascii' via pycompat.text_type(sline, encoding, 'replace'). The 'replace' error handler prevents a UnicodeDecodeError, but the non-ASCII bytes are replaced with U+FFFD, so the source line shown in the trace is corrupted rather than the original text. If the decode were strict, it would raise; with 'replace' the observable defect is that the trace output contains the replacement character instead of the original non-ASCII character.",
+  "oracle": {
+    "expected_behavior": "The trace output for a function defined in a UTF-8 source file containing non-ASCII characters should contain the original non-ASCII source text (e.g. 'é'), not a replacement character or a crash.",
+    "target_evidence": "pysnooper/tracer.py get_source_from_frame: when source is read as bytes and no coding declaration is found in the first two lines, it sets encoding = 'ascii' and decodes with pycompat.text_type(sline, encoding, 'replace'). The README and tests (e.g. test_unavailable_source, test_string_io) show that source lines are expected to be reproduced in trace output. The environment sets PYTHONUTF8=0 and LC_ALL=C, making the default encoding non-UTF-8, so the ascii fallback is exercised.",
+    "historical_evidence": "cookiecutter:1 shows a locale-dependent implicit text encoding bug where valid UTF-8 data must decode to the same Unicode values independently of locale; the fix makes the encoding explicit UTF-8. PySnooper:3 is about file-output path handling and is only weakly related.",
+    "confidence": 0.6
+  },
+  "test_code": "import io\nimport os\nimport sys\nimport textwrap\nimport tempfile\n\nimport pysnooper\n\n\ndef test_non_ascii_source_line_is_preserved():\n    # Create a temporary module whose source contains a non-ASCII character\n    # on a line after the first two lines, so no PEP-263 coding declaration\n    # is found and the ascii fallback in get_source_from_frame is used.\n    tmpdir = tempfile.mkdtemp(prefix='pysnooper_nonascii_')\n    module_name = 'pysnooper_nonascii_module'\n    module_path = os.path.join(tmpdir, module_name + '.py')\n    source = textwrap.dedent(u'''\\\n        import pysnooper\n\n        @pysnooper.snoop()\n        def f(x):\n            # comment with non-ascii: \\u00e9\n            y = x + 1\n            return y\n    ''')\n    with io.open(module_path, 'w', encoding='utf-8') as fh:\n        fh.write(source)\n\n    sys.path.insert(0, tmpdir)\n    try:\n        module = __import__(module_name)\n        # Capture stderr where snoop writes by default.\n        old_stderr = sys.stderr\n        captured = io.StringIO()\n        sys.stderr = captured\n        try:\n            result = module.f(1)\n        finally:\n            sys.stderr = old_stderr\n        output = captured.getvalue()\n    finally:\n        sys.path.remove(tmpdir)\n        try:\n            del sys.modules[module_name]\n        except KeyError:\n            pass\n\n    assert result == 2\n    # The non-ASCII source character should be preserved in the trace output.\n    assert u'\\u00e9' in output, (\n        'Expected the non-ASCII source character to appear in trace output, '\n        'but got: %r' % (output,)\n    )\n",
+  "test_file_path": "generated_tests/experiment2_replication2c/PySnooper_1/C_attempt_4.py",
+  "applicability_decisions": [
+    {
+      "history_id": "cookiecutter:1",
+      "decision": "WEAK",
+      "reason": "The mechanism (locale-dependent implicit text encoding) is analogous: PySnooper's get_source_from_frame falls back to 'ascii' when no coding declaration is present, which is locale/encoding dependent. However, PySnooper uses errors='replace', so the failure is corrupted output rather than a decode exception, and the target's own source explicitly documents the ascii fallback, making the invariant weaker than cookiecutter's exact-value preservation."
+    },
+    {
+      "history_id": "PySnooper:3",
+      "decision": "NOT_APPLICABLE",
+      "reason": "PySnooper:3 concerns a path/output variable mismatch in the file-output closure (FileWriter path handling). The current target's FileWriter and get_write_function appear to use the correct path variable, and the historical mechanism does not transfer to the encoding behavior probed here."
+    }
+  ],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 14,
+    "retry_index": 0,
+    "latency_seconds": 6.164,
+    "usage": {
+      "prompt_tokens": 16177,
+      "completion_tokens": 1229,
+      "total_tokens": 17406,
+      "prompt_tokens_details": {
+        "cached_tokens": 16000
+      },
+      "prompt_cache_hit_tokens": 16000,
+      "prompt_cache_miss_tokens": 177
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2_replication2c/PySnooper_1/C_attempt_4.py",
+  "wall_clock_seconds": 6.166
+}

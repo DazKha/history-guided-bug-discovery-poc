@@ -39,15 +39,15 @@ __________________________ test_file_output_non_ascii __________________________
                 'Non-ASCII character \u00e9 not found in trace output. '
                 'Output was: {!r}'.format(output)
             )
-E           AssertionError: Non-ASCII character \xe9 not found in trace output. Output was: 'Starting var:.. args = (1,)\\nStarting var:.. kwargs = {}\\nStarting var:.. function = <function f at 0x106637940>\\nStarting var:.. self = <pysnooper.tracer.Tracer object at 0x10652b7f0>\\n07:18:23.582290 call       216         def simple_wrapper(*args, **kwargs):\\n07:18:23.582465 line       217             with self:\\n07:18:23.582525 line       218                 return function(*args, **kwargs)\\n07:18:23.582703 return     218                 return function(*args, **kwargs)\\nReturn value:.. 2\\n'
-E           assert '\xe9' in 'Starting var:.. args = (1,)\\nStarting var:.. kwargs = {}\\nStarting var:.. function = <function f at 0x106637940>\\nSta...*args, **kwargs)\\n07:18:23.582703 return     218                 return function(*args, **kwargs)\\nReturn value:.. 2\\n'
+E           AssertionError: Non-ASCII character \xe9 not found in trace output. Output was: 'Starting var:.. args = (1,)\\nStarting var:.. kwargs = {}\\nStarting var:.. function = <function f at 0x103c1ddc0>\\nStarting var:.. self = <pysnooper.tracer.Tracer object at 0x103b127f0>\\n08:04:19.032564 call       216         def simple_wrapper(*args, **kwargs):\\n08:04:19.032695 line       217             with self:\\n08:04:19.032750 line       218                 return function(*args, **kwargs)\\n08:04:19.032908 return     218                 return function(*args, **kwargs)\\nReturn value:.. 2\\n'
+E           assert '\xe9' in 'Starting var:.. args = (1,)\\nStarting var:.. kwargs = {}\\nStarting var:.. function = <function f at 0x103c1ddc0>\\nSta...*args, **kwargs)\\n08:04:19.032908 return     218                 return function(*args, **kwargs)\\nReturn value:.. 2\\n'
 
 _generated_eval_C_attempt_3.py:43: AssertionError
 ----------------------------- Captured stderr call -----------------------------
     Starting var:.. x = 1
-    07:18:23.582607 call         5 def f(x):
-    07:18:23.582657 line         7     return x + 1
-    07:18:23.582673 return       7     return x + 1
+    08:04:19.032816 call         5 def f(x):
+    08:04:19.032868 line         7     return x + 1
+    08:04:19.032881 return       7     return x + 1
     Return value:.. 2
 =============================== warnings summary ===============================
 pysnooper/variables.py:3

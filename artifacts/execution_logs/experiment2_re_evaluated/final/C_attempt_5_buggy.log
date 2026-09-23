@@ -2,7 +2,7 @@ F                                                                        [100%]
 =================================== FAILURES ===================================
 _________________ test_utf8_source_with_non_ascii_is_preserved _________________
 
-tmp_path = PosixPath('/private/var/folders/1j/l08d1p2s6ls9235bnggg20rc0000gn/T/pytest-of-minhkha/pytest-156/test_utf8_source_with_non_asci0')
+tmp_path = PosixPath('/private/var/folders/1j/l08d1p2s6ls9235bnggg20rc0000gn/T/pytest-of-minhkha/pytest-209/test_utf8_source_with_non_asci0')
 
     def test_utf8_source_with_non_ascii_is_preserved(tmp_path):
         # Ensure the process default encoding is not UTF-8, mimicking a C locale.
@@ -35,11 +35,11 @@ tmp_path = PosixPath('/private/var/folders/1j/l08d1p2s6ls9235bnggg20rc0000gn/T/p
         output = string_io.getvalue()
         # The source line containing the non-ASCII literal must be echoed verbatim.
 >       assert "x = 'h\u00e9llo'" in output
-E       assert "x = 'h\xe9llo'" in "Starting var:.. args = ()\\nStarting var:.. kwargs = {}\\nStarting var:.. function = <function f at 0x105083d30>\\nStart... **kwargs)\\n07:18:20.261289 return     215                 return function(*args, **kwargs)\\nReturn value:.. 'h\xe9llo'\\n"
+E       assert "x = 'h\xe9llo'" in "Starting var:.. args = ()\\nStarting var:.. kwargs = {}\\nStarting var:.. function = <function f at 0x104ca01f0>\\nStart... **kwargs)\\n08:04:15.853747 return     215                 return function(*args, **kwargs)\\nReturn value:.. 'h\xe9llo'\\n"
 
 _generated_eval_C_attempt_5.py:41: AssertionError
 ----------------------------- Captured stderr call -----------------------------
-    07:18:20.261174 call         4 def f():\n    07:18:20.261226 line         5     x = 'h\xe9llo'\n    New var:....... x = 'h\xe9llo'\n    07:18:20.261251 line         6     return x\n    07:18:20.261264 return       6     return x\n    Return value:.. 'h\xe9llo'
+    08:04:15.853627 call         4 def f():\n    08:04:15.853684 line         5     x = 'h\xe9llo'\n    New var:....... x = 'h\xe9llo'\n    08:04:15.853707 line         6     return x\n    08:04:15.853720 return       6     return x\n    Return value:.. 'h\xe9llo'
 =============================== warnings summary ===============================
 pysnooper/variables.py:3
 pysnooper/variables.py:3

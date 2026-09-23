@@ -42,7 +42,7 @@ pysnooper/tracer.py:242: in write
     self._write(s)
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
-self = <pysnooper.tracer.FileWriter object at 0x1069b8190>
+self = <pysnooper.tracer.FileWriter object at 0x103c3a850>
 s = "New var:....... value = '\xe9\xe8\xea'\\n"
 
     def write(self, s):

@@ -66,9 +66,9 @@ Detailed evidence is in [`results/experiment2_results.csv`](results/experiment2_
 
 The original strict evaluator was too narrow: it treated every non-assertion exception as mechanical. The corrected rule counts a failure as meaningful when it is either an assertion failure or a target-origin exception that violates an oracle recorded before execution, provided the unchanged test passes on fixed and setup is valid. The audit is in [`results/evaluator_audit.md`](results/evaluator_audit.md).
 
-Re-evaluation of all 30 preserved Experiment 2 artifacts found two valid `EXCEPTION_F2P` cases in exploratory C. Both predict locale-dependent encoding failure, fail in target `pysnooper/tracer.py` with `UnicodeEncodeError` on buggy, and pass unchanged on fixed. No assertion-based F2P exists. A further uniform 5-attempt-per-condition loop produced no additional F2P; C still had 3/5 mechanism matches, one F2F, and four P2P.
+Re-evaluation of all 75 Experiment 2 artifacts found two valid `EXCEPTION_F2P` cases in exploratory C. Both predict locale-dependent encoding failure, fail in target `pysnooper/tracer.py` with `UnicodeEncodeError` on buggy, and pass unchanged on fixed. No assertion-based F2P exists. The new 10-attempt-per-condition replication produced no additional F2P; C had 6/10 mechanism matches, two F2F, and eight P2P.
 
-Across 15 attempts per condition (exploratory, strict, and looped batches): A had 0/15 F2P and 0 mechanism matches; B had 0/15 F2P and 1 mechanism match; C had 2/15 verified exception F2P and 9 mechanism matches. This supports transfer feasibility in the selected case, but not architecture proof or generalization. See [`results/experiment2_re_evaluated.csv`](results/experiment2_re_evaluated.csv), [`results/experiment2_re_evaluated_summary.md`](results/experiment2_re_evaluated_summary.md), [`results/looped_experiment_results.csv`](results/looped_experiment_results.csv), and [`results/failure_analysis_final.md`](results/failure_analysis_final.md).
+Across 25 attempts per condition (15 preserved prior attempts plus 10 new replication attempts): A had 0/25 F2P and 0 mechanism matches; B had 0/25 F2P and 2 mechanism matches; C had 2/25 verified exception F2P and 15 mechanism matches. The new replication alone had 0/10 F2P for every condition, with C at 6/10 mechanism matches. This supports selected-case transfer feasibility, but not architecture proof or generalization. See [`results/experiment2_re_evaluated.csv`](results/experiment2_re_evaluated.csv), [`results/experiment2_replication2.csv`](results/experiment2_replication2.csv), [`results/experiment2_cumulative_summary.md`](results/experiment2_cumulative_summary.md), and [`results/failure_analysis_final.md`](results/failure_analysis_final.md).
 
 ## Reproduction
 
@@ -96,6 +96,10 @@ python3 -m scripts.evaluate_generated_tests
 python3 scripts/prepare_experiment2.py
 export DEEPSEEK_API_KEY='set this in your shell; do not write it to files'
 python3 scripts/run_experiment2.py --attempts 5
+# The frozen runner prompt is a five-attempt batch; run both labels for 10 new attempts/condition.
+python3 scripts/run_experiment2.py --attempts 5 --run-label loop1
+python3 scripts/run_experiment2.py --attempts 5 --run-label replication2b
+python3 scripts/run_experiment2.py --attempts 5 --run-label replication2c
 python3 scripts/evaluate_experiment2.py
 python3 scripts/write_experiment2_reports.py
 python3 scripts/re_evaluate_experiment2.py --run all
@@ -106,4 +110,4 @@ The checked-in `data/`, `generated_tests/`, `artifacts/`, and `results/` files a
 
 ## Limitations and conclusion
 
-This is one target, 15 attempts per condition across three controlled batches, and a retrospective historical subset. It cannot support statistical significance, recall claims, or autonomous-retrieval claims. After correcting the evaluator, C produced two verified exception-based F2P tests in the preserved exploratory batch; A and B produced none. Later batches did not reproduce the F2P, so the stable conclusion is selected-case transfer feasibility with trigger-construction instability—not proof that the architecture works. The next study should add more held-out targets and pre-register retrieval.
+This is one target, 25 attempts per condition across prior and replication batches, and a retrospective historical subset. It cannot support statistical significance, recall claims, or autonomous-retrieval claims. After correcting the evaluator, C produced two verified exception-based F2P tests in the preserved exploratory batch; A and B produced none. The 10-attempt replication did not reproduce the F2P, so the stable conclusion is selected-case transfer feasibility with trigger-construction instability—not proof that the architecture works. The next study should add more held-out targets and pre-register retrieval.

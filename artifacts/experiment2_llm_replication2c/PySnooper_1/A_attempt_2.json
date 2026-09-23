@@ -1,0 +1,44 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "A",
+  "condition_name": "TARGET_ONLY",
+  "attempt": 2,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt"
+  ],
+  "hypothesis": "When a generator function decorated with @pysnooper.snoop() is closed early (via generator.close() or garbage collection) while suspended at a yield, the generator_wrapper's `with self:` block is exited by GeneratorExit, but the wrapper does not propagate the close to the underlying generator, so the generator's finally/cleanup code never runs.",
+  "trigger": "Decorate a generator function that has a try/finally around a yield with @pysnooper.snoop(), advance it once with next(), then call .close() on the returned generator and check whether the finally block executed.",
+  "potential_failure": "The finally block inside the decorated generator does not execute on close, because generator_wrapper catches GeneratorExit in its `except Exception` clause (GeneratorExit is a BaseException, not Exception, so it propagates out of the with block) and never calls gen.close(); the underlying generator is left suspended and only closed later by GC, or the wrapper's exception handling prevents proper cleanup.",
+  "oracle": {
+    "expected_behavior": "Calling .close() on a generator returned by a @pysnooper.snoop()-decorated generator function must run the generator's finally/cleanup code, matching the behavior of the undecorated generator.",
+    "target_evidence": "pysnooper/tracer.py generator_wrapper: `gen = function(*args, **kwargs); method, incoming = gen.send, None; while True: with self: try: outgoing = method(incoming) except StopIteration: return; try: method, incoming = gen.send, (yield outgoing) except Exception as e: method, incoming = gen.throw, e`. The wrapper never calls gen.close(), and GeneratorExit (raised by close()) is a BaseException, so it is not caught by `except Exception` and propagates out of the wrapper without closing the underlying generator. README states 'PySnooper supports decorating generators.'",
+    "historical_evidence": "",
+    "confidence": 0.55
+  },
+  "test_code": "import io\nimport gc\nimport pysnooper\n\n\ndef test_generator_close_runs_finally():\n    string_io = io.StringIO()\n    cleaned_up = []\n\n    @pysnooper.snoop(string_io)\n    def gen():\n        try:\n            yield 1\n            yield 2\n        finally:\n            cleaned_up.append(True)\n\n    g = gen()\n    assert next(g) == 1\n    g.close()\n    gc.collect()\n    assert cleaned_up == [True]\n",
+  "test_file_path": "generated_tests/experiment2_replication2c/PySnooper_1/A_attempt_2.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 2,
+    "retry_index": 0,
+    "latency_seconds": 3.668,
+    "usage": {
+      "prompt_tokens": 15319,
+      "completion_tokens": 622,
+      "total_tokens": 15941,
+      "prompt_tokens_details": {
+        "cached_tokens": 15104
+      },
+      "prompt_cache_hit_tokens": 15104,
+      "prompt_cache_miss_tokens": 215
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2_replication2c/PySnooper_1/A_attempt_2.py",
+  "wall_clock_seconds": 3.671
+}

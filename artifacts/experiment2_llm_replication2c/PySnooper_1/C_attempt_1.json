@@ -1,0 +1,56 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "C",
+  "condition_name": "STRUCTURED_APPLICABILITY_AWARE",
+  "attempt": 1,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "hypothesis": "When a decorated function raises an exception, the tracer's 'return' event handling can raise an IndexError while reading frame.f_code.co_code[frame.f_lasti], preventing the intended 'Call ended by exception' trace line from being written.",
+  "trigger": "Decorate a function that raises ValueError with pysnooper.snoop(string_io), call it inside pytest.raises(ValueError), then inspect string_io for the expected 'Call ended by exception' line.",
+  "potential_failure": "The trace output may not contain 'Call ended by exception'; instead the tracer may raise IndexError during the return event, masking the original exception or aborting trace output.",
+  "oracle": {
+    "expected_behavior": "The decorated function's ValueError propagates, and the captured trace output contains a line indicating the call ended by exception.",
+    "target_evidence": "pysnooper/tracer.py computes ended_by_exception for event == 'return' and writes 'Call ended by exception'; tests/test_pysnooper.py has test_exception using tests/samples/exception.py, showing exception tracing is an intended public behavior.",
+    "historical_evidence": "PySnooper:3 concerns file-output path handling, not exception tracing; it is weak transfer evidence only.",
+    "confidence": 0.55
+  },
+  "test_code": "import io\nimport pytest\nimport pysnooper\n\n\ndef test_exception_trace_contains_call_ended_by_exception():\n    string_io = io.StringIO()\n\n    @pysnooper.snoop(string_io)\n    def my_function():\n        x = 1\n        raise ValueError('boom')\n\n    with pytest.raises(ValueError, match='boom'):\n        my_function()\n\n    output = string_io.getvalue()\n    assert 'Call ended by exception' in output\n",
+  "test_file_path": "generated_tests/experiment2_replication2c/PySnooper_1/C_attempt_1.py",
+  "applicability_decisions": [
+    {
+      "history_id": "cookiecutter:1",
+      "decision": "NOT_APPLICABLE",
+      "reason": "The historical unit concerns locale-dependent implicit text decoding of a JSON context file. The target context does not include cookiecutter.generate, JSON context loading, or a locale-sensitive read path. PySnooper's file reading in get_source_from_frame opens files in binary mode and decodes explicitly, so the mechanism does not transfer."
+    },
+    {
+      "history_id": "PySnooper:3",
+      "decision": "WEAK",
+      "reason": "The historical unit concerns file-output path handling in PySnooper, which is in the same target area and public API. However, the target context already shows FileWriter using self.path correctly, and the historical mechanism is a path/output variable mismatch rather than the exception-trace behavior probed here. It is useful only as weak evidence that file/output tracing is a sensitive area."
+    }
+  ],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 11,
+    "retry_index": 0,
+    "latency_seconds": 3.966,
+    "usage": {
+      "prompt_tokens": 16177,
+      "completion_tokens": 672,
+      "total_tokens": 16849,
+      "prompt_tokens_details": {
+        "cached_tokens": 16000
+      },
+      "prompt_cache_hit_tokens": 16000,
+      "prompt_cache_miss_tokens": 177
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2_replication2c/PySnooper_1/C_attempt_1.py",
+  "wall_clock_seconds": 3.968
+}

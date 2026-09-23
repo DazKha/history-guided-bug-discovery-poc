@@ -1,0 +1,44 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "A",
+  "condition_name": "TARGET_ONLY",
+  "attempt": 1,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt"
+  ],
+  "hypothesis": "When a generator function decorated with @pysnooper.snoop() is closed early (via GeneratorExit) before exhaustion, the tracer's generator_wrapper does not restore the previous sys.settrace state, leaving the tracer's trace function installed globally after the generator is closed.",
+  "trigger": "Decorate a generator function with pysnooper.snoop(), start it with next(), then call .close() before the generator is exhausted; afterwards check sys.gettrace() against the value captured before the generator was created.",
+  "potential_failure": "sys.gettrace() remains the Tracer.trace bound method instead of the original trace function (None), because the GeneratorExit raised by close() propagates out of the `with self:` block in generator_wrapper without the wrapper's StopIteration handling restoring the trace state.",
+  "oracle": {
+    "expected_behavior": "After closing a snooped generator early, sys.gettrace() should equal the trace function that was active before the generator was created (None in a normal pytest run), matching the invariant asserted in the existing test_generator test that the original tracer remains active after generator operations.",
+    "target_evidence": "pysnooper/tracer.py generator_wrapper wraps each resume in `with self:` and only catches StopIteration; Tracer.__exit__ restores sys.settrace(stack.pop()). tests/test_pysnooper.py::test_generator explicitly asserts `original_tracer_active()` after next/send/StopIteration, establishing that snooped generators must not leave the tracer installed.",
+    "historical_evidence": "",
+    "confidence": 0.55
+  },
+  "test_code": "import sys\nimport pysnooper\n\n\ndef test_closed_generator_restores_original_trace_function():\n    original_tracer = sys.gettrace()\n\n    @pysnooper.snoop()\n    def gen():\n        yield 1\n        yield 2\n\n    generator = gen()\n    assert next(generator) == 1\n    generator.close()\n\n    assert sys.gettrace() is original_tracer\n",
+  "test_file_path": "generated_tests/experiment2_replication2b/PySnooper_1/A_attempt_1.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 1,
+    "retry_index": 0,
+    "latency_seconds": 3.231,
+    "usage": {
+      "prompt_tokens": 15319,
+      "completion_tokens": 507,
+      "total_tokens": 15826,
+      "prompt_tokens_details": {
+        "cached_tokens": 15104
+      },
+      "prompt_cache_hit_tokens": 15104,
+      "prompt_cache_miss_tokens": 215
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2_replication2b/PySnooper_1/A_attempt_1.py",
+  "wall_clock_seconds": 3.233
+}

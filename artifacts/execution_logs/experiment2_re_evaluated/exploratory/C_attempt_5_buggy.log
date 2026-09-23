@@ -2,7 +2,7 @@ F                                                                        [100%]
 =================================== FAILURES ===================================
 ________________ test_file_output_non_ascii_under_ascii_locale _________________
 
-tmp_path = PosixPath('/private/var/folders/1j/l08d1p2s6ls9235bnggg20rc0000gn/T/pytest-of-minhkha/pytest-152/test_file_output_non_ascii_und0')
+tmp_path = PosixPath('/private/var/folders/1j/l08d1p2s6ls9235bnggg20rc0000gn/T/pytest-of-minhkha/pytest-205/test_file_output_non_ascii_und0')
 
     def test_file_output_non_ascii_under_ascii_locale(tmp_path):
         path = tmp_path / 'foo.log'
@@ -28,7 +28,7 @@ pysnooper/tracer.py:242: in write
     self._write(s)
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
-self = <pysnooper.tracer.FileWriter object at 0x1049381c0>
+self = <pysnooper.tracer.FileWriter object at 0x105b21430>
 s = "New var:....... value = 'caf\xe9'\\n"
 
     def write(self, s):

@@ -1,0 +1,56 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "C",
+  "condition_name": "STRUCTURED_APPLICABILITY_AWARE",
+  "attempt": 5,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "hypothesis": "When a decorated function raises an exception, PySnooper's trace() computes `code_byte = frame.f_code.co_code[frame.f_lasti]` and then `opcode.opname[code_byte]`; on Python 3.9 `co_code` is a bytes object so `code_byte` is an int, but the subsequent `opcode.opname[code_byte]` lookup can raise IndexError for opcodes >= 256 or otherwise misclassify the return event, causing the tracer to crash or emit a wrong 'Call ended by exception' line instead of the intended exception trace.",
+  "trigger": "Decorate a function that raises a ValueError with pysnooper.snoop(string_io) and call it inside pytest.raises(ValueError); inspect the captured output for the exception entry and the absence of a tracer crash.",
+  "potential_failure": "The tracer may raise an unexpected exception while handling the 'return' event after an exception, or fail to emit the expected 'Call ended by exception' / exception line, so the decorated function's exception handling is corrupted or the trace output is wrong.",
+  "oracle": {
+    "expected_behavior": "The decorated function's ValueError propagates unchanged, and the captured trace contains an exception entry for the ValueError (and/or a 'Call ended by exception' line) without the tracer itself raising.",
+    "target_evidence": "pysnooper/tracer.py trace() computes ended_by_exception using opcode.opname[code_byte] and writes 'Call ended by exception' or the formatted exception; tests/test_pysnooper.py test_exception exercises the exception sample path, establishing that exception tracing is intended behavior.",
+    "historical_evidence": "PySnooper:3 concerns file-output path handling, not exception/opcode handling, so it only weakly suggests probing tracer internals; cookiecutter:1 is unrelated.",
+    "confidence": 0.55
+  },
+  "test_code": "import io\nimport pytest\nimport pysnooper\n\n\ndef test_exception_trace_does_not_crash_tracer():\n    string_io = io.StringIO()\n\n    @pysnooper.snoop(string_io)\n    def my_function():\n        x = 1\n        raise ValueError('boom')\n\n    with pytest.raises(ValueError, match='boom'):\n        my_function()\n\n    output = string_io.getvalue()\n    assert 'ValueError' in output\n    assert 'boom' in output\n",
+  "test_file_path": "generated_tests/experiment2_replication2b/PySnooper_1/C_attempt_5.py",
+  "applicability_decisions": [
+    {
+      "history_id": "cookiecutter:1",
+      "decision": "NOT_APPLICABLE",
+      "reason": "The historical unit concerns locale-dependent JSON context decoding in cookiecutter.generate.generate_context. The target is PySnooper's tracer and has no context-file decoding path, so context, preconditions, trigger, and failure mechanism do not transfer."
+    },
+    {
+      "history_id": "PySnooper:3",
+      "decision": "WEAK",
+      "reason": "Same repository and public snoop decorator, but the historical mechanism is a path/output variable mismatch in file-output handling, while the target context's strongest observable tracer invariant is exception/opcode handling. The file-output invariant is already covered by ordinary tests (test_file_output, test_overwrite), so it offers only weak guidance to probe tracer internals rather than a target-specific oracle."
+    }
+  ],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 15,
+    "retry_index": 0,
+    "latency_seconds": 4.588,
+    "usage": {
+      "prompt_tokens": 16177,
+      "completion_tokens": 764,
+      "total_tokens": 16941,
+      "prompt_tokens_details": {
+        "cached_tokens": 16000
+      },
+      "prompt_cache_hit_tokens": 16000,
+      "prompt_cache_miss_tokens": 177
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2_replication2b/PySnooper_1/C_attempt_5.py",
+  "wall_clock_seconds": 4.591
+}

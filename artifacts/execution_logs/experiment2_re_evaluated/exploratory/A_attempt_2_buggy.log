@@ -39,25 +39,25 @@ E       assert not [AttributeError("'_thread._local' object has no attribute 'or
 _generated_eval_A_attempt_2.py:37: AssertionError
 ----------------------------- Captured stderr call -----------------------------
 New var:....... original_trace = None
-New var:....... tracer = <pysnooper.tracer.Tracer object at 0x105525460>
-07:18:13.239376 line        18     assert sys.gettrace() is not original_trace
+New var:....... tracer = <pysnooper.tracer.Tracer object at 0x102be7820>
+08:04:09.138091 line        18     assert sys.gettrace() is not original_trace
 New var:....... @py_assert1 = None
 New var:....... @py_assert3 = None
 New var:....... @py_assert5 = None
-07:18:13.239559 line        21     exception_holder = []
+08:04:09.138291 line        21     exception_holder = []
 New var:....... exception_holder = []
-07:18:13.239590 line        23     def exit_in_thread():
-New var:....... exit_in_thread = <function test_cross_thread_context_manager_exit.<locals>.exit_in_thread at 0x105631790>
-07:18:13.239616 line        29     t = threading.Thread(target=exit_in_thread)
+08:04:09.138319 line        23     def exit_in_thread():
+New var:....... exit_in_thread = <function test_cross_thread_context_manager_exit.<locals>.exit_in_thread at 0x102cedc10>
+08:04:09.138351 line        29     t = threading.Thread(target=exit_in_thread)
 New var:....... t = <Thread(Thread-1, initial)>
-07:18:13.239671 line        30     t.start()
-Modified var:.. t = <Thread(Thread-1, stopped 6139834368)>
+08:04:09.138408 line        30     t.start()
+Modified var:.. t = <Thread(Thread-1, stopped 6173552640)>
 Modified var:.. exception_holder = [AttributeError("'_thread._local' object has no attribute 'original_trace_functions'")]
-07:18:13.239850 line        31     t.join()
-07:18:13.239886 line        37     assert not exception_holder, f"Exception raised in other thread: {exception_holder}"
+08:04:09.138588 line        31     t.join()
+08:04:09.138623 line        37     assert not exception_holder, f"Exception raised in other thread: {exception_holder}"
 Modified var:.. @py_assert1 = False
 New var:....... @py_format2 = 'Exception raised in other thread: [AttributeErr...has no attribute \'original_trace_functions\'")]'
-07:18:13.240000 exception   37     assert not exception_holder, f"Exception raised in other thread: {exception_holder}"
+08:04:09.138727 exception   37     assert not exception_holder, f"Exception raised in other thread: {exception_holder}"
 AssertionError: Exception raised in other thread: [AttributeError("'_thread._local' object has no ...
 assert not [AttributeError("'_thread._local' object has no attribute 'original_trace_functions'")]
 Call ended by exception

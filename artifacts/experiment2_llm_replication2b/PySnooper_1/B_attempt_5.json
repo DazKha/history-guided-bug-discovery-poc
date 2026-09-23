@@ -1,0 +1,45 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "B",
+  "condition_name": "NAIVE_RAW_HISTORY",
+  "attempt": 5,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_raw.json"
+  ],
+  "hypothesis": "When a Tracer is used as a context manager (with pysnooper.snoop(...):) and the wrapped block raises an exception, the Tracer's __exit__ does not restore the previous sys.settrace value, leaving the tracer's trace function installed globally after the with block exits.",
+  "trigger": "Create a Tracer via pysnooper.snoop(output=io.StringIO()), enter it with a with statement, raise a ValueError inside the block, catch the exception outside, then check sys.gettrace() is None (or the original trace function).",
+  "potential_failure": "sys.gettrace() remains the Tracer.trace bound method after the with block, so subsequent code is still traced and the original trace function is lost.",
+  "oracle": {
+    "expected_behavior": "After a with pysnooper.snoop(...) block exits, whether normally or via an exception, sys.gettrace() must be restored to the value it had before entering the block (None in a normal pytest run).",
+    "target_evidence": "pysnooper/tracer.py Tracer.__enter__ appends sys.gettrace() to thread_local.original_trace_functions and calls sys.settrace(self.trace); Tracer.__exit__ pops that stack and calls sys.settrace(stack.pop()). The existing test test_generator asserts original_tracer_active() after generator operations, showing the intended invariant that the original trace function is restored. The __exit__ implementation relies on thread_local.original_trace_functions being present and correctly restored even when an exception propagates.",
+    "historical_evidence": "PySnooper:3 fix diff shows a similar class of defect in the same file: a closure variable (output_path) was used instead of the actual parameter (output), causing file output to fail. This suggests the target code has latent defects in Tracer plumbing that ordinary tests may not cover.",
+    "confidence": 0.55
+  },
+  "test_code": "import io\nimport sys\n\nimport pytest\n\nimport pysnooper\n\n\ndef test_trace_restored_after_exception_in_with_block():\n    original_trace = sys.gettrace()\n    string_io = io.StringIO()\n\n    with pytest.raises(ValueError):\n        with pysnooper.snoop(string_io):\n            raise ValueError('boom')\n\n    assert sys.gettrace() is original_trace\n",
+  "test_file_path": "generated_tests/experiment2_replication2b/PySnooper_1/B_attempt_5.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 10,
+    "retry_index": 0,
+    "latency_seconds": 3.482,
+    "usage": {
+      "prompt_tokens": 19711,
+      "completion_tokens": 580,
+      "total_tokens": 20291,
+      "prompt_tokens_details": {
+        "cached_tokens": 19456
+      },
+      "prompt_cache_hit_tokens": 19456,
+      "prompt_cache_miss_tokens": 255
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2_replication2b/PySnooper_1/B_attempt_5.py",
+  "wall_clock_seconds": 3.485
+}

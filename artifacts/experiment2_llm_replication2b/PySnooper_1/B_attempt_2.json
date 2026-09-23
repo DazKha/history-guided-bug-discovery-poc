@@ -1,0 +1,45 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "B",
+  "condition_name": "NAIVE_RAW_HISTORY",
+  "attempt": 2,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_raw.json"
+  ],
+  "hypothesis": "In pysnooper/tracer.py, get_write_function(output, overwrite) with a path-like output (e.g. pathlib.Path) returns FileWriter(output, overwrite).write, and FileWriter.__init__ stores self.path = pycompat.text_type(path). On Python 3, pycompat.text_type is str, so a pathlib.Path is converted to its string form and file output works. However, the historical PySnooper bug #3 shows that path output was broken by using an undefined/wrong variable in the write closure. The current code's FileWriter.write opens self.path, so path output should work. The strongest remaining target-specific hypothesis is that when output is a pathlib.Path, get_write_function's is_path check uses isinstance(output, (pycompat.PathLike, str)); pycompat.PathLike is os.PathLike on Python 3, and pathlib.Path is a subclass of os.PathLike, so this should work. A falsifiable claim: passing a pathlib.Path as output to pysnooper.snoop writes the trace to that file and the decorated function returns normally.",
+  "trigger": "Create a temporary directory, define a pathlib.Path log file, decorate a simple function with @pysnooper.snoop(path), call it, and assert the function result and that the log file contains expected trace lines.",
+  "potential_failure": "If path handling is broken (e.g. FileWriter receives a non-string path and open fails, or is_path detection fails and the Path is treated as a callable/stream), the decorated function may raise an exception or no output may be written to the file.",
+  "oracle": {
+    "expected_behavior": "The decorated function returns its computed value, and the specified pathlib.Path log file exists and contains the snoop trace including the call line and return value.",
+    "target_evidence": "pysnooper/tracer.py get_write_function checks isinstance(output, (pycompat.PathLike, str)) and returns FileWriter(output, overwrite).write; FileWriter.__init__ converts path via pycompat.text_type(path) and FileWriter.write opens self.path. pysnooper/pycompat.py defines PathLike = os.PathLike on Python 3. tests/test_pysnooper.py test_file_output uses a path from temp_file_tools and asserts output content.",
+    "historical_evidence": "PySnooper:3 fix diff changed 'open(output_path, 'a')' to 'open(output, 'a')' in get_write_function, and added test_file_output using a temp folder path. This indicates path output was a real bug area and that file output with a path is expected to work.",
+    "confidence": 0.6
+  },
+  "test_code": "import io\nimport pathlib\nimport tempfile\n\nimport pysnooper\n\n\ndef test_snoop_with_pathlib_path_output():\n    with tempfile.TemporaryDirectory() as tmpdir:\n        log_path = pathlib.Path(tmpdir) / 'snoop.log'\n\n        @pysnooper.snoop(log_path)\n        def my_function(foo):\n            x = 7\n            y = 8\n            return y + x\n\n        result = my_function('baba')\n        assert result == 15\n        assert log_path.exists()\n        output = log_path.read_text()\n        assert 'def my_function(foo):' in output\n        assert 'Return value:.. 15' in output\n",
+  "test_file_path": "generated_tests/experiment2_replication2b/PySnooper_1/B_attempt_2.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 7,
+    "retry_index": 0,
+    "latency_seconds": 4.821,
+    "usage": {
+      "prompt_tokens": 19711,
+      "completion_tokens": 807,
+      "total_tokens": 20518,
+      "prompt_tokens_details": {
+        "cached_tokens": 19456
+      },
+      "prompt_cache_hit_tokens": 19456,
+      "prompt_cache_miss_tokens": 255
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2_replication2b/PySnooper_1/B_attempt_2.py",
+  "wall_clock_seconds": 4.824
+}

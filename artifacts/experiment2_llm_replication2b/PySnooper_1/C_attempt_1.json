@@ -1,0 +1,56 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "C",
+  "condition_name": "STRUCTURED_APPLICABILITY_AWARE",
+  "attempt": 1,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "hypothesis": "When a decorated function raises an exception, PySnooper's trace output omits the 'Call ended by exception' marker because the exception event is processed before the return event, so the return event's arg is not None and the ended_by_exception condition is false.",
+  "trigger": "Decorate a function that raises ValueError with @pysnooper.snoop(string_io), call it inside pytest.raises(ValueError), and inspect the captured trace output for the 'Call ended by exception' line.",
+  "potential_failure": "The trace output lacks the 'Call ended by exception' marker, so users cannot distinguish an exception-terminated call from a normal return in the log.",
+  "oracle": {
+    "expected_behavior": "The trace output for a function that raises an exception must contain the line 'Call ended by exception'.",
+    "target_evidence": "pysnooper/tracer.py contains the ended_by_exception logic and writes 'Call ended by exception' when event == 'return' and arg is None and the last opcode is not RETURN_VALUE/YIELD_VALUE. The ordinary test tests/test_pysnooper.py::test_exception uses a sample exception and assert_sample_output, which likely expects this marker. The README describes PySnooper as showing which lines ran and when, implying exception termination should be visible.",
+    "historical_evidence": "PySnooper:3 historical unit concerns file-output path handling, not exception tracing; it is weak transfer evidence but confirms the target's public tracing behavior is testable via output content.",
+    "confidence": 0.75
+  },
+  "test_code": "import io\nimport pytest\nimport pysnooper\n\n\ndef test_exception_call_ended_by_exception_marker():\n    string_io = io.StringIO()\n\n    @pysnooper.snoop(string_io)\n    def my_function():\n        x = 1\n        raise ValueError('boom')\n\n    with pytest.raises(ValueError, match='boom'):\n        my_function()\n\n    output = string_io.getvalue()\n    assert 'Call ended by exception' in output\n",
+  "test_file_path": "generated_tests/experiment2_replication2b/PySnooper_1/C_attempt_1.py",
+  "applicability_decisions": [
+    {
+      "history_id": "cookiecutter:1",
+      "decision": "NOT_APPLICABLE",
+      "reason": "The historical unit concerns locale-dependent implicit text encoding when reading JSON context files. The target PySnooper context has no JSON context loading, no locale-sensitive file read in the public API under test, and no target-side oracle for encoding preservation. The mechanism does not transfer."
+    },
+    {
+      "history_id": "PySnooper:3",
+      "decision": "WEAK",
+      "reason": "The historical unit concerns a path/output variable mismatch in file-output handling. The target context does contain file-output code and ordinary tests for it, but the specific historical mechanism is not clearly present in the supplied source. It weakly supports probing public tracing output, but does not establish the exception-marker oracle. The generated hypothesis instead uses target-side source evidence in tracer.py and the ordinary exception test."
+    }
+  ],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 11,
+    "retry_index": 0,
+    "latency_seconds": 3.942,
+    "usage": {
+      "prompt_tokens": 16177,
+      "completion_tokens": 720,
+      "total_tokens": 16897,
+      "prompt_tokens_details": {
+        "cached_tokens": 16000
+      },
+      "prompt_cache_hit_tokens": 16000,
+      "prompt_cache_miss_tokens": 177
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2_replication2b/PySnooper_1/C_attempt_1.py",
+  "wall_clock_seconds": 3.945
+}

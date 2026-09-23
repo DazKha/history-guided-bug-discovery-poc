@@ -90,3 +90,21 @@ All 30 preserved Experiment 2 artifacts were re-run unchanged. Two exploratory C
 One additional uniform five-attempt batch per condition was run with the same model, target context, history, temperature, token budget, repair budget, and runtime. It produced no additional F2P. C had 3/5 mechanism matches, one F2F, and four P2P; A had 0/5 mechanism matches with four P2P and one model error; B had 1/5 mechanism match with four P2P and one model error.
 
 Aggregate across 15 attempts per condition: A 0/15 verified F2P and 0 mechanism matches; B 0/15 verified F2P and 1 mechanism match; C 2/15 verified exception F2P and 9 mechanism matches. This is positive transfer-feasibility evidence in the retrospectively selected case, but not architecture proof: the verified cases occurred in one exploratory batch and did not reproduce in later batches. The remaining instability is trigger construction after mechanism identification.
+
+## 2026-09-23 — Replication 2 under frozen protocol
+
+The existing Experiment 2 protocol was inspected before generation. No target, context, history, prompt, model, parameters, evaluator, applicability logic, or repair policy was changed. The runner’s prompt contract is fixed at five attempts per invocation, so the replication work was executed in independent five-attempt halves. The first `loop1` half was already included in the preserved prior aggregate; the fresh replication halves for this turn are `replication2b` and `replication2c`.
+
+Replication-only results: A had 10 attempts, 9 executable tests, 0 mechanism matches, 0 F2P, 7 P2P, 1 F2F, and 1 unsupported oracle; B had 10 attempts, 9 executable tests, 1 mechanism match, 0 F2P, 9 P2P, and 1 model error; C had 10 attempts, 5 mechanism matches, 10 executable tests, 0 F2P, 9 P2P, and 1 F2F. C mechanism-to-F2P conversion was `0/5 = 0%` in this replication batch.
+
+Cumulative totals after the earlier `loop1` batch were 20 attempts per condition: A `0/20` verified F2P and `0/20` mechanism matches; B `0/20` verified F2P and `1/20` mechanism match; C `2/20` verified exception F2P and `11/20` mechanism matches. This intermediate total is retained as historical run accounting; the fresh replication results and final 25-attempt totals are recorded below.
+
+No optional C1/C2 ablation was run because the frozen replication already answered the immediate robustness question and the user instruction was to avoid redesign during this batch. Proposed interventions are listed separately in `results/next_experiment_recommendations.md`.
+
+## 2026-09-23 — Replication accounting correction
+
+The prior `loop1` five-attempt batch was already part of the preserved 15-attempt Experiment 2 aggregate. It is therefore not counted as new replication work in this turn. The actual new replication consists of `replication2b` and `replication2c`, 10 fresh attempts per condition total. The frozen protocol and evaluator were unchanged; only re-evaluation/report bookkeeping was updated to preserve source-batch provenance and unique attempt IDs.
+
+New replication results: A `0/10` F2P and `0/10` mechanism matches; B `0/10` F2P and `1/10` mechanism match; C `0/10` F2P and `6/10` mechanism matches, with 2 F2F and 8 P2P among C’s executable tests. C mechanism-to-F2P conversion was `0/6 = 0%`.
+
+Cumulative results: 25 attempts per condition. A had `0/25` F2P and `0/25` mechanism matches; B had `0/25` F2P and `2/25` mechanism matches; C had `2/25` verified exception F2P and `15/25` mechanism matches. The two verified cases remain in the preserved exploratory C batch. This replication reproduced the mechanism-match advantage but not the F2P conversion.

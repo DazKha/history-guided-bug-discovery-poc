@@ -23,9 +23,11 @@ RUNS = {
     "exploratory": ROOT / "artifacts/experiment2_llm_run1/PySnooper_1",
     "final": ROOT / "artifacts/experiment2_llm/PySnooper_1",
     "loop1": ROOT / "artifacts/experiment2_llm_loop1/PySnooper_1",
+    "replication2b": ROOT / "artifacts/experiment2_llm_replication2b/PySnooper_1",
+    "replication2c": ROOT / "artifacts/experiment2_llm_replication2c/PySnooper_1",
 }
 FIELDS = [
-    "run_label", "target_id", "condition", "condition_name", "attempt", "status", "test_path", "same_test",
+    "run_label", "source_batch", "attempt_id", "target_id", "condition", "condition_name", "attempt", "model", "temperature", "max_output_tokens", "thinking", "response_format", "status", "test_path", "same_test",
     "test_sha256", "oracle_status", "applicability", "hypothesis", "trigger", "potential_failure",
     "expected_behavior", "target_evidence", "historical_evidence", "buggy_exit", "fixed_exit", "buggy_state",
     "fixed_state", "buggy_failure_type", "fixed_failure_type", "buggy_exception", "fixed_exception", "classification",
@@ -142,9 +144,11 @@ def failure_category(record: dict, classification: str, buggy: dict, fixed: dict
     if classification == "MECHANICAL_FAILURE":
         return "MECHANICAL_FAILURE"
     if classification == "P2P":
+        if mechanism_match(record) == "yes":
+            return "TRIGGER_TOO_WEAK"
         return "APPLICABILITY_STRICT" if record.get("condition") == "C" and "NOT_APPLICABLE" in str(record.get("applicability_decisions", [])) else "SEMANTIC_NON_TRIGGER"
     if classification == "F2F" and record.get("condition") == "C" and mechanism_match(record) == "yes":
-        return "CORRECT_MECHANISM_WRONG_TRIGGER"
+        return "TRIGGER_WRONG_SHAPE"
     if mechanism_match(record) == "no":
         return "WRONG_MECHANISM"
     if oracle_pre_execution(record):
@@ -167,7 +171,9 @@ def evaluate_run(run_label: str, artifact_dir: Path, manifest: dict) -> list[dic
         record = json.loads(artifact.read_text())
         oracle = record.get("oracle", {}) or {}
         row = {field: "" for field in FIELDS}
-        row.update({"run_label": run_label, "target_id": record.get("target_id", ""), "condition": record.get("condition", ""), "condition_name": record.get("condition_name", ""), "attempt": record.get("attempt", ""), "status": record.get("status", ""), "repair_attempts": record.get("repair_attempts", 0), "wall_clock_seconds": record.get("wall_clock_seconds", 0), "hypothesis": record.get("hypothesis", ""), "trigger": record.get("trigger", ""), "potential_failure": record.get("potential_failure", ""), "expected_behavior": oracle.get("expected_behavior", ""), "target_evidence": oracle.get("target_evidence", ""), "historical_evidence": oracle.get("historical_evidence", ""), "applicability": "; ".join(str(x) for x in record.get("applicability_decisions", [])), "hypothesis_matches_true_failure_mechanism": mechanism_match(record)})
+        condition = record.get("condition", "")
+        attempt = record.get("attempt", "")
+        row.update({"run_label": run_label, "source_batch": run_label, "attempt_id": f"{run_label}_{condition}_{int(attempt):02d}", "target_id": record.get("target_id", ""), "condition": condition, "condition_name": record.get("condition_name", ""), "attempt": attempt, "model": (record.get("llm", {}) or {}).get("model", "deepseek-flash"), "temperature": 0.2, "max_output_tokens": 2200, "thinking": "disabled", "response_format": "json_object", "status": record.get("status", ""), "repair_attempts": record.get("repair_attempts", 0), "wall_clock_seconds": record.get("wall_clock_seconds", 0), "hypothesis": record.get("hypothesis", ""), "trigger": record.get("trigger", ""), "potential_failure": record.get("potential_failure", ""), "expected_behavior": oracle.get("expected_behavior", ""), "target_evidence": oracle.get("target_evidence", ""), "historical_evidence": oracle.get("historical_evidence", ""), "applicability": "; ".join(str(x) for x in record.get("applicability_decisions", [])), "hypothesis_matches_true_failure_mechanism": mechanism_match(record)})
         llm = record.get("llm", {}) or {}
         usage = llm.get("usage", {}) or {}
         row.update({"llm_calls": 1 if llm else 0, "prompt_tokens": usage.get("prompt_tokens", 0), "completion_tokens": usage.get("completion_tokens", 0)})
@@ -200,7 +206,7 @@ def write_summary(rows: list[dict], path: Path) -> None:
         "Verified F2P requires the same unchanged test on buggy and fixed, a meaningful semantic buggy failure, a fixed pass, and an oracle supported before execution. Meaningful failure includes an assertion failure or a target exception that violates that pre-execution oracle. Target exceptions that are setup/environment failures or unrelated to the hypothesis remain mechanical.",
         "",
     ]
-    present_labels = [label for label in ["exploratory", "final", "loop1"] if any(row["run_label"] == label for row in rows)]
+    present_labels = [label for label in ["exploratory", "final", "loop1", "replication2b", "replication2c", "replication2"] if any(row["run_label"] == label for row in rows)]
     for run_label in present_labels:
         subset_run = [row for row in rows if row["run_label"] == run_label]
         lines += [f"## {run_label}", "", "| Condition | Attempts | Mechanism matches | Supported hypotheses | Executable tests | Assertion F2P | Exception F2P | Total verified F2P | P2P | F2F | Mechanical | Unsupported oracle | No-supported/model error | False/unverified | LLM calls | Prompt tokens | Completion tokens | Wall clock |", "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
@@ -225,7 +231,7 @@ def write_summary(rows: list[dict], path: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--run", choices=["exploratory", "final", "loop1", "both", "all"], default="all")
+    parser.add_argument("--run", choices=["exploratory", "final", "loop1", "replication2b", "replication2c", "both", "all"], default="all")
     args = parser.parse_args()
     manifest = json.loads((ROOT / "data/target_leakage_manifest.json").read_text())
     labels = ["exploratory", "final"] if args.run == "both" else list(RUNS) if args.run == "all" else [args.run]
@@ -237,12 +243,13 @@ def main() -> None:
         writer = csv.DictWriter(handle, fieldnames=FIELDS, lineterminator="\n")
         writer.writeheader(); writer.writerows(rows)
     write_summary(rows, ROOT / "results/experiment2_re_evaluated_summary.md")
-    loop_rows = [row for row in rows if row["run_label"] == "loop1"]
+    loop_rows = [row for row in rows if row["run_label"] in {"replication2b", "replication2c"}]
     if loop_rows:
-        with (ROOT / "results/looped_experiment_results.csv").open("w", newline="") as handle:
+        combined_rows = [dict(row, run_label="replication2", attempt_id=f"replication2_{row['source_batch']}_{row['condition']}_{int(row['attempt']):02d}") for row in loop_rows]
+        with (ROOT / "results/experiment2_replication2.csv").open("w", newline="") as handle:
             writer = csv.DictWriter(handle, fieldnames=FIELDS, lineterminator="\n")
-            writer.writeheader(); writer.writerows(loop_rows)
-        write_summary(loop_rows, ROOT / "results/looped_experiment_summary.md")
+            writer.writeheader(); writer.writerows(combined_rows)
+        write_summary(combined_rows, ROOT / "results/experiment2_replication2_summary.md")
     print(json.dumps({"rows": len(rows), "exception_f2p": sum(row["classification"] == "EXCEPTION_F2P" for row in rows), "assertion_f2p": sum(row["classification"] == "ASSERTION_F2P" for row in rows), "verified_f2p": sum(bool(row["verified_f2p"]) for row in rows)}))
 
 

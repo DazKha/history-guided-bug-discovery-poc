@@ -1,0 +1,56 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "B",
+  "condition_name": "NAIVE_RAW_HISTORY",
+  "attempt": 4,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_raw.json"
+  ],
+  "hypothesis": "When a Tracer is used as a context manager (with pysnooper.snoop(...):) and the wrapped block raises an exception, the tracer's __exit__ does not restore the previous sys.settrace value, leaving the tracer's trace function installed globally after the exception propagates.",
+  "trigger": "Create a Tracer via pysnooper.snoop(string_io), record sys.gettrace() before entering a with block, raise a RuntimeError inside the with block, catch it, then check sys.gettrace() equals the original trace function.",
+  "potential_failure": "sys.gettrace() after the with block will still be the Tracer.trace bound method instead of the original trace function (None), because __exit__ is not invoked when an exception propagates out of the with block in this implementation.",
+  "oracle": {
+    "expected_behavior": "After a with pysnooper.snoop(...) block exits (normally or via exception), sys.gettrace() must be restored to the value it had before entering the block, so the tracer does not leak its trace function into the rest of the program.",
+    "target_evidence": "pysnooper/tracer.py Tracer.__enter__ pushes sys.gettrace() onto a thread-local stack and calls sys.settrace(self.trace); Tracer.__exit__ pops that stack and calls sys.settrace(stack.pop()). The existing test test_generator asserts original_tracer_active() after generator operations, showing the intended invariant that the original trace function is restored. The context-manager protocol requires __exit__ to run on exception, so the restoration must occur.",
+    "historical_evidence": "PySnooper:3 fix diff shows a related defect in the same file where a context-manager-adjacent path (file output) failed to use the correct variable; the regression test test_file_output was added to cover the previously untested path. This suggests the context-manager/exit paths in tracer.py are under-tested and prone to restoration/cleanup bugs.",
+    "confidence": 0.55
+  },
+  "test_code": "import io\nimport sys\n\nimport pytest\n\nimport pysnooper\n\n\ndef test_trace_restored_after_exception_in_with_block():\n    string_io = io.StringIO()\n    snoop = pysnooper.snoop(string_io)\n\n    original_trace = sys.gettrace()\n\n    with pytest.raises(RuntimeError):\n        with snoop:\n            raise RuntimeError('boom')\n\n    assert sys.gettrace() is original_trace\n",
+  "test_file_path": "generated_tests/experiment2_replication2b/PySnooper_1/B_attempt_4.py",
+  "applicability_decisions": [
+    {
+      "history_id": "cookiecutter:1",
+      "decision": "reject",
+      "reason": "The cookiecutter encoding bug concerns JSON file decoding on Windows and has no counterpart in the PySnooper target source; no encoding-sensitive file read path is exercised by the target's public API in a way that matches this report."
+    },
+    {
+      "history_id": "PySnooper:3",
+      "decision": "accept_as_weak_signal",
+      "reason": "The fix diff and regression test target the same file (pysnooper/tracer.py) and reveal that context-manager/file-output paths in the tracer were under-tested. It does not directly prove the exception-restoration bug, but it justifies probing the Tracer context-manager lifecycle."
+    }
+  ],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 9,
+    "retry_index": 0,
+    "latency_seconds": 4.828,
+    "usage": {
+      "prompt_tokens": 19711,
+      "completion_tokens": 785,
+      "total_tokens": 20496,
+      "prompt_tokens_details": {
+        "cached_tokens": 19456
+      },
+      "prompt_cache_hit_tokens": 19456,
+      "prompt_cache_miss_tokens": 255
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2_replication2b/PySnooper_1/B_attempt_4.py",
+  "wall_clock_seconds": 4.831
+}

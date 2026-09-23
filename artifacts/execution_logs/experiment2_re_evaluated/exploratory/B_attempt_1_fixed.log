@@ -20,7 +20,7 @@ _____________________ test_reuse_tracer_across_with_blocks _____________________
 
         with snoop:
 >           b = inner(2)
-E           AssertionError: assert 'y = x + 1' in 'New var:....... string_io = <_io.StringIO object at 0x1063141f0>\nNew var:....... snoop = <pysnooper.tracer.Tracer ob...:....... @py_assert3 = None\nNew var:....... @py_assert5 = None\n07:18:14.549659 line        24         b = inner(2)\n'
+E           AssertionError: assert 'y = x + 1' in 'New var:....... string_io = <_io.StringIO object at 0x101d62670>\nNew var:....... snoop = <pysnooper.tracer.Tracer ob...:....... @py_assert3 = None\nNew var:....... @py_assert5 = None\n08:04:10.436710 line        24         b = inner(2)\n'
 
 _generated_eval_B_attempt_1.py:24: AssertionError
 =============================== warnings summary ===============================

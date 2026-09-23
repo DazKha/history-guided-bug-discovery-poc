@@ -58,4 +58,4 @@ pysnooper/variables.py:3
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
 =========================== short test summary info ============================
 FAILED _generated_eval_C_attempt_2.py::test_non_ascii_argument_with_default_stderr_output
-1 failed, 2 warnings in 0.07s
+1 failed, 2 warnings in 0.03s

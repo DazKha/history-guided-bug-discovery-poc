@@ -1,0 +1,44 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "A",
+  "condition_name": "TARGET_ONLY",
+  "attempt": 5,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt"
+  ],
+  "hypothesis": "When a generator function decorated with @pysnooper.snoop() is closed early (via .close() or garbage collection) before exhaustion, the generator_wrapper's `with self:` block is exited via GeneratorExit, but the wrapper does not propagate the close to the underlying generator, so the generator's finally/cleanup code never runs.",
+  "trigger": "Decorate a generator function that has a try/finally block setting a flag in finally; create the generator, advance it once with next(), then call gen.close(); assert the finally flag was set.",
+  "potential_failure": "The finally block in the wrapped generator does not execute because the wrapper's `with self:` catches GeneratorExit and returns without calling gen.close(), so cleanup code is skipped.",
+  "oracle": {
+    "expected_behavior": "Calling .close() on a generator returned by a @pysnooper.snoop()-decorated generator function must cause the underlying generator's finally block to execute, matching normal Python generator semantics.",
+    "target_evidence": "pysnooper/tracer.py generator_wrapper: `while True: with self: try: outgoing = method(incoming) except StopIteration: return` — when GeneratorExit is raised inside the with block, it propagates out of the with and out of the wrapper, but the underlying `gen` is never closed. Ordinary Python semantics (PEP 342) require that closing a generator runs its finally blocks. The test_generator test only exercises full exhaustion, not early close.",
+    "historical_evidence": "",
+    "confidence": 0.6
+  },
+  "test_code": "import io\nimport pytest\nimport pysnooper\n\n\ndef test_generator_close_runs_finally():\n    string_io = io.StringIO()\n    cleanup_ran = []\n\n    @pysnooper.snoop(string_io)\n    def gen_func():\n        try:\n            yield 1\n            yield 2\n        finally:\n            cleanup_ran.append(True)\n\n    g = gen_func()\n    first = next(g)\n    assert first == 1\n    g.close()\n    assert cleanup_ran == [True], (\n        \"Generator finally block did not run after close(); \"\n        \"cleanup_ran=%r\" % (cleanup_ran,)\n    )\n",
+  "test_file_path": "generated_tests/experiment2_replication2c/PySnooper_1/A_attempt_5.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 5,
+    "retry_index": 0,
+    "latency_seconds": 3.41,
+    "usage": {
+      "prompt_tokens": 15319,
+      "completion_tokens": 568,
+      "total_tokens": 15887,
+      "prompt_tokens_details": {
+        "cached_tokens": 15104
+      },
+      "prompt_cache_hit_tokens": 15104,
+      "prompt_cache_miss_tokens": 215
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2_replication2c/PySnooper_1/A_attempt_5.py",
+  "wall_clock_seconds": 3.416
+}

@@ -1,0 +1,56 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "C",
+  "condition_name": "STRUCTURED_APPLICABILITY_AWARE",
+  "attempt": 3,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "hypothesis": "When PySnooper traces a function whose source file contains non-ASCII characters and the process locale is not UTF-8, get_source_from_frame decodes the source bytes using the locale default encoding instead of UTF-8, causing the trace output to contain mojibake or fail to preserve the original source line.",
+  "trigger": "Create a temporary Python module file encoded as UTF-8 containing a non-ASCII string literal in a function body, import it, decorate the function with pysnooper.snoop(string_io), run it under LC_ALL=C/PYTHONUTF8=0, and inspect the captured trace output for the exact non-ASCII source line.",
+  "potential_failure": "The trace output will contain a corrupted representation of the non-ASCII source line (e.g. 'Ã©' instead of 'é') or the source line will be replaced by 'SOURCE IS UNAVAILABLE' due to a UnicodeDecodeError, because get_source_from_frame falls back to 'ascii' when no PEP-263 coding declaration is present and then decodes with errors='replace'.",
+  "oracle": {
+    "expected_behavior": "The trace output must contain the exact non-ASCII source line as written in the UTF-8 file, preserving the Unicode characters, independent of the process locale.",
+    "target_evidence": "pysnooper/tracer.py get_source_from_frame reads the source file in binary mode and, if the first line is bytes, sets encoding = 'ascii' unless a PEP-263 coding declaration is found in the first two lines, then decodes with pycompat.text_type(sline, encoding, 'replace'). The README and ordinary tests demonstrate that PySnooper is expected to faithfully reproduce source lines in trace output. The test_unavailable_source test shows that when source cannot be read, 'SOURCE IS UNAVAILABLE' is emitted, but a valid UTF-8 file should be readable.",
+    "historical_evidence": "cookiecutter:1 demonstrates the same class of locale-dependent implicit text decoding bug: reading a UTF-8 file without explicit encoding can corrupt non-ASCII data when the locale is not UTF-8. PySnooper:3 is weaker but shows file-output path handling is a known area of bugs.",
+    "confidence": 0.75
+  },
+  "test_code": "import io\nimport os\nimport sys\nimport textwrap\nimport tempfile\n\nimport pysnooper\n\n\ndef test_utf8_source_line_preserved_under_c_locale():\n    # Ensure the test runs under a non-UTF-8 locale to expose locale-dependent decoding.\n    old_lc_all = os.environ.get('LC_ALL')\n    old_lang = os.environ.get('LANG')\n    os.environ['LC_ALL'] = 'C'\n    os.environ['LANG'] = 'C'\n    try:\n        with tempfile.TemporaryDirectory() as tmpdir:\n            module_name = 'pysnooper_utf8_source_test_module'\n            module_path = os.path.join(tmpdir, module_name + '.py')\n            source = textwrap.dedent(u'''\\\n                import pysnooper\n\n                @pysnooper.snoop()\n                def f():\n                    x = \"caf\\u00e9\"\n                    return x\n            ''')\n            with open(module_path, 'w', encoding='utf-8') as f:\n                f.write(source)\n\n            sys.path.insert(0, tmpdir)\n            try:\n                module = __import__(module_name)\n            finally:\n                sys.path.remove(tmpdir)\n\n            string_io = io.StringIO()\n            # Re-decorate with our own stream to capture output deterministically.\n            decorated = pysnooper.snoop(string_io)(module.f)\n            result = decorated()\n            assert result == u'caf\\u00e9'\n\n            output = string_io.getvalue()\n            # The source line containing the non-ASCII literal must be preserved exactly.\n            assert u'x = \"caf\\u00e9\"' in output, (\n                'Expected UTF-8 source line with non-ASCII character to be preserved in trace output, '\n                'but got:\\n' + output\n            )\n            # The corrupted mojibake form must not appear.\n            assert u'caf\\u00c3\\u00a9' not in output, (\n                'Trace output contains mojibake for non-ASCII source, indicating locale-dependent decoding:\\n' + output\n            )\n    finally:\n        if old_lc_all is None:\n            os.environ.pop('LC_ALL', None)\n        else:\n            os.environ['LC_ALL'] = old_lc_all\n        if old_lang is None:\n            os.environ.pop('LANG', None)\n        else:\n            os.environ['LANG'] = old_lang\n",
+  "test_file_path": "generated_tests/experiment2_replication2c/PySnooper_1/C_attempt_3.py",
+  "applicability_decisions": [
+    {
+      "history_id": "cookiecutter:1",
+      "decision": "SUPPORTED",
+      "reason": "The historical bug is about locale-dependent implicit text decoding of a UTF-8 file containing non-ASCII data. PySnooper's get_source_from_frame has the same structural flaw: it reads source bytes and decodes with 'ascii' unless a PEP-263 coding declaration is present, ignoring the actual UTF-8 encoding. The trigger (non-UTF-8 locale, UTF-8 file with non-ASCII content) is feasible in the target environment (LC_ALL=C, PYTHONUTF8=0). The invariant (valid UTF-8 data must decode to the same Unicode values independent of locale) is meaningful and testable via the public snoop API. The target-side oracle is supported by the source code and the ordinary test test_unavailable_source, which shows source lines are expected to be reproduced faithfully."
+    },
+    {
+      "history_id": "PySnooper:3",
+      "decision": "WEAK",
+      "reason": "The historical bug concerns a path/output variable mismatch in the file-output closure, not encoding. While it confirms file output is a bug-prone area, the failure mechanism does not transfer to the encoding issue. It provides only weak contextual support and no direct oracle for the hypothesized encoding defect."
+    }
+  ],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 13,
+    "retry_index": 0,
+    "latency_seconds": 6.71,
+    "usage": {
+      "prompt_tokens": 16177,
+      "completion_tokens": 1437,
+      "total_tokens": 17614,
+      "prompt_tokens_details": {
+        "cached_tokens": 16000
+      },
+      "prompt_cache_hit_tokens": 16000,
+      "prompt_cache_miss_tokens": 177
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2_replication2c/PySnooper_1/C_attempt_3.py",
+  "wall_clock_seconds": 6.714
+}

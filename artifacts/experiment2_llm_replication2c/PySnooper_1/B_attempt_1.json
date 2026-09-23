@@ -1,0 +1,45 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "B",
+  "condition_name": "NAIVE_RAW_HISTORY",
+  "attempt": 1,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_raw.json"
+  ],
+  "hypothesis": "When a Tracer is used as a context manager (with pysnooper.snoop(...):) and the traced block raises an exception, the Tracer's __exit__ does not restore the previous sys.settrace value, leaving the Tracer's trace function installed globally after the with block exits.",
+  "trigger": "Enter a `with pysnooper.snoop(string_io):` block whose body raises a ValueError, catch the exception outside the with block, then check whether sys.gettrace() is still the Tracer's bound trace method instead of the original trace function.",
+  "potential_failure": "After the with block exits due to an exception, sys.gettrace() remains the Tracer.trace bound method, so subsequent code in the process continues to be traced by the Tracer even though the with block has ended. This leaks tracing state and can cause unexpected output or performance issues.",
+  "oracle": {
+    "expected_behavior": "After a `with pysnooper.snoop(...)` block exits (whether normally or via an exception), sys.gettrace() should be restored to the value it had before entering the block.",
+    "target_evidence": "pysnooper/tracer.py Tracer.__enter__ pushes sys.gettrace() onto self.thread_local.original_trace_functions and calls sys.settrace(self.trace). Tracer.__exit__ pops from that stack and calls sys.settrace(stack.pop()). The ordinary test test_generator asserts original_tracer_active() after generator operations, showing the intended invariant that the original trace function is restored. However, __exit__ does not use try/finally around the body, and the stack pop only happens if __exit__ is invoked; if the body raises, __exit__ is still invoked by the with statement, but the code path is not guarded against exceptions raised during the body before __exit__ runs. The test test_with_block only exercises normal exit, not exceptional exit.",
+    "historical_evidence": "PySnooper:3 fix diff shows a similar class of bug where a variable (output_path) was used instead of the actual parameter (output) in get_write_function, causing incorrect behavior. This suggests the target codebase has had defects in state/parameter handling. The cookiecutter:1 evidence about encoding is less relevant. The raw history suggests probing state-restoration and parameter-handling paths.",
+    "confidence": 0.55
+  },
+  "test_code": "import io\nimport sys\n\nimport pytest\n\nimport pysnooper\n\n\ndef test_trace_restored_after_exception_in_with_block():\n    string_io = io.StringIO()\n    original_trace = sys.gettrace()\n\n    with pytest.raises(ValueError):\n        with pysnooper.snoop(string_io):\n            raise ValueError('boom')\n\n    assert sys.gettrace() is original_trace, (\n        'sys.gettrace() was not restored after an exception in the with block; '\n        'got {!r}'.format(sys.gettrace())\n    )\n",
+  "test_file_path": "generated_tests/experiment2_replication2c/PySnooper_1/B_attempt_1.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 6,
+    "retry_index": 0,
+    "latency_seconds": 4.472,
+    "usage": {
+      "prompt_tokens": 19711,
+      "completion_tokens": 715,
+      "total_tokens": 20426,
+      "prompt_tokens_details": {
+        "cached_tokens": 19456
+      },
+      "prompt_cache_hit_tokens": 19456,
+      "prompt_cache_miss_tokens": 255
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2_replication2c/PySnooper_1/B_attempt_1.py",
+  "wall_clock_seconds": 4.474
+}

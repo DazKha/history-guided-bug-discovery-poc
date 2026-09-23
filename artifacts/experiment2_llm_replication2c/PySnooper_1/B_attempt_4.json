@@ -1,0 +1,45 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "B",
+  "condition_name": "NAIVE_RAW_HISTORY",
+  "attempt": 4,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_raw.json"
+  ],
+  "hypothesis": "When a Tracer is used as a context manager (with pysnooper.snoop(...):) and the wrapped block raises an exception, the tracer's __exit__ does not restore the previous sys.settrace value, leaving the global trace function set to the Tracer.trace method after the exception propagates.",
+  "trigger": "Use `with pysnooper.snoop(string_io):` around a block that raises ValueError, catch the exception, then check `sys.gettrace()`.",
+  "potential_failure": "sys.gettrace() remains the Tracer.trace bound method instead of the original trace function (None), meaning the tracer leaks global tracing state after an exception in a with-block.",
+  "oracle": {
+    "expected_behavior": "After the with-block exits (even via an exception), sys.gettrace() should equal the trace function that was active before entering the with-block (None in a normal pytest run).",
+    "target_evidence": "pysnooper/tracer.py __enter__ pushes sys.gettrace() onto thread_local.original_trace_functions and calls sys.settrace(self.trace); __exit__ pops and calls sys.settrace(stack.pop()). The existing test_with_block and test_with_block_depth exercise with-blocks but only on the non-exception path, so the exception path is untested. The generator test explicitly asserts original_tracer_active() before/after, showing the project treats restoring the original trace function as an invariant.",
+    "historical_evidence": "PySnooper:3 fix diff shows a similar state-management bug in get_write_function where a closure referenced an undefined/incorrect variable (output_path vs output), causing file output to fail; the regression test test_file_output was added to cover the previously untested path. This suggests PySnooper's tracer state/output paths are prone to untested edge cases.",
+    "confidence": 0.35
+  },
+  "test_code": "import io\nimport sys\n\nimport pytest\n\nimport pysnooper\n\n\ndef test_with_block_exception_restores_trace():\n    string_io = io.StringIO()\n    original_trace = sys.gettrace()\n\n    with pytest.raises(ValueError):\n        with pysnooper.snoop(string_io):\n            raise ValueError('boom')\n\n    assert sys.gettrace() is original_trace\n",
+  "test_file_path": "generated_tests/experiment2_replication2c/PySnooper_1/B_attempt_4.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 9,
+    "retry_index": 0,
+    "latency_seconds": 3.524,
+    "usage": {
+      "prompt_tokens": 19711,
+      "completion_tokens": 567,
+      "total_tokens": 20278,
+      "prompt_tokens_details": {
+        "cached_tokens": 19456
+      },
+      "prompt_cache_hit_tokens": 19456,
+      "prompt_cache_miss_tokens": 255
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2_replication2c/PySnooper_1/B_attempt_4.py",
+  "wall_clock_seconds": 3.528
+}

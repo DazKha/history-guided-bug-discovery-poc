@@ -1,0 +1,44 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "A",
+  "condition_name": "TARGET_ONLY",
+  "attempt": 3,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt"
+  ],
+  "hypothesis": "When a Tracer is used as a context manager inside a generator function, the generator's frame is added to self.target_frames on __enter__ but is never removed on __exit__, so after the with block the generator's frame remains in target_frames and subsequent lines in the generator are still traced, producing extra output that should not appear.",
+  "trigger": "Define a generator function that contains a `with pysnooper.snoop(string_io):` block followed by additional statements after the with block. Iterate the generator to completion and inspect the captured output. The output should contain line entries only for statements inside the with block, not for statements after it.",
+  "potential_failure": "The tracer continues to emit line entries for statements executed after the with block in the generator, because the generator frame is never discarded from target_frames in __exit__.",
+  "oracle": {
+    "expected_behavior": "Only statements inside the `with pysnooper.snoop(...)` block should be traced; statements after the with block in the same generator should not produce line entries.",
+    "target_evidence": "Tracer.__exit__ calls `self.target_frames.discard(calling_frame)` where `calling_frame = inspect.currentframe().f_back`. For a generator, the frame that executed __enter__ is not the same as the frame that executes __exit__ (the generator's frame is suspended and resumed), so the discard removes the wrong frame, leaving the generator frame in target_frames. The trace method checks `frame in self.target_frames` to decide whether to trace, so the generator frame remains traced after the with block.",
+    "historical_evidence": "",
+    "confidence": 0.7
+  },
+  "test_code": "import io\nimport pysnooper\n\n\ndef test_generator_with_block_does_not_trace_after_exit():\n    string_io = io.StringIO()\n\n    def gen():\n        with pysnooper.snoop(string_io):\n            x = 1\n        y = 2\n        yield x + y\n\n    g = gen()\n    result = next(g)\n    assert result == 3\n\n    output = string_io.getvalue()\n    # The line `y = 2` is after the with block and should not be traced.\n    assert 'y = 2' not in output\n",
+  "test_file_path": "generated_tests/experiment2_replication2b/PySnooper_1/A_attempt_3.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 3,
+    "retry_index": 0,
+    "latency_seconds": 3.27,
+    "usage": {
+      "prompt_tokens": 15319,
+      "completion_tokens": 571,
+      "total_tokens": 15890,
+      "prompt_tokens_details": {
+        "cached_tokens": 15104
+      },
+      "prompt_cache_hit_tokens": 15104,
+      "prompt_cache_miss_tokens": 215
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2_replication2b/PySnooper_1/A_attempt_3.py",
+  "wall_clock_seconds": 3.273
+}

@@ -1,0 +1,45 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "B",
+  "condition_name": "NAIVE_RAW_HISTORY",
+  "attempt": 1,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_raw.json"
+  ],
+  "hypothesis": "When a Tracer is used as a context manager (with pysnooper.snoop(...):) and the same Tracer instance is entered recursively (e.g., a function that uses the same snoop object recursively), the __exit__ method pops the wrong trace function from the thread-local stack, causing sys.gettrace() to not be restored to the original trace function after the outermost with block exits.",
+  "trigger": "Create a single Tracer instance, use it in a recursive function via `with snoop:`, call the function recursively, and after the outermost with block exits, assert that sys.gettrace() equals the original trace function.",
+  "potential_failure": "sys.gettrace() after the outermost with block may not equal the original trace function, because __exit__ pops from the stack in LIFO order but the stack may contain duplicate entries or be mismatched due to recursive entry/exit ordering.",
+  "oracle": {
+    "expected_behavior": "After all with blocks using the same Tracer instance have exited, sys.gettrace() should be restored to the original trace function that was active before the first with block was entered.",
+    "target_evidence": "In pysnooper/tracer.py, Tracer.__enter__ appends sys.gettrace() to a thread-local stack and sets sys.settrace(self.trace). Tracer.__exit__ pops from that stack and calls sys.settrace with the popped value. The test_with_block test in tests/test_pysnooper.py demonstrates recursive use of a single Tracer instance via with blocks, and the generator test checks that sys.gettrace() is restored after generator usage. The intended invariant is that the original trace function is restored after all with blocks exit.",
+    "historical_evidence": "PySnooper:3 fix diff shows a bug in get_write_function where a wrong variable name (output_path instead of output) was used, indicating that variable/state management bugs in Tracer-related code are plausible. The regression test test_file_output verifies file output behavior. This historical evidence suggests that state management in Tracer is a fruitful area for bug discovery.",
+    "confidence": 0.6
+  },
+  "test_code": "import sys\nimport pysnooper\n\n\ndef test_recursive_with_block_restores_trace():\n    original_trace = sys.gettrace()\n    snoop = pysnooper.snoop()\n\n    def recursive(n):\n        if n == 0:\n            return\n        with snoop:\n            recursive(n - 1)\n\n    recursive(3)\n    assert sys.gettrace() is original_trace\n",
+  "test_file_path": "generated_tests/experiment2_replication2b/PySnooper_1/B_attempt_1.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 6,
+    "retry_index": 0,
+    "latency_seconds": 3.938,
+    "usage": {
+      "prompt_tokens": 19711,
+      "completion_tokens": 614,
+      "total_tokens": 20325,
+      "prompt_tokens_details": {
+        "cached_tokens": 19456
+      },
+      "prompt_cache_hit_tokens": 19456,
+      "prompt_cache_miss_tokens": 255
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2_replication2b/PySnooper_1/B_attempt_1.py",
+  "wall_clock_seconds": 3.941
+}

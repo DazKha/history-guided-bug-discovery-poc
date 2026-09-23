@@ -1,0 +1,44 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "A",
+  "condition_name": "TARGET_ONLY",
+  "attempt": 4,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt"
+  ],
+  "hypothesis": "When a generator function decorated with @pysnooper.snoop() is closed early (via generator.close()), the tracer's __exit__ is not invoked, leaving sys.settrace(self.trace) installed and the generator's frame in self.target_frames, so subsequent unrelated code continues to be traced and emits spurious output.",
+  "trigger": "Decorate a generator function with @pysnooper.snoop(string_io), advance it once with next(), then call generator.close() and execute a plain function that should not be traced; inspect string_io for output emitted after close().",
+  "potential_failure": "After close(), sys.gettrace() remains the tracer's trace method and the closed generator's frame remains in target_frames, causing the tracer to keep writing lines for unrelated code.",
+  "oracle": {
+    "expected_behavior": "After generator.close(), the tracer should restore the previous trace function (sys.gettrace() should be None) and no further snoop output should be produced for unrelated code.",
+    "target_evidence": "pysnooper/tracer.py generator_wrapper uses `with self:` around each `method(incoming)` call; __exit__ restores sys.settrace and discards the calling frame. tests/test_pysnooper.py::test_generator asserts `original_tracer_active()` after each generator interaction, establishing that the tracer must not remain active outside the generator's execution.",
+    "historical_evidence": "",
+    "confidence": 0.55
+  },
+  "test_code": "import io\nimport sys\n\nimport pysnooper\n\n\ndef test_generator_close_restores_trace():\n    string_io = io.StringIO()\n    original_tracer = sys.gettrace()\n\n    @pysnooper.snoop(string_io)\n    def gen():\n        yield 1\n        yield 2\n\n    g = gen()\n    assert next(g) == 1\n    g.close()\n\n    assert sys.gettrace() is original_tracer, (\n        'sys.gettrace() was not restored after generator.close(); '\n        'tracer remained active: %r' % (sys.gettrace(),)\n    )\n\n    before = string_io.getvalue()\n\n    def unrelated():\n        x = 123\n        return x\n\n    assert unrelated() == 123\n    after = string_io.getvalue()\n    assert after == before, (\n        'Tracer emitted output for unrelated code after generator.close(): '\n        '%r' % (after[len(before):],)\n    )\n",
+  "test_file_path": "generated_tests/experiment2_replication2c/PySnooper_1/A_attempt_4.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 4,
+    "retry_index": 0,
+    "latency_seconds": 3.392,
+    "usage": {
+      "prompt_tokens": 15319,
+      "completion_tokens": 622,
+      "total_tokens": 15941,
+      "prompt_tokens_details": {
+        "cached_tokens": 15104
+      },
+      "prompt_cache_hit_tokens": 15104,
+      "prompt_cache_miss_tokens": 215
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2_replication2c/PySnooper_1/A_attempt_4.py",
+  "wall_clock_seconds": 3.398
+}

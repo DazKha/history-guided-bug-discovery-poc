@@ -20,3 +20,9 @@ The preserved exploratory run contains an exception-level buggy/fixed split for 
 The exception-level rule was subsequently audited and corrected. A target-origin exception can be meaningful when it violates a pre-execution supported oracle, occurs in target behavior, and the exact unchanged test passes on fixed. Re-evaluation of all preserved artifacts found two valid `EXCEPTION_F2P` cases in exploratory C. A further uniform five-attempt batch per condition produced no additional F2P.
 
 Across 15 attempts per condition after combining the preserved exploratory, strict, and looped batches: A had 0 F2P/0 mechanism matches; B had 0 F2P/1 mechanism match; C had 2 exception F2P/9 mechanism matches. The corrected conclusion is limited positive transfer feasibility for the retrospectively selected case, with unstable trigger construction and no evidence of general architecture superiority.
+
+## Replication 2
+
+The next frozen replication added 10 new attempts per condition, implemented as two independent five-attempt halves because the existing runner’s prompt and batch contract are fixed at five attempts. The new batch produced: A `0/10` F2P and `0/10` mechanism matches; B `0/10` F2P and `1/10` mechanism match; C `0/10` F2P and `6/10` mechanism matches. Thus the earlier C mechanism advantage persisted in the new batch, but neither exception-based F2P reproduced. This strengthens the interpretation that structured history improves search direction more reliably than executable trigger construction.
+
+The cumulative Experiment 2 totals are now 25 attempts per condition: A `0/25` F2P and `0/25` mechanism matches; B `0/25` F2P and `2/25` mechanism matches; C `2/25` verified exception F2P and `15/25` mechanism matches. The new replication’s C mechanism-to-F2P conversion was `0/6 = 0%`, versus `2/15 = 13.3%` cumulatively. This is a selected-case transfer result with unstable trigger construction, not a general architecture comparison.

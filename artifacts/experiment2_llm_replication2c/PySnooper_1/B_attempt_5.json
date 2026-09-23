@@ -1,0 +1,45 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "B",
+  "condition_name": "NAIVE_RAW_HISTORY",
+  "attempt": 5,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_raw.json"
+  ],
+  "hypothesis": "When a Tracer is used as a context manager (with pysnooper.snoop(...)) and the wrapped block raises an exception, the Tracer's __exit__ does not restore the previous trace function correctly because it pops from a thread-local stack that may be empty or mismatched, causing sys.gettrace() to return the Tracer's trace function instead of the original trace function after the with block.",
+  "trigger": "Create a Tracer with a StringIO output, enter it as a context manager, raise an exception inside the with block, catch the exception, then check sys.gettrace() is the original trace function (None by default).",
+  "potential_failure": "After the with block exits due to an exception, sys.gettrace() may still be the Tracer's trace function, meaning the global trace function was not properly restored.",
+  "oracle": {
+    "expected_behavior": "After exiting a with pysnooper.snoop() block, sys.gettrace() should be restored to the trace function that was active before entering the block (None if no trace was active).",
+    "target_evidence": "In pysnooper/tracer.py, Tracer.__enter__ appends sys.gettrace() to a thread-local stack and calls sys.settrace(self.trace). Tracer.__exit__ pops from that stack and calls sys.settrace(stack.pop()). This should restore the original trace function. The test verifies this invariant.",
+    "historical_evidence": "The historical PySnooper bug #3 fixed a file output bug where a wrong variable name was used. This suggests that the Tracer's context manager and trace restoration logic may have subtle bugs. The current test probes the trace restoration invariant.",
+    "confidence": 0.7
+  },
+  "test_code": "import io\nimport sys\nimport pytest\nimport pysnooper\n\n\ndef test_trace_restored_after_exception_in_with_block():\n    original_trace = sys.gettrace()\n    string_io = io.StringIO()\n\n    with pytest.raises(ValueError):\n        with pysnooper.snoop(string_io):\n            raise ValueError('boom')\n\n    assert sys.gettrace() is original_trace, (\n        'sys.gettrace() was not restored after exception in with block'\n    )\n",
+  "test_file_path": "generated_tests/experiment2_replication2c/PySnooper_1/B_attempt_5.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 10,
+    "retry_index": 0,
+    "latency_seconds": 3.445,
+    "usage": {
+      "prompt_tokens": 19711,
+      "completion_tokens": 559,
+      "total_tokens": 20270,
+      "prompt_tokens_details": {
+        "cached_tokens": 19456
+      },
+      "prompt_cache_hit_tokens": 19456,
+      "prompt_cache_miss_tokens": 255
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2_replication2c/PySnooper_1/B_attempt_5.py",
+  "wall_clock_seconds": 3.447
+}

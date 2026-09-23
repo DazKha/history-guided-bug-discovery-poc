@@ -1,0 +1,56 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "C",
+  "condition_name": "STRUCTURED_APPLICABILITY_AWARE",
+  "attempt": 4,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "hypothesis": "When a decorated function raises an exception, PySnooper's tracer writes the 'Call ended by exception' line but fails to decrement the thread-local trace depth, so subsequent traced calls in the same thread are indented one level too deep.",
+  "trigger": "Decorate two functions with the same pysnooper.snoop() tracer; call the first function so it raises an exception, then call the second function normally and inspect the indentation of its trace lines.",
+  "potential_failure": "The second function's trace lines are indented by 4 spaces (depth 1) instead of 0 spaces (depth 0), because the exception path in Tracer.trace does not decrement thread_global.depth.",
+  "oracle": {
+    "expected_behavior": "After a traced call ends by exception, the tracer's thread-local depth must return to its pre-call value, so a subsequent traced call at the same nesting level is reported with zero indentation.",
+    "target_evidence": "pysnooper/tracer.py Tracer.trace increments thread_global.depth on 'call' events and decrements it only inside the 'return' branch; the ended_by_exception branch writes 'Call ended by exception' but skips the decrement. The ordinary test suite includes test_exception and test_with_block, showing that exception tracing and repeated tracer use are supported behaviors.",
+    "historical_evidence": "PySnooper:3 historical unit concerns file-output path handling, not exception depth accounting; it is only weak transfer evidence that PySnooper's tracer state can be corrupted across calls.",
+    "confidence": 0.72
+  },
+  "test_code": "import io\nimport re\n\nimport pysnooper\n\n\ndef test_depth_restored_after_exception():\n    string_io = io.StringIO()\n    snoop = pysnooper.snoop(string_io)\n\n    @snoop\n    def raises():\n        raise ValueError('boom')\n\n    @snoop\n    def normal():\n        x = 1\n        return x\n\n    try:\n        raises()\n    except ValueError:\n        pass\n\n    result = normal()\n    assert result == 1\n\n    output = string_io.getvalue()\n    assert 'Call ended by exception' in output\n\n    normal_lines = [\n        line for line in output.splitlines()\n        if 'def normal():' in line or 'x = 1' in line or 'return x' in line\n    ]\n    assert normal_lines, output\n    for line in normal_lines:\n        assert not line.startswith(' '), (\n            'Trace line for normal() is unexpectedly indented after an '\n            'exception-ended traced call: {!r}\\nFull output:\\n{}'.format(\n                line, output\n            )\n        )\n",
+  "test_file_path": "generated_tests/experiment2_replication2b/PySnooper_1/C_attempt_4.py",
+  "applicability_decisions": [
+    {
+      "history_id": "cookiecutter:1",
+      "decision": "NOT_APPLICABLE",
+      "reason": "The historical unit is about locale-dependent implicit text encoding when reading JSON context files. The target PySnooper context has no JSON context loading, no locale-sensitive text read in the public API path, and no target-side oracle for UTF-8 preservation. The mechanism does not transfer."
+    },
+    {
+      "history_id": "PySnooper:3",
+      "decision": "WEAK",
+      "reason": "The historical unit is about file-output path handling in PySnooper, which is related to the same tracer module but not to the exception-depth accounting defect. It provides only weak evidence that tracer state can be corrupted across calls. The target source itself supplies a stronger oracle: Tracer.trace increments thread_global.depth on call and decrements only on non-exception return, so an exception-ended call leaves depth elevated."
+    }
+  ],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 14,
+    "retry_index": 0,
+    "latency_seconds": 4.654,
+    "usage": {
+      "prompt_tokens": 16177,
+      "completion_tokens": 896,
+      "total_tokens": 17073,
+      "prompt_tokens_details": {
+        "cached_tokens": 16000
+      },
+      "prompt_cache_hit_tokens": 16000,
+      "prompt_cache_miss_tokens": 177
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2_replication2b/PySnooper_1/C_attempt_4.py",
+  "wall_clock_seconds": 4.657
+}

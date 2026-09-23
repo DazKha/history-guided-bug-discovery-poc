@@ -52,10 +52,13 @@ def md_table(rows: list[dict]) -> str:
 def main() -> None:
     aggregate = [summary_row(condition) for condition in ["A", "B", "C"]]
     batches = []
-    for label in ["exploratory", "final", "loop1"]:
+    for label in ["exploratory", "final"]:
         batch_rows = [row for row in ROWS if row["run_label"] == label]
         if batch_rows:
             batches.append((label, [summary_row_for_rows(condition, batch_rows) for condition in ["A", "B", "C"]]))
+    new_rows = [row for row in ROWS if row["run_label"] in {"replication2b", "replication2c"}]
+    if new_rows:
+        batches.append(("replication2 (10 new attempts/condition)", [summary_row_for_rows(condition, new_rows) for condition in ["A", "B", "C"]]))
     lines = [
         "# Final failure analysis",
         "",
@@ -65,18 +68,24 @@ def main() -> None:
         "",
         md_table(aggregate),
         "",
-        "The aggregate includes 15 attempts per condition: the preserved exploratory batch, the later strict batch, and one additional uniform looped batch. The only verified F2P results are two `EXCEPTION_F2P` cases in exploratory C. There are no assertion F2P results.",
+        "The aggregate includes 25 attempts per condition: 15 preserved prior attempts and 10 new replication attempts. The only verified F2P results are two `EXCEPTION_F2P` cases in exploratory C. There are no assertion F2P results.",
         "",
     ]
     for label, batch in batches:
         lines += [f"## Batch: {label}", "", md_table(batch), ""]
+    replication_mechanism_rows = [row for row in ROWS if row["run_label"] in {"replication2b", "replication2c"} and row["condition"] == "C" and row["hypothesis_matches_true_failure_mechanism"] == "yes" and row["verified_f2p"] != "True"]
+    lines += ["## Replication C mechanism matches without F2P", ""]
+    for row in replication_mechanism_rows:
+        lines.append(f"- `{row['attempt_id']}`: `{row['classification']}` / `{row['failure_category']}`; buggy/fixed `{row['buggy_failure_type'] or row['buggy_state']}` / `{row['fixed_failure_type'] or row['fixed_state']}`.")
+    lines.append("")
     lines += [
         "## Localized failure analysis",
         "",
         "- A generated plausible target behavior but did not match the locale-dependent encoding mechanism in any batch; its executable tests were P2P or model errors.",
         "- B occasionally picked up adjacent file-output or encoding language, but did not produce a verified F2P; raw history remained distracted by unrelated state/path hypotheses.",
-        "- C identified the true encoding mechanism repeatedly (9/15 aggregate mechanism-match labels). Two exploratory C tests directly exercised the public path-output API and produced target `UnicodeEncodeError` on buggy with fixed passes; these are valid exception-based F2P under the corrected rule.",
-        "- Later strict and looped C attempts did not reproduce F2P: the strict batch had two model errors, two P2P tests, and one F2F; the looped batch had four P2P tests and one F2F despite three mechanism matches. This localizes the remaining instability to trigger/test construction, not historical mechanism identification.",
+        "- C identified the true encoding mechanism repeatedly (15/25 aggregate mechanism-match labels). Two exploratory C tests directly exercised the public path-output API and produced target `UnicodeEncodeError` on buggy with fixed passes; these are valid exception-based F2P under the corrected rule.",
+        "- Later strict and replication C attempts did not reproduce F2P: the strict batch had two model errors, two P2P tests, and one F2F; the 10-attempt replication had six mechanism matches, two F2F, and eight P2P with no F2P. This localizes the remaining instability to trigger/test construction, not historical mechanism identification.",
+        "- Within the 10-attempt replication, the six C mechanism matches that were not F2P were four `TRIGGER_TOO_WEAK` P2P cases and two `TRIGGER_WRONG_SHAPE` F2F cases (the latter also had assertions misaligned with the observable behavior).",
         "- No tests were edited between buggy and fixed execution. The exploratory oracle and hypothesis are taken from the stored model artifact created before execution; the evaluator does not rewrite them after observing outcomes.",
         "",
         "## Conclusion",
@@ -84,6 +93,27 @@ def main() -> None:
         "In this retrospectively selected transfer-feasibility case, structured historical knowledge identified the correct failure mechanism and produced verified executable evidence distinguishing the buggy and fixed revisions. The evidence does not prove the architecture: the two valid F2P cases occur in one exploratory batch, later attempts did not reproduce them, and A/B did not produce valid F2P. The stable conclusion is that structured history improves search direction here, while robust trigger construction remains the bottleneck.",
     ]
     (ROOT / "results/failure_analysis_final.md").write_text("\n".join(lines) + "\n")
+
+    cumulative = [
+        "# Experiment 2 cumulative summary",
+        "",
+        "Previous results are the preserved exploratory, strict, and loop1 batches (15 attempts per condition); the new replication is the combined `replication2b` + `replication2c` batches (10 new attempts per condition). The two five-attempt halves preserve the existing frozen prompt, which states the attempt index within a five-attempt batch. The table below combines every evaluated batch without deleting prior artifacts.",
+        "",
+        "## Previous batches",
+        "",
+        md_table([summary_row_for_rows(condition, [row for row in ROWS if row["run_label"] in {"exploratory", "final", "loop1"}]) for condition in ["A", "B", "C"]]),
+        "",
+        "## New replication batch",
+        "",
+        md_table([summary_row_for_rows(condition, new_rows) for condition in ["A", "B", "C"]]),
+        "",
+        "## Cumulative",
+        "",
+        md_table(aggregate),
+        "",
+        "The cumulative evidence contains two verified exception-based F2P cases, both in preserved exploratory C. The new replication produced no F2P, so the prior observation did not reproduce in the new batch even though C retained more mechanism matches than A/B.",
+    ]
+    (ROOT / "results/experiment2_cumulative_summary.md").write_text("\n".join(cumulative) + "\n")
 
 
 def summary_row_for_rows(condition: str, rows: list[dict]) -> dict:

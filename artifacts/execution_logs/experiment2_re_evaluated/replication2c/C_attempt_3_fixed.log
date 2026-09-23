@@ -1,0 +1,69 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+________________ test_utf8_source_line_preserved_under_c_locale ________________
+
+    def test_utf8_source_line_preserved_under_c_locale():
+        # Ensure the test runs under a non-UTF-8 locale to expose locale-dependent decoding.
+        old_lc_all = os.environ.get('LC_ALL')
+        old_lang = os.environ.get('LANG')
+        os.environ['LC_ALL'] = 'C'
+        os.environ['LANG'] = 'C'
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                module_name = 'pysnooper_utf8_source_test_module'
+                module_path = os.path.join(tmpdir, module_name + '.py')
+                source = textwrap.dedent(u'''\
+                    import pysnooper
+
+                    @pysnooper.snoop()
+                    def f():
+                        x = "caf\u00e9"
+                        return x
+                ''')
+                with open(module_path, 'w', encoding='utf-8') as f:
+                    f.write(source)
+
+                sys.path.insert(0, tmpdir)
+                try:
+                    module = __import__(module_name)
+                finally:
+                    sys.path.remove(tmpdir)
+
+                string_io = io.StringIO()
+                # Re-decorate with our own stream to capture output deterministically.
+                decorated = pysnooper.snoop(string_io)(module.f)
+                result = decorated()
+                assert result == u'caf\u00e9'
+
+                output = string_io.getvalue()
+                # The source line containing the non-ASCII literal must be preserved exactly.
+>               assert u'x = "caf\u00e9"' in output, (
+                    'Expected UTF-8 source line with non-ASCII character to be preserved in trace output, '
+                    'but got:\n' + output
+                )
+E               AssertionError: Expected UTF-8 source line with non-ASCII character to be preserved in trace output, but got:
+E                 Starting var:.. args = ()
+E                 Starting var:.. kwargs = {}
+E                 Starting var:.. function = <function f at 0x105899d30>
+E                 Starting var:.. self = <pysnooper.tracer.Tracer object at 0x10578eb20>
+E                 08:04:27.352623 call       216         def simple_wrapper(*args, **kwargs):
+E                 08:04:27.352722 line       217             with self:
+E                 08:04:27.352740 line       218                 return function(*args, **kwargs)
+E                 08:04:27.352869 return     218                 return function(*args, **kwargs)
+E                 Return value:.. 'caf\xe9'
+E
+E               assert 'x = "caf\xe9"' in "Starting var:.. args = ()\\nStarting var:.. kwargs = {}\\nStarting var:.. function = <function f at 0x105899d30>\\nStart..., **kwargs)\\n08:04:27.352869 return     218                 return function(*args, **kwargs)\\nReturn value:.. 'caf\xe9'\\n"
+
+_generated_eval_C_attempt_3.py:45: AssertionError
+----------------------------- Captured stderr call -----------------------------
+    08:04:27.352747 call         4 def f():\n    08:04:27.352809 line         5     x = "caf\xe9"\n    New var:....... x = 'caf\xe9'\n    08:04:27.352832 line         6     return x\n    08:04:27.352844 return       6     return x\n    Return value:.. 'caf\xe9'
+=============================== warnings summary ===============================
+pysnooper/variables.py:3
+pysnooper/variables.py:3
+  /Users/minhkha/SidePrj/katalon/poc/workspace/harness-pysnooper-fixed/PySnooper/pysnooper/variables.py:3: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated since Python 3.3, and in 3.10 it will stop working
+    from collections import Mapping, Sequence
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED _generated_eval_C_attempt_3.py::test_utf8_source_line_preserved_under_c_locale
+1 failed, 2 warnings in 0.02s

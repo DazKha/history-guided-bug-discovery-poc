@@ -1,0 +1,56 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "C",
+  "condition_name": "STRUCTURED_APPLICABILITY_AWARE",
+  "attempt": 3,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_structured.json"
+  ],
+  "hypothesis": "When a decorated function raises an exception, PySnooper's trace output omits the 'Call ended by exception' marker because the ended_by_exception detection reads the wrong bytecode offset (frame.f_lasti points at the CALL_FUNCTION instruction rather than the following instruction), so the tracer treats the exception return as a normal return and prints a 'return' line instead.",
+  "trigger": "Decorate a function with @pysnooper.snoop(string_io) that raises ValueError('boom'), call it inside pytest.raises(ValueError), and inspect the captured trace output for the 'Call ended by exception' marker.",
+  "potential_failure": "The trace output will contain a normal 'return' line for the exception exit instead of the 'Call ended by exception' marker, and may also print a spurious 'Return value:.. None' line, because ended_by_exception is computed as False.",
+  "oracle": {
+    "expected_behavior": "The trace output for a function that exits by raising an exception must contain the marker 'Call ended by exception' and must not contain a normal 'return' line or a 'Return value:.. None' line for that exception exit.",
+    "target_evidence": "pysnooper/tracer.py contains the explicit comment: \"If a call ends due to an exception, we still get a 'return' event with arg = None. This seems to be the only way to tell the difference\" and then computes ended_by_exception using frame.f_code.co_code[frame.f_lasti]. The source also has a dedicated branch that writes 'Call ended by exception' when ended_by_exception is true, and suppresses the return-value line in that case. The ordinary test suite includes test_exception via tests/samples/exception.py, confirming that exception-exit tracing is an intended, tested behavior of the target.",
+    "historical_evidence": "PySnooper:3 historical unit concerns file-output path handling and is only weakly transferable; it does not establish the exception-marker mechanism. cookiecutter:1 concerns locale-dependent text encoding and is not applicable to this target. The exception-marker hypothesis is grounded in target-side source and ordinary tests rather than historical evidence.",
+    "confidence": 0.55
+  },
+  "test_code": "import io\nimport pytest\n\nimport pysnooper\n\n\ndef test_exception_exit_prints_call_ended_by_exception():\n    string_io = io.StringIO()\n\n    @pysnooper.snoop(string_io)\n    def my_function():\n        x = 1\n        raise ValueError('boom')\n\n    with pytest.raises(ValueError, match='boom'):\n        my_function()\n\n    output = string_io.getvalue()\n    assert 'Call ended by exception' in output\n    assert 'Return value:.. None' not in output\n",
+  "test_file_path": "generated_tests/experiment2_replication2b/PySnooper_1/C_attempt_3.py",
+  "applicability_decisions": [
+    {
+      "history_id": "cookiecutter:1",
+      "decision": "NOT_APPLICABLE",
+      "reason": "The historical unit is about locale-dependent implicit text encoding when reading a JSON context file. The target PySnooper context has no analogous JSON/context-loading API, and the trigger (non-ASCII UTF-8 context file under a non-UTF-8 locale) has no corresponding target-side precondition or oracle. The failure mechanism (implicit open encoding) is not present in the supplied target source."
+    },
+    {
+      "history_id": "PySnooper:3",
+      "decision": "WEAK",
+      "reason": "The historical unit is in the same project and concerns file-output path handling in the public snoop decorator, which is adjacent to the target's FileWriter/get_write_function code. However, the specific failure mechanism (wrong captured path variable in a file-output closure) is not evidenced in the supplied target source, and the historical unit explicitly notes weak transfer compatibility because encoding is not established. It suggests probing file output but does not by itself establish a target-specific oracle for the strongest hypothesis."
+    }
+  ],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 13,
+    "retry_index": 0,
+    "latency_seconds": 4.685,
+    "usage": {
+      "prompt_tokens": 16177,
+      "completion_tokens": 917,
+      "total_tokens": 17094,
+      "prompt_tokens_details": {
+        "cached_tokens": 16000
+      },
+      "prompt_cache_hit_tokens": 16000,
+      "prompt_cache_miss_tokens": 177
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2_replication2b/PySnooper_1/C_attempt_3.py",
+  "wall_clock_seconds": 4.688
+}

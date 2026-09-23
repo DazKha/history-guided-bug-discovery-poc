@@ -1,0 +1,45 @@
+{
+  "experiment": "experiment2_transfer_feasibility",
+  "target_id": "PySnooper:1",
+  "condition": "B",
+  "condition_name": "NAIVE_RAW_HISTORY",
+  "attempt": 3,
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment2_target_context/PySnooper-1.txt",
+    "data/experiment2_historical_raw.json"
+  ],
+  "hypothesis": "When a Tracer is used as a context manager (with pysnooper.snoop(...):) and the wrapped block raises an exception, the tracer's __exit__ fails to restore the original sys.settrace state because it unconditionally accesses self.thread_local.original_trace_functions, which may not exist if __enter__ did not push onto the stack for the current thread, causing an AttributeError that masks the original exception.",
+  "trigger": "Create a Tracer via pysnooper.snoop(), enter it as a context manager in a thread where the thread_local stack was not initialized, raise an exception inside the with block, and observe whether the original exception propagates or an AttributeError from __exit__ occurs.",
+  "potential_failure": "The original exception raised inside the with block is replaced by an AttributeError from Tracer.__exit__ when self.thread_local.original_trace_functions is missing, so the intended exception type is not propagated.",
+  "oracle": {
+    "expected_behavior": "The exception raised inside the with block should propagate unchanged, and sys.gettrace() should be restored to its pre-with value.",
+    "target_evidence": "pysnooper/tracer.py Tracer.__enter__ appends to self.thread_local.original_trace_functions and Tracer.__exit__ pops from it; the ordinary test test_with_block exercises the with-block path but not exception propagation, and test_generator checks sys.gettrace() restoration for the decorator path.",
+    "historical_evidence": "PySnooper:3 fix diff shows a similar class of defect where a context/state variable (output_path) was referenced incorrectly in get_write_function, causing file output to fail; this suggests state-management bugs in Tracer are plausible.",
+    "confidence": 0.35
+  },
+  "test_code": "import sys\nimport threading\n\nimport pytest\n\nimport pysnooper\n\n\ndef test_with_block_exception_restores_trace_and_propagates():\n    original_trace = sys.gettrace()\n    tracer = pysnooper.snoop()\n\n    class CustomError(Exception):\n        pass\n\n    def run():\n        with tracer:\n            raise CustomError('boom')\n\n    with pytest.raises(CustomError):\n        run()\n\n    assert sys.gettrace() is original_trace\n\n\ndef test_with_block_exception_in_thread_restores_trace_and_propagates():\n    original_trace = sys.gettrace()\n    tracer = pysnooper.snoop()\n    caught = []\n\n    class CustomError(Exception):\n        pass\n\n    def run():\n        try:\n            with tracer:\n                raise CustomError('boom')\n        except BaseException as exc:\n            caught.append(exc)\n\n    thread = threading.Thread(target=run)\n    thread.start()\n    thread.join()\n\n    assert len(caught) == 1\n    assert isinstance(caught[0], CustomError)\n    assert sys.gettrace() is original_trace\n",
+  "test_file_path": "generated_tests/experiment2_replication2b/PySnooper_1/B_attempt_3.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 8,
+    "retry_index": 0,
+    "latency_seconds": 3.896,
+    "usage": {
+      "prompt_tokens": 19711,
+      "completion_tokens": 730,
+      "total_tokens": 20441,
+      "prompt_tokens_details": {
+        "cached_tokens": 19456
+      },
+      "prompt_cache_hit_tokens": 19456,
+      "prompt_cache_miss_tokens": 255
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment2_replication2b/PySnooper_1/B_attempt_3.py",
+  "wall_clock_seconds": 3.9
+}
