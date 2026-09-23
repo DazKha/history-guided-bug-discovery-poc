@@ -1,0 +1,48 @@
+{
+  "experiment": "experiment5_end_to_end",
+  "target_id": "tornado:1",
+  "condition": "B",
+  "condition_name": "NAIVE_RAW_HISTORY",
+  "attempt": 2,
+  "attempt_id": "experiment5_B_02",
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment5_target_context/Tornado-1.txt",
+    "data/experiment5_historical_raw.json"
+  ],
+  "prompt_sha256": "09b0b25f1ff8c241a5ed12fa0e7f30689ed83bf30e9dedeb3703152d66e3915e",
+  "hypothesis": "In demos/s3server/s3server.py, BaseRequestHandler._object_path computes the MD5 hash of object_name without encoding it to bytes, so on Python 3 hashlib.md5(object_name) raises TypeError when bucket_depth >= 1.",
+  "trigger": "Instantiate S3Application with bucket_depth=1 and call _object_path('bucket', 'key') on a handler instance.",
+  "potential_failure": "TypeError: Unicode-objects must be encoded before hashing, instead of returning a valid filesystem path.",
+  "oracle": {
+    "expected_behavior": "_object_path should return a valid path string for the given bucket and object name even when bucket_depth >= 1.",
+    "target_evidence": "s3server.py defines _object_path using hashlib.md5(object_name).hexdigest() and the module imports hashlib; the bucket_depth option is documented as breaking files into multiple directories. On Python 3, hashlib.md5 requires bytes, so passing a str object_name fails.",
+    "historical_evidence": "cookiecutter:1 and PySnooper:3 both involve Python 3 encoding/decoding defects (wrong encoding on Windows, wrong variable in file open), suggesting encoding-related bugs are common; here the analogous defect is missing .encode() before hashing.",
+    "confidence": 0.75
+  },
+  "test_code": "import os\nimport sys\n\nsys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'demos', 's3server'))\n\nimport s3server\n\n\ndef test_object_path_with_bucket_depth_hashes_object_name():\n    app = s3server.S3Application('/tmp/s3_test_root', bucket_depth=1)\n    handler = s3server.BaseRequestHandler.__new__(s3server.BaseRequestHandler)\n    handler.application = app\n    try:\n        path = handler._object_path('mybucket', 'mykey')\n    except TypeError as e:\n        raise AssertionError(\n            '_object_path raised TypeError for bucket_depth=1: %s' % e\n        )\n    assert isinstance(path, str)\n    assert path.endswith('mykey')\n",
+  "test_file_path": "generated_tests/experiment5/end_to_end/CONDITION_attempt_2.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 12,
+    "retry_index": 0,
+    "latency_seconds": 3.609,
+    "usage": {
+      "prompt_tokens": 15833,
+      "completion_tokens": 525,
+      "total_tokens": 16358,
+      "prompt_tokens_details": {
+        "cached_tokens": 256
+      },
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 15577
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment5/end_to_end/B/attempt_02.py",
+  "test_sha256": "bf3392369249122e6665593197fc471a7e98ffcf392583ac8c0b17b041be594f",
+  "wall_clock_seconds": 3.61
+}

@@ -1,0 +1,22 @@
+{
+  "experiment": "experiment5_end_to_end",
+  "target_id": "tornado:1",
+  "condition": "B",
+  "condition_name": "NAIVE_RAW_HISTORY",
+  "attempt": 1,
+  "attempt_id": "experiment5_B_01",
+  "status": "MODEL_ERROR",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment5_target_context/Tornado-1.txt",
+    "data/experiment5_historical_raw.json"
+  ],
+  "prompt_sha256": "b8a10ef85feb3c6322810e646e51cc6180a503b0b834df453a159d56c7f37370",
+  "error": "response did not contain a JSON object",
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 11,
+    "usage": {}
+  },
+  "wall_clock_seconds": 11.026
+}

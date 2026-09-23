@@ -1,0 +1,48 @@
+{
+  "experiment": "experiment5_end_to_end",
+  "target_id": "tornado:1",
+  "condition": "B",
+  "condition_name": "NAIVE_RAW_HISTORY",
+  "attempt": 4,
+  "attempt_id": "experiment5_B_04",
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment5_target_context/Tornado-1.txt",
+    "data/experiment5_historical_raw.json"
+  ],
+  "prompt_sha256": "4b8d732beff68d736bf5108dbb46db1f2c8a1aacf0f9856163980e32b7e20d14",
+  "hypothesis": "In tornado.escape, the xhtml_escape/url_escape family of functions mishandles non-ASCII or special characters under the C locale, producing incorrect escaping output.",
+  "trigger": "Call tornado.escape.xhtml_escape on a string containing non-ASCII characters and special HTML characters, and tornado.escape.url_escape on a string with non-ASCII characters, under LC_ALL=C.",
+  "potential_failure": "The escaping functions may raise UnicodeEncodeError or produce incorrectly escaped output when handling non-ASCII characters under the C locale.",
+  "oracle": {
+    "expected_behavior": "xhtml_escape should correctly escape HTML special characters and preserve non-ASCII characters; url_escape should percent-encode non-ASCII characters correctly.",
+    "target_evidence": "tornado/escape.py contains xhtml_escape and url_escape functions that are documented to handle unicode strings. The module uses to_unicode and utf8 conversions.",
+    "historical_evidence": "cookiecutter:1 showed a bug where file reading without explicit encoding caused wrong decoding on Windows; PySnooper:3 showed a variable name bug. Neither directly transfers, but both suggest encoding-related bugs are common.",
+    "confidence": 0.3
+  },
+  "test_code": "import unittest\nimport tornado.escape\n\n\nclass TestEscapeNonAscii(unittest.TestCase):\n    def test_xhtml_escape_non_ascii(self):\n        result = tornado.escape.xhtml_escape(u'\\u00e9\\u00e8\\u00e0')\n        self.assertEqual(result, u'\\u00e9\\u00e8\\u00e0')\n\n    def test_xhtml_escape_special_chars(self):\n        result = tornado.escape.xhtml_escape(u'<b>&\"\\'')\n        self.assertEqual(result, u'&lt;b&gt;&amp;&quot;&#39;')\n\n    def test_url_escape_non_ascii(self):\n        result = tornado.escape.url_escape(u'\\u00e9\\u00e8\\u00e0')\n        self.assertEqual(result, u'%C3%A9%C3%A8%C3%A0')\n\n    def test_url_escape_plus(self):\n        result = tornado.escape.url_escape(u'a b')\n        self.assertEqual(result, u'a+b')\n\n    def test_json_encode_non_ascii(self):\n        result = tornado.escape.json_encode(u'\\u00e9\\u00e8\\u00e0')\n        self.assertIn(u'\\u00e9', result)\n\n\nif __name__ == '__main__':\n    unittest.main()\n",
+  "test_file_path": "generated_tests/experiment5/end_to_end/CONDITION_attempt_4.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 14,
+    "retry_index": 0,
+    "latency_seconds": 3.684,
+    "usage": {
+      "prompt_tokens": 15833,
+      "completion_tokens": 640,
+      "total_tokens": 16473,
+      "prompt_tokens_details": {
+        "cached_tokens": 256
+      },
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 15577
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment5/end_to_end/B/attempt_04.py",
+  "test_sha256": "71cf0fdbba44a040b821a88cad24be86f9dcf8d53d91844b7ceeb4e72a9e4af7",
+  "wall_clock_seconds": 3.688
+}

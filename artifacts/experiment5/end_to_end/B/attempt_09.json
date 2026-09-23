@@ -1,0 +1,48 @@
+{
+  "experiment": "experiment5_end_to_end",
+  "target_id": "tornado:1",
+  "condition": "B",
+  "condition_name": "NAIVE_RAW_HISTORY",
+  "attempt": 9,
+  "attempt_id": "experiment5_B_09",
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment5_target_context/Tornado-1.txt",
+    "data/experiment5_historical_raw.json"
+  ],
+  "prompt_sha256": "2eb5f468ee9d9dbc2f92a3f8f5d84b6b23ec10ffc89e3f86cb04b6a7fac97703",
+  "hypothesis": "In tornado.escape, the xhtml_escape function does not escape the single quote character (') when quote=True, so a string containing an apostrophe passes through unescaped, producing incorrect HTML output.",
+  "trigger": "Call tornado.escape.xhtml_escape(\"it's\") with default quote=True and inspect the returned string.",
+  "potential_failure": "The apostrophe is left as a literal ' instead of being converted to &#39; (or &#x27;), so the escaped output is not safe for use in single-quoted HTML attributes.",
+  "oracle": {
+    "expected_behavior": "xhtml_escape(\"it's\") should return a string in which the apostrophe is replaced by an HTML entity (&#39;), matching the documented behavior that xhtml_escape escapes quotes.",
+    "target_evidence": "tornado/escape.py defines xhtml_escape with a quote parameter and a _XHTML_ESCAPE_RE regex; the docstring states it escapes characters for use in HTML including quotes. The regex character class is expected to include the apostrophe.",
+    "historical_evidence": "cookiecutter:1 and PySnooper:3 both show encoding/escaping-related defects where a function silently mishandles a character class, suggesting escape functions are a fruitful area to probe.",
+    "confidence": 0.55
+  },
+  "test_code": "import tornado.escape\n\n\ndef test_xhtml_escape_escapes_apostrophe():\n    result = tornado.escape.xhtml_escape(\"it's\")\n    assert \"'\" not in result, (\n        \"xhtml_escape left a literal apostrophe unescaped: %r\" % result\n    )\n    assert \"&#39;\" in result or \"&#x27;\" in result, (\n        \"xhtml_escape did not produce an apostrophe entity: %r\" % result\n    )\n\n\ndef test_xhtml_escape_escapes_double_quote():\n    result = tornado.escape.xhtml_escape('say \"hi\"')\n    assert '\"' not in result, (\n        \"xhtml_escape left a literal double quote unescaped: %r\" % result\n    )\n    assert \"&quot;\" in result, (\n        \"xhtml_escape did not produce a double-quote entity: %r\" % result\n    )\n",
+  "test_file_path": "generated_tests/experiment5/end_to_end/CONDITION_attempt_9.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 19,
+    "retry_index": 0,
+    "latency_seconds": 3.865,
+    "usage": {
+      "prompt_tokens": 15833,
+      "completion_tokens": 563,
+      "total_tokens": 16396,
+      "prompt_tokens_details": {
+        "cached_tokens": 256
+      },
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 15577
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment5/end_to_end/B/attempt_09.py",
+  "test_sha256": "38e635fbb2cc8c9270a4a6865b846239fb5638f457def6621888179fcfae8319",
+  "wall_clock_seconds": 3.869
+}

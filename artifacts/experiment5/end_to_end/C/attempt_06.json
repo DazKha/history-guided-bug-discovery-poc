@@ -1,0 +1,59 @@
+{
+  "experiment": "experiment5_end_to_end",
+  "target_id": "tornado:1",
+  "condition": "C",
+  "condition_name": "STRUCTURED_APPLICABILITY_AWARE",
+  "attempt": 6,
+  "attempt_id": "experiment5_C_06",
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment5_target_context/Tornado-1.txt",
+    "data/experiment5_historical_structured.json"
+  ],
+  "prompt_sha256": "21c5b6fee46dc6df19a3226263417c66936279a7ca7f7bc002d3946623d76391",
+  "hypothesis": "tornado.escape.json_decode fails to decode valid UTF-8 JSON bytes containing non-ASCII characters when the process locale is not UTF-8 (e.g., LC_ALL=C), because it uses the locale-dependent default encoding instead of explicitly using UTF-8.",
+  "trigger": "Call tornado.escape.json_decode on a UTF-8 encoded JSON byte string containing a non-ASCII character (e.g., '\\u00e9') while the process locale is set to C (ASCII default encoding).",
+  "potential_failure": "json_decode raises UnicodeDecodeError instead of returning the decoded Python object with the correct non-ASCII string value.",
+  "oracle": {
+    "expected_behavior": "json_decode(b'\"\\xc3\\xa9\"') should return the string '\\u00e9' (é) regardless of the process locale, because JSON is defined as UTF-8 and the function should explicitly decode using UTF-8.",
+    "target_evidence": "tornado/escape.py defines json_decode as json.loads(to_basestring(value)); to_basestring uses utf8(value).decode('utf-8') for bytes, which should be locale-independent. However, if the implementation instead uses value.decode() without specifying encoding, it would be locale-dependent. The target source must be inspected to confirm the actual implementation.",
+    "historical_evidence": "cookiecutter:1 demonstrates a locale-dependent implicit text I/O encoding bug where valid UTF-8 data fails to decode under non-UTF-8 locales. This suggests probing tornado.escape.json_decode for similar locale sensitivity.",
+    "confidence": 0.6
+  },
+  "test_code": "import os\nimport sys\nimport unittest\n\n# Ensure the test runs with a non-UTF-8 locale to expose locale-dependent decoding.\n# We set LC_ALL=C and PYTHONUTF8=0 before importing tornado.escape.\nos.environ['LC_ALL'] = 'C'\nos.environ['PYTHONUTF8'] = '0'\nos.environ['PYTHONCOERCECLOCALE'] = '0'\n\n# Re-exec if the locale was not applied before Python started.\nif sys.getdefaultencoding() != 'ascii' and os.environ.get('_TORNADO_LOCALE_TEST_REEXEC') != '1':\n    os.environ['_TORNADO_LOCALE_TEST_REEXEC'] = '1'\n    os.execv(sys.executable, [sys.executable] + sys.argv)\n\nfrom tornado.escape import json_decode\n\n\nclass JsonDecodeLocaleTest(unittest.TestCase):\n    def test_json_decode_utf8_bytes_non_ascii(self):\n        # UTF-8 encoded JSON string containing 'é' (U+00E9)\n        data = b'\"\\xc3\\xa9\"'\n        try:\n            result = json_decode(data)\n        except UnicodeDecodeError as e:\n            self.fail(\n                \"json_decode raised UnicodeDecodeError for valid UTF-8 JSON bytes \"\n                \"under locale %r: %s\" % (os.environ.get('LC_ALL'), e)\n            )\n        self.assertEqual(result, '\\u00e9')\n\n\nif __name__ == '__main__':\n    unittest.main()\n",
+  "test_file_path": "generated_tests/experiment5/end_to_end/CONDITION_attempt_6.py",
+  "applicability_decisions": [
+    {
+      "history_id": "cookiecutter:1",
+      "decision": "SUPPORTED",
+      "reason": "The historical bug involves locale-dependent implicit text decoding of UTF-8 data. tornado.escape.json_decode may exhibit the same mechanism if it uses the default encoding for bytes. The trigger (non-UTF-8 locale, UTF-8 data with non-ASCII) is feasible in the target environment (LC_ALL=C, PYTHONUTF8=0). The invariant (valid UTF-8 must decode correctly regardless of locale) is meaningful and testable against the public API."
+    },
+    {
+      "history_id": "PySnooper:3",
+      "decision": "NOT_APPLICABLE",
+      "reason": "The PySnooper bug concerns a path variable mismatch in file output, which is unrelated to encoding or locale-dependent decoding. The failure mechanism does not transfer to tornado.escape.json_decode."
+    }
+  ],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 26,
+    "retry_index": 0,
+    "latency_seconds": 5.277,
+    "usage": {
+      "prompt_tokens": 12283,
+      "completion_tokens": 967,
+      "total_tokens": 13250,
+      "prompt_tokens_details": {
+        "cached_tokens": 256
+      },
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 12027
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment5/end_to_end/C/attempt_06.py",
+  "test_sha256": "051cf8a43848b8b025ee11944f8da6babb1822cb0f927a464042bd9f2d635227",
+  "wall_clock_seconds": 5.281
+}

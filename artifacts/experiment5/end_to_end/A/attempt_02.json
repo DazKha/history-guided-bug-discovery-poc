@@ -1,0 +1,47 @@
+{
+  "experiment": "experiment5_end_to_end",
+  "target_id": "tornado:1",
+  "condition": "A",
+  "condition_name": "TARGET_ONLY",
+  "attempt": 2,
+  "attempt_id": "experiment5_A_02",
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment5_target_context/Tornado-1.txt"
+  ],
+  "prompt_sha256": "6be20872e3ab1aeb0fa7d20134651e63560e9318eeff3402bfc96e3525a0dce4",
+  "hypothesis": "tornado.escape.xhtml_escape does not escape single quotes, so a string containing a single quote is returned unchanged, violating the documented behavior that xhtml_escape escapes all HTML special characters including single quotes.",
+  "trigger": "Call tornado.escape.xhtml_escape(\"it's\") and assert that the result is \"it&#39;s\" (or at least that the single quote is escaped).",
+  "potential_failure": "The function returns \"it's\" instead of \"it&#39;s\", leaving single quotes unescaped and potentially allowing attribute injection in single-quoted HTML attributes.",
+  "oracle": {
+    "expected_behavior": "xhtml_escape should escape single quotes to &#39; (or &#x27;) as part of escaping all HTML special characters.",
+    "target_evidence": "The docstring of tornado.escape.xhtml_escape states: 'Escapes a string so it is valid within HTML or XML. Escapes the characters <, >, \", ', and &.' This explicitly includes the single quote character.",
+    "historical_evidence": "",
+    "confidence": 0.9
+  },
+  "test_code": "import unittest\nimport tornado.escape\n\nclass XhtmlEscapeSingleQuoteTest(unittest.TestCase):\n    def test_single_quote_escaped(self):\n        result = tornado.escape.xhtml_escape(\"it's\")\n        self.assertIn(\"&#39;\", result, \"Single quote should be escaped to &#39;\")\n        self.assertNotIn(\"'\", result, \"Single quote should not appear unescaped\")\n\nif __name__ == \"__main__\":\n    unittest.main()",
+  "test_file_path": "generated_tests/experiment5/end_to_end/CONDITION_attempt_2.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 2,
+    "retry_index": 0,
+    "latency_seconds": 3.518,
+    "usage": {
+      "prompt_tokens": 11477,
+      "completion_tokens": 418,
+      "total_tokens": 11895,
+      "prompt_tokens_details": {
+        "cached_tokens": 256
+      },
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 11221
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment5/end_to_end/A/attempt_02.py",
+  "test_sha256": "57cb1e8aaa1648e99e890390806e75e85d99b104aa36a0d8b2296b906a8de866",
+  "wall_clock_seconds": 3.523
+}

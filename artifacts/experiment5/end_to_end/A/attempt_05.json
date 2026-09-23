@@ -1,0 +1,47 @@
+{
+  "experiment": "experiment5_end_to_end",
+  "target_id": "tornado:1",
+  "condition": "A",
+  "condition_name": "TARGET_ONLY",
+  "attempt": 5,
+  "attempt_id": "experiment5_A_05",
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment5_target_context/Tornado-1.txt"
+  ],
+  "prompt_sha256": "b625a0873347768ae1360bde2dc6be17bee5bafae9d36aa954ee5961378bb680",
+  "hypothesis": "tornado.escape.xhtml_escape does not escape the single quote character ('), so it is unsafe for use in single-quoted HTML attributes.",
+  "trigger": "Call tornado.escape.xhtml_escape(\"'\") and check whether the result contains the escaped entity '&#39;' or '&apos;'.",
+  "potential_failure": "The function returns the raw single quote unchanged, allowing attribute injection when the escaped value is placed inside a single-quoted HTML attribute.",
+  "oracle": {
+    "expected_behavior": "tornado.escape.xhtml_escape(\"'\") should return a string that does not contain a literal single quote, i.e. it should be '&#39;' or '&apos;'.",
+    "target_evidence": "The docstring of tornado.escape.xhtml_escape states: 'A subset of the XHTML specification. This function only escapes the characters that are necessary for XHTML, which are &, <, >, \", and \\'.' The function is intended for escaping text inserted into HTML, including attributes. The ordinary test tornado/test/escape_test.py::test_xhtml_escape checks escaping of &, <, >, and \", but does not test the single quote. The implementation in tornado/escape.py uses a translation table that maps only those four characters.",
+    "historical_evidence": "",
+    "confidence": 0.85
+  },
+  "test_code": "import unittest\nimport tornado.escape\n\nclass XhtmlEscapeSingleQuoteTest(unittest.TestCase):\n    def test_single_quote_escaped(self):\n        escaped = tornado.escape.xhtml_escape(\"'\")\n        self.assertNotIn(\"'\", escaped, \"xhtml_escape left a literal single quote unescaped\")\n        self.assertIn(escaped, (\"&#39;\", \"&apos;\"), \"xhtml_escape did not produce a recognized single-quote entity\")\n\nif __name__ == '__main__':\n    unittest.main()",
+  "test_file_path": "generated_tests/experiment5/end_to_end/CONDITION_attempt_5.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 5,
+    "retry_index": 0,
+    "latency_seconds": 3.733,
+    "usage": {
+      "prompt_tokens": 11477,
+      "completion_tokens": 492,
+      "total_tokens": 11969,
+      "prompt_tokens_details": {
+        "cached_tokens": 256
+      },
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 11221
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment5/end_to_end/A/attempt_05.py",
+  "test_sha256": "1c2950824f09b67f28fde8502ac240d64faae48f1f30544445e68948753a2950",
+  "wall_clock_seconds": 3.737
+}

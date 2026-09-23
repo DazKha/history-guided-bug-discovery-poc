@@ -1,0 +1,47 @@
+{
+  "experiment": "experiment5_end_to_end",
+  "target_id": "tornado:1",
+  "condition": "A",
+  "condition_name": "TARGET_ONLY",
+  "attempt": 7,
+  "attempt_id": "experiment5_A_07",
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment5_target_context/Tornado-1.txt"
+  ],
+  "prompt_sha256": "7c6e524b1b84be3903bc67cb3f3c945f1dbe9fb57b7c20d4663669c5c72b9762",
+  "hypothesis": "tornado.escape.xhtml_escape does not escape single quotes, so a single-quoted HTML attribute containing a value with an apostrophe is not safely escaped.",
+  "trigger": "Call tornado.escape.xhtml_escape(\"'\") and assert that the result contains no raw apostrophe character.",
+  "potential_failure": "xhtml_escape returns \"'\" unchanged, leaving a raw single quote that can break out of single-quoted HTML attributes.",
+  "oracle": {
+    "expected_behavior": "xhtml_escape should escape single quotes (e.g. to &#39; or &#x27;) so that the output is safe for use in single-quoted HTML attributes.",
+    "target_evidence": "tornado/escape.py defines xhtml_escape and its docstring says it escapes a string so it can be safely inserted into HTML; the implementation uses a translation table that maps &, <, >, and \" but not '.",
+    "historical_evidence": "",
+    "confidence": 0.7
+  },
+  "test_code": "import tornado.escape\n\n\ndef test_xhtml_escape_escapes_single_quote():\n    escaped = tornado.escape.xhtml_escape(\"'\")\n    assert \"'\" not in escaped, (\n        \"xhtml_escape left a raw single quote in the output: %r\" % escaped\n    )\n",
+  "test_file_path": "generated_tests/experiment5/end_to_end/CONDITION_attempt_7.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 7,
+    "retry_index": 0,
+    "latency_seconds": 2.835,
+    "usage": {
+      "prompt_tokens": 11477,
+      "completion_tokens": 351,
+      "total_tokens": 11828,
+      "prompt_tokens_details": {
+        "cached_tokens": 256
+      },
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 11221
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment5/end_to_end/A/attempt_07.py",
+  "test_sha256": "231bf6aa66f1fd5ab8e1df3b401e14995e40e02aabaea138e3d6694811d14866",
+  "wall_clock_seconds": 2.838
+}

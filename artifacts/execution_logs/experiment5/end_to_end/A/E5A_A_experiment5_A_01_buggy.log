@@ -1,0 +1,35 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_____________ test_get_messages_since_unknown_cursor_returns_empty _____________
+
+    def test_get_messages_since_unknown_cursor_returns_empty():
+        chatdemo = _load_chatdemo()
+        buf = chatdemo.MessageBuffer()
+
+        # Add more messages than the cache can hold so the earliest ones are trimmed.
+        total = buf.cache_size + 5
+        for i in range(total):
+            buf.add_message({"id": "msg-%d" % i, "body": "body-%d" % i})
+
+        # The first message has been evicted from the cache.
+        evicted_cursor = "msg-0"
+        assert evicted_cursor not in [m["id"] for m in buf.cache]
+
+        result = buf.get_messages_since(evicted_cursor)
+
+        # Contract: only messages newer than the cursor. Since the cursor is no
+        # longer in the cache, there is no known message newer than it.
+>       assert result == [], (
+            "get_messages_since with an evicted/unknown cursor returned %d "
+            "messages instead of an empty list" % len(result)
+        )
+E       AssertionError: get_messages_since with an evicted/unknown cursor returned 200 messages instead of an empty list
+E       assert [{'body': 'bo...msg-10'}, ...] == []
+E
+E         Left contains 200 more items, first extra item: {'body': 'body-5', 'id': 'msg-5'}
+E         Use -v to get more diff
+
+_generated_eval_attempt_01.py:46: AssertionError
+=========================== short test summary info ============================
+FAILED _generated_eval_attempt_01.py::test_get_messages_since_unknown_cursor_returns_empty
+1 failed in 0.11s

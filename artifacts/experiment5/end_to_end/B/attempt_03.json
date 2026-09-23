@@ -1,0 +1,48 @@
+{
+  "experiment": "experiment5_end_to_end",
+  "target_id": "tornado:1",
+  "condition": "B",
+  "condition_name": "NAIVE_RAW_HISTORY",
+  "attempt": 3,
+  "attempt_id": "experiment5_B_03",
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment5_target_context/Tornado-1.txt",
+    "data/experiment5_historical_raw.json"
+  ],
+  "prompt_sha256": "263bfb203c259d12ac4941ae358f762ef2b3913e439f9892d690b7e715f46f17",
+  "hypothesis": "In tornado.escape.utf8(), passing a non-ASCII str on a system where the default encoding is not UTF-8 (e.g., LC_ALL=C) raises UnicodeEncodeError instead of encoding to UTF-8 bytes, because the implementation uses value.encode() without specifying 'utf-8'.",
+  "trigger": "Call tornado.escape.utf8('é') under LC_ALL=C (Python 3.9, PYTHONUTF8=0, PYTHONCOERCECLOCALE=0), where sys.getdefaultencoding() is 'ascii'.",
+  "potential_failure": "UnicodeEncodeError: 'ascii' codec can't encode character '\\xe9' in position 0: ordinal not in range(128), instead of returning b'\\xc3\\xa9'.",
+  "oracle": {
+    "expected_behavior": "tornado.escape.utf8('é') should return b'\\xc3\\xa9' (UTF-8 bytes), matching the documented purpose of utf8() to convert strings to UTF-8 bytes.",
+    "target_evidence": "tornado/escape.py defines utf8(value) as 'Converts a string argument to a byte string. If the argument is already a byte string, it is returned unchanged. Otherwise it must be a unicode string, and it is encoded as UTF-8.' The implementation uses value.encode() without an explicit encoding, which relies on the default encoding. Under LC_ALL=C, the default encoding is 'ascii', so non-ASCII characters raise UnicodeEncodeError. Ordinary tests in tornado/test/escape_test.py include test_utf8 with non-ASCII strings, but they run under a UTF-8 locale in CI, so the bug is not caught.",
+    "historical_evidence": "cookiecutter:1 fixed a similar encoding bug where open() without encoding='utf-8' caused wrong decoding on Windows; PySnooper:3 fixed a variable name error in file output. These suggest that missing explicit encoding arguments are a recurring bug class, but the target-side evidence is the primary justification.",
+    "confidence": 0.85
+  },
+  "test_code": "import os\nimport sys\nimport unittest\n\nfrom tornado.escape import utf8\n\n\nclass Utf8EncodingTest(unittest.TestCase):\n    def test_utf8_non_ascii(self):\n        # Ensure the test runs under a non-UTF-8 default encoding.\n        # The test environment is expected to have LC_ALL=C, but we\n        # explicitly set the default encoding to 'ascii' to make the\n        # test deterministic regardless of the environment.\n        original_default = sys.getdefaultencoding()\n        if original_default != 'ascii':\n            # Temporarily change the default encoding to 'ascii'.\n            # This is a bit hacky but necessary to reproduce the bug.\n            import builtins\n            original_open = builtins.open\n            # We cannot easily change sys.getdefaultencoding, so we\n            # rely on the environment. If the environment is not C,\n            # we skip the test to avoid false positives.\n            if os.environ.get('LC_ALL') != 'C':\n                self.skipTest('Test requires LC_ALL=C to set default encoding to ascii')\n        # Call utf8 with a non-ASCII string.\n        result = utf8('é')\n        self.assertEqual(result, b'\\xc3\\xa9')\n\n\nif __name__ == '__main__':\n    unittest.main()\n",
+  "test_file_path": "generated_tests/experiment5/end_to_end/CONDITION_attempt_3.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 13,
+    "retry_index": 0,
+    "latency_seconds": 4.463,
+    "usage": {
+      "prompt_tokens": 15833,
+      "completion_tokens": 820,
+      "total_tokens": 16653,
+      "prompt_tokens_details": {
+        "cached_tokens": 256
+      },
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 15577
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment5/end_to_end/B/attempt_03.py",
+  "test_sha256": "98b6dcbaabeec3938a0b148c4a0149620d2c3ffcb56a88d8b20809d6d8438282",
+  "wall_clock_seconds": 4.466
+}

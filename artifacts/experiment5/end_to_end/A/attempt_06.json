@@ -1,0 +1,47 @@
+{
+  "experiment": "experiment5_end_to_end",
+  "target_id": "tornado:1",
+  "condition": "A",
+  "condition_name": "TARGET_ONLY",
+  "attempt": 6,
+  "attempt_id": "experiment5_A_06",
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment5_target_context/Tornado-1.txt"
+  ],
+  "prompt_sha256": "0faa4af667b3f7ac980671619a7b55bda12f244ccc4762e31e2e30932b1ffe06",
+  "hypothesis": "tornado.escape.xhtml_escape does not escape single quotes, so a single-quoted HTML attribute containing user input can be broken out of, causing XSS.",
+  "trigger": "Call tornado.escape.xhtml_escape(\"'\") and assert the result contains '&#x27;' (or at least does not contain a raw single quote).",
+  "potential_failure": "xhtml_escape returns the raw single quote unchanged, leaving single-quoted attributes vulnerable to injection.",
+  "oracle": {
+    "expected_behavior": "xhtml_escape should escape single quotes as &#x27; so that values are safe in both single- and double-quoted HTML attributes.",
+    "target_evidence": "tornado/escape.py defines xhtml_escape with a translation table that maps &, <, >, \", and ' to entities; the docstring says it escapes HTML special characters. The ordinary test tornado/test/escape_test.py includes xhtml_escape tests for &, <, >, and \" but not for single quotes, leaving the behavior unverified.",
+    "historical_evidence": "",
+    "confidence": 0.6
+  },
+  "test_code": "import unittest\n\nfrom tornado.escape import xhtml_escape\n\n\nclass XhtmlEscapeSingleQuoteTest(unittest.TestCase):\n    def test_single_quote_is_escaped(self):\n        escaped = xhtml_escape(\"'\")\n        self.assertNotIn(\"'\", escaped)\n        self.assertIn(\"&#x27;\", escaped)\n\n\nif __name__ == \"__main__\":\n    unittest.main()\n",
+  "test_file_path": "generated_tests/experiment5/end_to_end/CONDITION_attempt_6.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 6,
+    "retry_index": 0,
+    "latency_seconds": 3.119,
+    "usage": {
+      "prompt_tokens": 11477,
+      "completion_tokens": 407,
+      "total_tokens": 11884,
+      "prompt_tokens_details": {
+        "cached_tokens": 256
+      },
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 11221
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment5/end_to_end/A/attempt_06.py",
+  "test_sha256": "f514b95e8ae6c2e94631d9bd5955a10ca56578626e11802a619bb574e3ab6404",
+  "wall_clock_seconds": 3.124
+}

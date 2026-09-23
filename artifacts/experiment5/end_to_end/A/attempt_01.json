@@ -1,0 +1,47 @@
+{
+  "experiment": "experiment5_end_to_end",
+  "target_id": "tornado:1",
+  "condition": "A",
+  "condition_name": "TARGET_ONLY",
+  "attempt": 1,
+  "attempt_id": "experiment5_A_01",
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment5_target_context/Tornado-1.txt"
+  ],
+  "prompt_sha256": "4c71c4cb0e7ef2fc70f74031a3200e93ca3e469899d9969b1ae94738383efda1",
+  "hypothesis": "In demos/chat/chatdemo.py, MessageBuffer.get_messages_since(cursor) returns the entire cache instead of an empty list when the given cursor is not present in the cache (e.g., after the cache has been trimmed to cache_size or when a stale/unknown cursor is supplied), because the loop never breaks and all cached messages are appended.",
+  "trigger": "Create a MessageBuffer, add more than cache_size (200) messages so the oldest are trimmed, then call get_messages_since with a cursor id that is no longer in the cache (e.g., the id of the first added message).",
+  "potential_failure": "get_messages_since returns all 200 cached messages instead of the empty list that the 'messages newer than the given cursor' contract implies when the cursor is unknown/expired.",
+  "oracle": {
+    "expected_behavior": "get_messages_since(cursor) should return only messages newer than the given cursor; if the cursor is not found in the cache, no messages are known to be newer than it, so it should return an empty list.",
+    "target_evidence": "demos/chat/chatdemo.py docstring: 'Returns a list of messages newer than the given cursor. ``cursor`` should be the ``id`` of the last message received.' The implementation iterates reversed(self.cache) and breaks only when msg['id'] == cursor; if the cursor was trimmed out of the cache, the loop completes without breaking and results contains every cached message, contradicting the 'newer than the given cursor' contract.",
+    "historical_evidence": "",
+    "confidence": 0.75
+  },
+  "test_code": "import importlib.util\nimport os\nimport sys\n\n\ndef _load_chatdemo():\n    here = os.path.dirname(os.path.abspath(__file__))\n    # Walk up to the repository root that contains demos/chat/chatdemo.py\n    cur = here\n    for _ in range(10):\n        candidate = os.path.join(cur, \"demos\", \"chat\", \"chatdemo.py\")\n        if os.path.exists(candidate):\n            path = candidate\n            break\n        parent = os.path.dirname(cur)\n        if parent == cur:\n            raise RuntimeError(\"could not locate demos/chat/chatdemo.py\")\n        cur = parent\n    else:\n        raise RuntimeError(\"could not locate demos/chat/chatdemo.py\")\n\n    spec = importlib.util.spec_from_file_location(\"chatdemo_under_test\", path)\n    module = importlib.util.module_from_spec(spec)\n    sys.modules[spec.name] = module\n    spec.loader.exec_module(module)\n    return module\n\n\ndef test_get_messages_since_unknown_cursor_returns_empty():\n    chatdemo = _load_chatdemo()\n    buf = chatdemo.MessageBuffer()\n\n    # Add more messages than the cache can hold so the earliest ones are trimmed.\n    total = buf.cache_size + 5\n    for i in range(total):\n        buf.add_message({\"id\": \"msg-%d\" % i, \"body\": \"body-%d\" % i})\n\n    # The first message has been evicted from the cache.\n    evicted_cursor = \"msg-0\"\n    assert evicted_cursor not in [m[\"id\"] for m in buf.cache]\n\n    result = buf.get_messages_since(evicted_cursor)\n\n    # Contract: only messages newer than the cursor. Since the cursor is no\n    # longer in the cache, there is no known message newer than it.\n    assert result == [], (\n        \"get_messages_since with an evicted/unknown cursor returned %d \"\n        \"messages instead of an empty list\" % len(result)\n    )\n",
+  "test_file_path": "generated_tests/experiment5/end_to_end/CONDITION_attempt_1.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 1,
+    "retry_index": 0,
+    "latency_seconds": 4.899,
+    "usage": {
+      "prompt_tokens": 11477,
+      "completion_tokens": 906,
+      "total_tokens": 12383,
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      },
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 11477
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment5/end_to_end/A/attempt_01.py",
+  "test_sha256": "5f531805b333a14906f2ccc3d290546237279f3b1cfcd789c61b3a1c016567ca",
+  "wall_clock_seconds": 4.908
+}

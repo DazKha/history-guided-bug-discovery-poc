@@ -1,0 +1,12 @@
+======================================================================
+FAIL: test_single_quote_is_escaped (_generated_eval_attempt_06.XhtmlEscapeSingleQuoteTest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/minhkha/SidePrj/katalon/poc/workspace/experiment5/tornado-buggy/_generated_eval_attempt_06.py", line 10, in test_single_quote_is_escaped
+    self.assertIn("&#x27;", escaped)
+AssertionError: '&#x27;' not found in '&#39;'
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (failures=1)

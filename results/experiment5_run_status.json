@@ -1,0 +1,20 @@
+{
+  "experiment": "experiment5_second_target_replication",
+  "status": "COMPLETE",
+  "target_id": "tornado:1",
+  "target_frozen_before_generation": true,
+  "generation_started_after_target_freeze": true,
+  "end_to_end": {"attempts_per_condition": 10, "rows": 30, "mechanism_matches": {"A": 0, "B": 0, "C": 0}, "verified_f2p": {"A": 0, "B": 0, "C": 0}},
+  "conditional": {"eligible_c_hypotheses": 0, "status": "UNDERPOWERED_STOP", "planner_calls": 0, "c1_calls": 0, "c2_calls": 0},
+  "invalidated_runs": [],
+  "harness_check": {"buggy": "FAIL", "fixed": "PASS", "probe": "artifacts/experiment5_target_validation/selected_tornado_buggy.log"},
+  "commands_completed": [
+    "python3 scripts/prepare_experiment5_target.py",
+    "PYTHONPATH=. python3 scripts/run_experiment5_end_to_end.py --attempts 10",
+    "PYTHONPATH=. python3 scripts/evaluate_experiment5.py --mode end_to_end",
+    "PYTHONPATH=. python3 scripts/select_experiment5_hypotheses.py",
+    "PYTHONPATH=. python3 scripts/run_experiment5_conditional.py",
+    "PYTHONPATH=. pytest -q tests/test_experiment4_plan_contract.py"
+  ],
+  "notes": ["No prompt, validator, evaluator, target, analogue, or planner refinement was performed after observing E5A results.", "C1/C2 conditional comparison is not estimable because no eligible frozen C hypothesis existed."]
+}

@@ -1,0 +1,25 @@
+ERROR:tornado.application:Uncaught exception GET /mybucket/ (127.0.0.1)
+HTTPServerRequest(protocol='http', host='127.0.0.1:51490', method='GET', uri='/mybucket/', version='HTTP/1.1', remote_ip='127.0.0.1')
+Traceback (most recent call last):
+  File "/Users/minhkha/SidePrj/katalon/poc/workspace/experiment5/tornado-buggy/tornado/web.py", line 1697, in _execute
+    result = method(*self.path_args, **self.path_kwargs)
+  File "/Users/minhkha/SidePrj/katalon/poc/workspace/experiment5/tornado-buggy/demos/s3server/s3server.py", line 180, in get
+    object_path = self._object_path(bucket_name, object_name)
+  File "/Users/minhkha/SidePrj/katalon/poc/workspace/experiment5/tornado-buggy/demos/s3server/s3server.py", line 124, in _object_path
+    hash = hashlib.md5(object_name).hexdigest()
+TypeError: Strings must be encoded before hashing
+ERROR:tornado.access:500 GET /mybucket/ (127.0.0.1) 1.43ms
+======================================================================
+FAIL: test_list_bucket_with_depth (_generated_eval_attempt_03.S3BucketDepthTest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/minhkha/SidePrj/katalon/poc/workspace/experiment5/tornado-buggy/tornado/testing.py", line 98, in __call__
+    result = self.orig_method(*args, **kwargs)
+  File "/Users/minhkha/SidePrj/katalon/poc/workspace/experiment5/tornado-buggy/_generated_eval_attempt_03.py", line 32, in test_list_bucket_with_depth
+    self.assertEqual(response.code, 200)
+AssertionError: 500 != 200
+
+----------------------------------------------------------------------
+Ran 1 test in 0.006s
+
+FAILED (failures=1)

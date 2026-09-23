@@ -1,0 +1,30 @@
+======================================================================
+ERROR: test_listing_with_bucket_depth_reports_original_key (_generated_eval_attempt_01.S3BucketDepthListingTest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/minhkha/SidePrj/katalon/poc/workspace/experiment5/tornado-buggy/tornado/testing.py", line 98, in __call__
+    result = self.orig_method(*args, **kwargs)
+  File "/Users/minhkha/SidePrj/katalon/poc/workspace/experiment5/tornado-buggy/_generated_eval_attempt_01.py", line 30, in test_listing_with_bucket_depth_reports_original_key
+    handler = self._app.find_handler(
+  File "/Users/minhkha/SidePrj/katalon/poc/workspace/experiment5/tornado-buggy/tornado/web.py", line 2174, in find_handler
+    route = self.default_router.find_handler(request)
+  File "/Users/minhkha/SidePrj/katalon/poc/workspace/experiment5/tornado-buggy/tornado/routing.py", line 367, in find_handler
+    delegate = self.get_target_delegate(
+  File "/Users/minhkha/SidePrj/katalon/poc/workspace/experiment5/tornado-buggy/tornado/web.py", line 1947, in get_target_delegate
+    return super(_ApplicationRouter, self).get_target_delegate(
+  File "/Users/minhkha/SidePrj/katalon/poc/workspace/experiment5/tornado-buggy/tornado/routing.py", line 389, in get_target_delegate
+    return target.find_handler(request, **target_params)
+  File "/Users/minhkha/SidePrj/katalon/poc/workspace/experiment5/tornado-buggy/tornado/routing.py", line 367, in find_handler
+    delegate = self.get_target_delegate(
+  File "/Users/minhkha/SidePrj/katalon/poc/workspace/experiment5/tornado-buggy/tornado/web.py", line 1943, in get_target_delegate
+    return self.application.get_handler_delegate(
+  File "/Users/minhkha/SidePrj/katalon/poc/workspace/experiment5/tornado-buggy/tornado/web.py", line 2205, in get_handler_delegate
+    return _HandlerDelegate(
+  File "/Users/minhkha/SidePrj/katalon/poc/workspace/experiment5/tornado-buggy/tornado/web.py", line 2261, in __init__
+    self.connection = request.connection
+AttributeError: type object 'Request' has no attribute 'connection'
+
+----------------------------------------------------------------------
+Ran 1 test in 0.003s
+
+FAILED (errors=1)

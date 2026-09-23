@@ -1,0 +1,48 @@
+{
+  "experiment": "experiment5_end_to_end",
+  "target_id": "tornado:1",
+  "condition": "B",
+  "condition_name": "NAIVE_RAW_HISTORY",
+  "attempt": 8,
+  "attempt_id": "experiment5_B_08",
+  "status": "TEST",
+  "repair_attempts": 0,
+  "generation_visible_files": [
+    "data/experiment5_target_context/Tornado-1.txt",
+    "data/experiment5_historical_raw.json"
+  ],
+  "prompt_sha256": "6924369e79076b56df6f5d56d31003f82f02ebf071e996e7669182fbbcf234a8",
+  "hypothesis": "In demos/chat/chatdemo.py, MessageBuffer.get_messages_since(cursor) returns the entire cache (all messages) instead of only messages newer than the given cursor when the cursor is not found in the cache, because the loop only breaks when it encounters a matching id and otherwise appends every message.",
+  "trigger": "Create a MessageBuffer, add messages with ids 'a','b','c', then call get_messages_since('nonexistent') and get_messages_since('b').",
+  "potential_failure": "get_messages_since('nonexistent') returns all 3 messages rather than an empty list (or only messages after the unknown cursor), and get_messages_since('b') returns ['c'] correctly but the unknown-cursor case leaks the full cache.",
+  "oracle": {
+    "expected_behavior": "get_messages_since(cursor) should return only messages newer than the given cursor; if the cursor is not present in the cache, no messages should be considered newer than it, so the result should be an empty list.",
+    "target_evidence": "demos/chat/chatdemo.py docstring: 'Returns a list of messages newer than the given cursor. ``cursor`` should be the ``id`` of the last message received.' The implementation iterates reversed(self.cache), breaks on matching id, and appends otherwise; with no match it appends all messages, contradicting the documented 'newer than the given cursor' semantics.",
+    "historical_evidence": "cookiecutter:1 and PySnooper:3 both show off-by-semantics bugs where a function silently returns/uses wrong data (wrong encoding, wrong variable name) rather than raising; this suggests probing small pure helper functions for incorrect return values.",
+    "confidence": 0.6
+  },
+  "test_code": "import os\nimport sys\n\nsys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'demos', 'chat'))\n\nimport chatdemo\n\n\ndef test_get_messages_since_unknown_cursor_returns_empty():\n    buf = chatdemo.MessageBuffer()\n    buf.add_message({'id': 'a', 'body': 'one'})\n    buf.add_message({'id': 'b', 'body': 'two'})\n    buf.add_message({'id': 'c', 'body': 'three'})\n\n    # Known cursor: only messages strictly newer than 'b'.\n    newer = buf.get_messages_since('b')\n    assert [m['id'] for m in newer] == ['c']\n\n    # Unknown cursor: no message is newer than a cursor not in the cache.\n    unknown = buf.get_messages_since('does-not-exist')\n    assert unknown == [], (\n        'get_messages_since with an unknown cursor returned %r; '\n        'expected no messages newer than an unknown cursor' % (unknown,)\n    )\n",
+  "test_file_path": "generated_tests/experiment5/end_to_end/CONDITION_attempt_8.py",
+  "applicability_decisions": [],
+  "llm": {
+    "model": "deepseek-flash",
+    "request_count": 18,
+    "retry_index": 0,
+    "latency_seconds": 4.013,
+    "usage": {
+      "prompt_tokens": 15833,
+      "completion_tokens": 686,
+      "total_tokens": 16519,
+      "prompt_tokens_details": {
+        "cached_tokens": 256
+      },
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 15577
+    },
+    "finish_reason": "stop",
+    "status_code": 200
+  },
+  "test_path": "generated_tests/experiment5/end_to_end/B/attempt_08.py",
+  "test_sha256": "dca0b2f183923e36fb0a891daa8b26b9070495c244200ec7ac2109ec36b4256c",
+  "wall_clock_seconds": 4.017
+}
