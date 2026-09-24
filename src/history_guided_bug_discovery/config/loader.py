@@ -21,13 +21,7 @@ def _path(value: str, config_path: Path, repository_root: Path) -> Path:
     candidate = Path(value)
     if candidate.is_absolute():
         return candidate
-    base = config_path.parent if config_path.parent != Path(".") else repository_root
-    resolved = (base / candidate).resolve()
-    if not resolved.exists():
-        fallback = (repository_root / candidate).resolve()
-        if fallback.exists():
-            return fallback
-    return resolved
+    return (repository_root / candidate).resolve()
 
 
 def load_config(path: str | Path, repository_root: str | Path | None = None) -> RunConfig:

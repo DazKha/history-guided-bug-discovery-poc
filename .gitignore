@@ -1,6 +1,8 @@
 .env
 __pycache__/
 *.pyc
+*.egg-info/
+artifacts/reports/
 vendor/BugsInPy/.git/
 vendor/BugsInPy/
 vendor/upstream_projects/

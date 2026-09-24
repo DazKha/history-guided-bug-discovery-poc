@@ -44,6 +44,8 @@ class DiscoveryPipeline:
         if any(event.stage is Stage.REPORT and event.status == "COMPLETE" for event in existing):
             raise ValueError(f"run {self.config.run_id} is already complete; choose a new run_id")
         records = self.store.load_artifact_records(self.config.run_id)
+        if (existing or records) and not resume:
+            raise ValueError(f"run {self.config.run_id} is incomplete; use --resume or choose a new run_id")
         self._validate_immutable_records(records)
         self._event_once(Stage.LOAD_CONFIG, "COMPLETE", {"config_hash": self.config.config_hash})
         target = self._target_spec()
@@ -74,9 +76,31 @@ class DiscoveryPipeline:
         return summary
 
     def _planner_candidates(self, hypothesis, target_context, history, service, records):
-        persisted = [TriggerPlan.from_dict(record) for record in records if record.get("hypothesis_id") == hypothesis.hypothesis_id and "plan_id" in record]
+        events = self.store.load_run(self.config.run_id)
+        planner_events = [event for event in events if event.stage is Stage.GENERATE_TRIGGER_PLAN and event.payload.get("hypothesis_id") == hypothesis.hypothesis_id]
+        persisted_records = [record for record in records if record.get("hypothesis_id") == hypothesis.hypothesis_id and "plan_id" in record]
+        persisted = self._valid_persisted_plans(persisted_records, hypothesis.hypothesis_id)
+        if len(planner_events) > 1:
+            raise ValueError(f"ambiguous planner state for hypothesis {hypothesis.hypothesis_id}")
+        if planner_events:
+            event = planner_events[0]
+            if event.status == "FAILED":
+                if event.payload.get("plans"):
+                    raise ValueError(f"failed planner state has plans for hypothesis {hypothesis.hypothesis_id}")
+                return []
+            if event.status != "COMPLETE":
+                raise ValueError(f"incomplete planner state for hypothesis {hypothesis.hypothesis_id}")
+            expected = self._plans_from_terminal_event(event, hypothesis.hypothesis_id)
+            persisted_by_id = {plan.plan_id: plan for plan in persisted}
+            if set(persisted_by_id) != {plan.plan_id for plan in expected} or any(persisted_by_id.get(plan.plan_id) != plan for plan in expected):
+                raise ValueError(f"incomplete or invalid persisted planner batch for hypothesis {hypothesis.hypothesis_id}")
+            return [(plan.plan_id, plan) for plan in sorted(expected, key=lambda item: item.plan_id)]
         if persisted:
-            return [(plan.plan_id, plan) for plan in sorted(persisted, key=lambda item: item.plan_id)]
+            expected_ids = {f"plan-{index}" for index in range(1, self.config.planner.candidate_count + 1)}
+            if len(persisted) == self.config.planner.candidate_count and {plan.plan_id for plan in persisted} == expected_ids:
+                self._event(Stage.GENERATE_TRIGGER_PLAN, "COMPLETE", {"hypothesis_id": hypothesis.hypothesis_id, "plans": [plan.to_dict() for plan in persisted]})
+                return [(plan.plan_id, plan) for plan in sorted(persisted, key=lambda item: item.plan_id)]
+            raise ValueError(f"incomplete or ambiguous planner state for hypothesis {hypothesis.hypothesis_id}; choose a new run_id")
         planning = service.generate(hypothesis, target_context, history)
         usage = {
             "llm_calls": len(planning.responses),
@@ -88,6 +112,24 @@ class DiscoveryPipeline:
             self._event(Stage.VALIDATE_TRIGGER_PLAN, "COMPLETE", {"hypothesis_id": hypothesis.hypothesis_id, "plan_id": plan.plan_id, "plan_sha256": plan.plan_sha256})
         self._event(Stage.GENERATE_TRIGGER_PLAN, "COMPLETE" if planning.plans else "FAILED", {"hypothesis_id": hypothesis.hypothesis_id, "attempts": list(planning.attempts), "plans": [plan.to_dict() for plan in planning.plans], **usage})
         return [(plan.plan_id, plan) for plan in planning.plans]
+
+    def _valid_persisted_plans(self, records, hypothesis_id):
+        plans = []
+        for record in records:
+            try:
+                plan = TriggerPlan.from_dict(record)
+            except (KeyError, TypeError, ValueError) as exc:
+                raise ValueError(f"invalid persisted planner state for hypothesis {hypothesis_id}: {exc}") from exc
+            if plan.hypothesis_id != hypothesis_id:
+                raise ValueError(f"planner artifact hypothesis mismatch for {plan.plan_id}")
+            plans.append(plan)
+        return plans
+
+    def _plans_from_terminal_event(self, event, hypothesis_id):
+        raw_plans = event.payload.get("plans")
+        if not isinstance(raw_plans, list) or not raw_plans:
+            raise ValueError(f"complete planner event has no plans for hypothesis {hypothesis_id}")
+        return self._valid_persisted_plans(raw_plans, hypothesis_id)
 
     def _run_candidate(self, hypothesis, arm, candidate_id, plan, context, target, generation, records):
         artifact_id = f"{hypothesis.hypothesis_id}-{candidate_id}"
@@ -169,9 +211,15 @@ class DiscoveryPipeline:
     def _all_candidates_complete(self, hypotheses, arm, records):
         for hypothesis in hypotheses:
             if arm is Arm.STRICT_PLANNER:
-                candidate_ids = [record["plan_id"] for record in records if record.get("hypothesis_id") == hypothesis.hypothesis_id and "plan_id" in record]
-                if not candidate_ids:
+                planner_events = [event for event in self.store.load_run(self.config.run_id) if event.stage is Stage.GENERATE_TRIGGER_PLAN and event.payload.get("hypothesis_id") == hypothesis.hypothesis_id]
+                if len(planner_events) != 1:
                     return False
+                planner_event = planner_events[0]
+                if planner_event.status == "FAILED":
+                    continue
+                if planner_event.status != "COMPLETE":
+                    return False
+                candidate_ids = [plan.plan_id for plan in self._plans_from_terminal_event(planner_event, hypothesis.hypothesis_id)]
             else:
                 count = self.config.planner.candidate_count if arm is Arm.BUDGET_MATCHED_DIRECT else 1
                 candidate_ids = [f"direct-{index}" for index in range(1, count + 1)]
