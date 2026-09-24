@@ -15,7 +15,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--artifacts", type=Path, required=True)
     parser.add_argument("--arm", choices=[Arm.STRICT_PLANNER.value, Arm.BUDGET_MATCHED_DIRECT.value], default=Arm.STRICT_PLANNER.value)
     args = parser.parse_args(argv)
-    config = load_config(args.config, Path.cwd())
+    config = load_config(args.config)
     summary = ReplayPipeline().replay(config, args.artifacts, Arm(args.arm))
     print(json.dumps(summary.to_dict(), ensure_ascii=False, indent=2))
     return 0

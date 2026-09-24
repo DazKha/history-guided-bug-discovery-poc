@@ -24,7 +24,8 @@ def test_experiment4_c2_golden_replay_matches_preserved_baseline_without_api_key
     assert summary.total_tokens == 326930
 
 
-def test_experiment4_budgeted_direct_golden_replay_matches_preserved_baseline():
+def test_experiment4_budgeted_direct_golden_replay_matches_preserved_baseline(monkeypatch):
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
     config = load_config(ROOT / "configs/experiment4.json", ROOT)
     summary = ReplayPipeline().replay(config, ROOT / "artifacts/experiment4/iteration3", Arm.BUDGET_MATCHED_DIRECT)
     assert summary.candidate_slots == 15

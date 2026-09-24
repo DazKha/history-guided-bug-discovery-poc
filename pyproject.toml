@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "history-guided-bug-discovery"
+version = "1.0.0"
+description = "Reproducible history-guided bug discovery engine and Experiment 4 evidence replay"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "requests>=2.31,<3",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.4,<9",
+]
+
+[project.scripts]
+run = "history_guided_bug_discovery.cli.run:main"
+replay = "history_guided_bug_discovery.cli.replay:main"
+evaluate = "history_guided_bug_discovery.cli.evaluate:main"
+report = "history_guided_bug_discovery.cli.report:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

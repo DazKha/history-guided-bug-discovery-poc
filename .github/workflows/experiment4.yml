@@ -1,0 +1,30 @@
+name: Experiment 4 offline verification
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install package and development dependencies
+        run: python -m pip install -e ".[dev]"
+      - name: Compile source, scripts, and tests
+        run: python -m compileall -q src scripts tests
+      - name: Run test suite
+        run: python -m pytest -q
+      - name: Verify C2 and C1 budget-matched offline evidence
+        run: python scripts/verify_experiment4_artifacts.py
+      - name: Replay strict planner arm
+        run: replay --config configs/experiment4.json --artifacts artifacts/experiment4/iteration3 --arm C2
+      - name: Replay budget-matched direct arm
+        run: replay --config configs/experiment4.json --artifacts artifacts/experiment4/iteration3 --arm C1_BUDGETED

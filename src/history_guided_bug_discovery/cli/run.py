@@ -7,7 +7,7 @@ from pathlib import Path
 
 from ..adapters.benchmark_evaluator import BenchmarkEvaluator
 from ..adapters.bugsinpy import BugsInPyTargetAdapter
-from ..adapters.deepseek import DeepSeekProvider
+from ..adapters.providers import create_provider
 from ..adapters.json_artifact_store import JsonArtifactStore
 from ..adapters.subprocess_executor import SubprocessExecutor
 from ..application.discovery_pipeline import DiscoveryPipeline
@@ -21,8 +21,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--arm", choices=[arm.value for arm in Arm] + ["both"], default=Arm.STRICT_PLANNER.value)
     parser.add_argument("--resume", action="store_true")
     args = parser.parse_args(argv)
-    config = load_config(args.config, Path.cwd())
-    provider = DeepSeekProvider()
+    config = load_config(args.config)
+    provider = create_provider(config)
     arms = list(Arm) if args.arm == "both" else [Arm(args.arm)]
     summaries = []
     for arm in arms:

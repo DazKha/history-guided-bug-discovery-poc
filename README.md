@@ -15,41 +15,55 @@ give generation access to evaluator-only truth.
 
 ## Architecture
 
-Typed domain models flow through application services using protocol ports.
-Adapters isolate DeepSeek, BugsInPy checkouts, subprocess execution, the shared
-benchmark evaluator, and append-only JSONL artifacts. See
-[`docs/architecture.md`](docs/architecture.md).
+The versioned `RunConfig` feeds a typed `DiscoveryPipeline`. Application
+services build frozen hypotheses, optional strict trigger plans, and generated
+tests through ports. Adapters isolate the configured model provider, target
+checkout, subprocess executor, benchmark evaluator, and append-only JSON
+ledger. See [`docs/architecture.md`](docs/architecture.md).
 
 The product discovery boundary uses `FindingValidator`; the empirical
 `BenchmarkEvaluator` is the only component allowed to compare buggy and fixed
 revisions.
 
-## Repository structure
+## Installation
+
+The supported clean environment is Python 3.11 or newer:
 
 ```text
-src/history_guided_bug_discovery/  domain, config, ports, adapters, pipeline, reporting, CLI
-configs/                            versioned run configuration
-data/                               generation inputs and evaluator-only manifests
-artifacts/                          preserved runs and execution evidence
-generated_tests/                    preserved generated test source
-results/                            historical CSVs and research reports
-tests/unit, tests/contract, tests/integration/
+python3.12 -m venv .venv
+. .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -e ".[dev]"
+python -m compileall -q src scripts tests
+python -m pytest -q
 ```
 
-## Quick start
+The package declares `requests` as a runtime dependency and `pytest` in its
+development extra. The installed console scripts are `run`, `replay`,
+`evaluate`, and `report`.
 
-Install the already-used test dependencies, then run the local suite:
+## Offline verification
+
+Offline replay reads only the supplied Experiment 4 evidence bundle. It does
+not read a repository-level `results/` directory, instantiate a provider, need
+`DEEPSEEK_API_KEY`, or execute a target checkout:
 
 ```bash
-python3 -m pytest -q
-python3 -m compileall -q src scripts tests
+replay --config "$PWD/configs/experiment4.json" --artifacts "$PWD/artifacts/experiment4/iteration3" --arm C2
+replay --config "$PWD/configs/experiment4.json" --artifacts "$PWD/artifacts/experiment4/iteration3" --arm C1_BUDGETED
+python scripts/verify_experiment4_artifacts.py
 ```
 
-A live run requires `DEEPSEEK_API_KEY` in the shell and never writes or prints
-that secret:
+The deterministic verifier checks the two frozen CSV hashes, required files,
+exact replay metrics, evidence-bundle hashes, and generated report consistency.
+
+## CLI modes
+
+A live discovery run is the only mode that constructs the configured model
+provider and requires `DEEPSEEK_API_KEY`; it never writes or prints the secret:
 
 ```bash
-python3 -m history_guided_bug_discovery.cli.run \
+run \
   --config configs/experiment4.json \
   --arm C2
 ```
@@ -60,18 +74,13 @@ The compatibility entry point remains available:
 python3 scripts/run_experiment4.py --iteration 3 --arm C2
 ```
 
-## Offline replay and reports
-
-Replay requires no API key and reads the preserved machine-readable iteration-3
-artifacts:
+`replay` validates and aggregates preserved machine-readable evidence.
+`evaluate` runs replay aggregation for one or more arms. `report` writes a
+JSON/CSV/Markdown report from the same replay result. These three modes never
+construct a model provider.
 
 ```bash
-python3 -m history_guided_bug_discovery.cli.replay \
-  --config configs/experiment4.json \
-  --artifacts artifacts/experiment4/iteration3 \
-  --arm C2
-
-python3 -m history_guided_bug_discovery.cli.report \
+report \
   --config configs/experiment4.json \
   --run-id experiment4-final \
   --artifacts artifacts/experiment4/iteration3 \
@@ -80,7 +89,19 @@ python3 -m history_guided_bug_discovery.cli.report \
 
 The report command writes consistent CSV, JSON, and Markdown summaries under
 `artifacts/reports/`. `scripts/evaluate_experiment4.py` remains a replay wrapper
-for historical command compatibility.
+for command compatibility.
+
+## Repository structure
+
+```text
+src/history_guided_bug_discovery/  domain, config, ports, adapters, pipeline, reporting, CLI
+configs/                            versioned run configuration
+data/                               generation inputs and evaluator-only manifests
+artifacts/                          preserved runs, bundles, and execution evidence
+generated_tests/                    preserved generated test source
+results/                            authoritative CSVs and research reports
+tests/unit, tests/contract, tests/integration/
+```
 
 ## Safety and leakage boundary
 

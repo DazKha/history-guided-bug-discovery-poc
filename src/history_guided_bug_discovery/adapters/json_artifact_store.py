@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from ..domain.models import RunEvent
+from ..domain.models import RunEvent, stable_hash
 from ..domain.enums import Stage
 
 
@@ -54,6 +54,23 @@ class JsonArtifactStore:
             value = json.loads(line)
             events.append(RunEvent(value["run_id"], value["event_id"], Stage(value["stage"]), value["status"], value.get("payload", {}), value.get("created_at", ""), value.get("schema_version", "1")))
         return events
+
+    def load_artifact_records(self, run_id: str) -> list[dict]:
+        root = self.root / run_id / "artifacts"
+        if not root.exists():
+            return []
+        records: list[dict] = []
+        for path in sorted(root.glob("*.json")):
+            try:
+                value = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError) as exc:
+                raise ValueError(f"cannot load artifact {path}: {exc}") from exc
+            if value.get("run_id") != run_id:
+                raise ValueError(f"artifact run_id mismatch: {path}")
+            if "code" in value and "test_sha256" in value and stable_hash(value["code"]) != value["test_sha256"]:
+                raise ValueError(f"artifact hash mismatch: {path}")
+            records.append(value)
+        return records
 
     def mark_completed(self, run_id: str) -> None:
         self.append_event(RunEvent(run_id, "run-complete", Stage.REPORT, "COMPLETE", {}))

@@ -1,8 +1,0 @@
-{
-  "experiment": "experiment5_conditional",
-  "status": "UNDERPOWERED_STOP",
-  "eligible_count": 0,
-  "planner_calls": 0,
-  "test_generation_calls": 0,
-  "reason": "fewer than five eligible frozen C hypotheses; no hypotheses were synthesized or topped up"
-}

@@ -17,8 +17,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output-suffix", default="")
     parser.add_argument("--artifacts", type=Path)
     args = parser.parse_args(argv)
-    config = load_config(args.config, Path.cwd())
-    artifact_dir = args.artifacts or Path("artifacts") / "experiment4" / f"iteration{args.iteration}"
+    config = load_config(args.config)
+    artifact_dir = args.artifacts or config.repository_root / "artifacts" / "experiment4" / f"iteration{args.iteration}"
+    if not artifact_dir.is_absolute():
+        artifact_dir = config.repository_root / artifact_dir
     results = {}
     for label in (part.strip() for part in args.arms.split(",")):
         arm = Arm.BUDGET_MATCHED_DIRECT if label == "C1_BUDGETED" else Arm(label)

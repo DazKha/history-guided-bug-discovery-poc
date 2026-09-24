@@ -22,3 +22,6 @@ class ArtifactStore(Protocol):
 
     def load_run(self, run_id: str) -> list[RunEvent]:
         ...
+
+    def load_artifact_records(self, run_id: str) -> list[dict]:
+        ...

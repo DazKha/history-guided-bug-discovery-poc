@@ -168,6 +168,12 @@ class TriggerPlan:
     def to_dict(self) -> dict[str, Any]:
         return {"schema_version": self.schema_version, "stable_id": self.stable_id, "run_id": self.run_id, "hypothesis_id": self.hypothesis_id, "plan_id": self.plan_id, "plan": _jsonable(self.plan), "prompt_hash": self.prompt_hash, "plan_sha256": self.plan_sha256, "strategy": self.strategy, "created_at": self.created_at}
 
+    @classmethod
+    def from_dict(cls, value: Mapping[str, Any]) -> "TriggerPlan":
+        if stable_hash(value.get("plan", {})) != value.get("plan_sha256"):
+            raise ValueError(f"trigger plan hash mismatch: {value.get('plan_id', '')}")
+        return cls(value["run_id"], value["hypothesis_id"], value["plan_id"], value["plan"], value["prompt_hash"], value["plan_sha256"], value.get("strategy", "strict_trigger_plan_v1"), value.get("created_at", ""), value.get("schema_version", SCHEMA_VERSION))
+
 
 @dataclass(frozen=True)
 class TestArtifact:

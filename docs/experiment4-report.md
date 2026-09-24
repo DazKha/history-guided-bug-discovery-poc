@@ -28,3 +28,10 @@ Run the offline golden replay and report commands in
 [`reproducibility.md`](reproducibility.md). The authoritative rows remain in
 `results/experiment4_iteration3_raw.csv` and
 `results/experiment4_iteration3_raw_budgeted.csv`.
+
+The evidence boundary is narrow: this is a deterministic replay of one
+target-specific preserved run, not a new discovery execution, statistical
+significance claim, or cross-project generalization result. The conclusion
+remains CASE B / mixed: strict planning improves planner validity and
+hypothesis-level coverage, while direct generation remains more efficient per
+candidate.

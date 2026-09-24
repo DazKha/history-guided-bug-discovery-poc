@@ -98,7 +98,11 @@ def load_config(path: str | Path, repository_root: str | Path | None = None) -> 
     if not isinstance(target, dict):
         raise ConfigError("target must be an object")
     _check_fields(target, {"buggy_checkout", "fixed_checkout", "python", "runner", "source_path_markers"}, "target")
+    target = dict(target)
+    for field in ("buggy_checkout", "fixed_checkout"):
+        if target.get(field):
+            target[field] = str(_path(str(target[field]), config_path, root))
     artifact_root = raw.get("artifact_root", "artifacts/runs")
     paths = RunPaths(_path(raw["target_context"], config_path, root), _path(raw["structured_history"], config_path, root), _path(raw["frozen_hypotheses"], config_path, root), _path(str(artifact_root), config_path, root), _path(raw["target_manifest"], config_path, root) if raw.get("target_manifest") else None)
     config_hash = stable_hash(raw)
-    return RunConfig(SCHEMA_VERSION, raw["run_id"], raw["target_id"], raw["target_context"], raw["structured_history"], raw["frozen_hypotheses"], model_config, planner_config, execution_config, evaluator_config, paths, dict(target), config_hash)
+    return RunConfig(SCHEMA_VERSION, raw["run_id"], raw["target_id"], raw["target_context"], raw["structured_history"], raw["frozen_hypotheses"], model_config, planner_config, execution_config, evaluator_config, paths, target, config_hash, repository_root=root)

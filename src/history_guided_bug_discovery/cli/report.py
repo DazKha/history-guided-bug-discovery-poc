@@ -19,9 +19,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--arm", choices=[Arm.STRICT_PLANNER.value, Arm.BUDGET_MATCHED_DIRECT.value], default=Arm.STRICT_PLANNER.value)
     parser.add_argument("--output-dir", type=Path)
     args = parser.parse_args(argv)
-    config = load_config(args.config, Path.cwd())
+    config = load_config(args.config)
     summary = ReplayPipeline().replay(config, args.artifacts, Arm(args.arm))
-    output = args.output_dir or Path("artifacts") / "reports" / args.run_id / args.arm
+    output = args.output_dir or config.repository_root / "artifacts" / "reports" / args.run_id / args.arm
+    if not output.is_absolute():
+        output = config.repository_root / output
     output.mkdir(parents=True, exist_ok=True)
     (output / "summary.json").write_text(json.dumps(summary.to_dict(), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     write_csv(summary, output / "summary.csv")

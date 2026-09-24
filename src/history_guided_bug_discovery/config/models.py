@@ -77,9 +77,10 @@ class RunConfig:
     target: Mapping[str, Any]
     config_hash: str
     source_commit: str = ""
+    repository_root: Path = Path(".")
 
     def to_dict(self) -> dict[str, Any]:
-        return {"schema_version": self.schema_version, "run_id": self.run_id, "target_id": self.target_id, "target_context": self.target_context, "structured_history": self.structured_history, "frozen_hypotheses": self.frozen_hypotheses, "model": self.model.to_dict(), "planner": self.planner.to_dict(), "execution": self.execution.to_dict(), "evaluator": self.evaluator.to_dict(), "paths": self.paths.to_dict(), "target": dict(self.target), "config_hash": self.config_hash, "source_commit": self.source_commit}
+        return {"schema_version": self.schema_version, "run_id": self.run_id, "target_id": self.target_id, "target_context": self.target_context, "structured_history": self.structured_history, "frozen_hypotheses": self.frozen_hypotheses, "model": self.model.to_dict(), "planner": self.planner.to_dict(), "execution": self.execution.to_dict(), "evaluator": self.evaluator.to_dict(), "paths": self.paths.to_dict(), "target": dict(self.target), "config_hash": self.config_hash, "source_commit": self.source_commit, "repository_root": str(self.repository_root)}
 
     @property
     def generation_visible_manifest(self) -> tuple[str, ...]:
