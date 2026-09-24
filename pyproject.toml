@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "history-guided-bug-discovery"
 version = "1.0.0"
-description = "Reproducible history-guided bug discovery engine and Experiment 4 evidence replay"
+description = "Reproducible history-guided bug discovery prototype with offline evidence replay"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

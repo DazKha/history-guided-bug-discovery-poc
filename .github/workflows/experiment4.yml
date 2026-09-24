@@ -1,4 +1,4 @@
-name: Experiment 4 offline verification
+name: Offline evidence verification
 
 on:
   push:
@@ -22,9 +22,24 @@ jobs:
         run: python -m compileall -q src scripts tests
       - name: Run test suite
         run: python -m pytest -q
-      - name: Verify C2 and C1 budget-matched offline evidence
+      - name: Verify core A/B/C evidence
+        run: python scripts/verify_core_results.py
+      - name: Verify Experiment 4 evidence and hashes
         run: python scripts/verify_experiment4_artifacts.py
       - name: Replay strict planner arm
         run: replay --config configs/experiment4.json --artifacts artifacts/experiment4/iteration3 --arm C2
       - name: Replay budget-matched direct arm
         run: replay --config configs/experiment4.json --artifacts artifacts/experiment4/iteration3 --arm C1_BUDGETED
+      - name: Verify leakage and visibility boundaries
+        run: >-
+          python -m pytest -q
+          tests/test_experiment2_contracts.py::test_transfer_case_and_leakage_manifest_are_separated
+          tests/test_experiment3_contracts.py::test_trigger_prompt_has_no_evaluator_only_inputs
+      - name: Replay buggy/fixed harness when preserved checkouts are available
+        shell: bash
+        run: |
+          if [[ -x env39/bin/python && -d workspace/harness-pysnooper-buggy/PySnooper && -d workspace/harness-pysnooper-fixed/PySnooper && -d vendor/BugsInPy ]]; then
+            python scripts/verify_harness.py
+          else
+            echo "Preserved target checkouts are unavailable; external harness replay skipped."
+          fi

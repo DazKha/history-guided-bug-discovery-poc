@@ -1,34 +1,75 @@
-# Follow-up report
+# Engineering Outcome Report
 
-After the presentation feedback, I tested one uncertain assumption from the proposal: whether genuinely related historical bug experience can help discover a hidden target bug beyond target-only exploration or naive raw-history prompting.
+## 1. Initial problem
 
-Experiment 1 was inconclusive. Its raw baseline did not receive the transferable fix diff, the common prompt unintentionally encouraged raw history to abstain, structured fields were generic, and the target context omitted the locale facts that made the defect observable. The full audit is in `results/experiment1_audit.md`.
+Raw issue history contains useful debugging knowledge, but it is noisy and difficult to transfer directly to a new target. This prototype asks whether structured, mechanism-level historical knowledge helps an agent identify the relevant failure mechanism better than naive baselines.
 
-I then ran a smaller transfer-feasibility experiment on real BugsInPy `PySnooper:1`, whose buggy/fixed harness was independently verified. B and C received the same two historical bugs: `cookiecutter:1` (strong explicit-UTF-8 mechanism match) and `PySnooper:3` (weaker same-domain file-output analogue). A saw only the same bounded target context. The preserved prior batches used five attempts each; the new replication used ten new attempts per condition, with the same DeepSeek model/configuration, output budget, repair budget, and execution environment.
+The study uses the selected BugsInPy `PySnooper:1` transfer-feasibility case. History selection was retrospective, so the result does not measure autonomous retrieval or broad generalization.
 
-This is a retrospectively selected transfer-feasibility experiment. It evaluates whether the mechanism can transfer when suitable history is available. It does not evaluate autonomous retrieval quality.
+## 2. Naive baselines
 
-The evaluator semantics were then audited. The original strict evaluator counted only assertion failures and incorrectly classified target-origin `UnicodeEncodeError` as mechanical. The corrected rule accepts either an assertion failure or a target exception that violates a pre-execution oracle, provided the unchanged test passes on fixed and setup is valid.
+The controlled comparison uses the same target, model/configuration, execution environment, evaluator policy, and comparable attempt budget:
 
-Final objective results after re-evaluation:
+- **A — Target only**
+- **B — Target plus raw historical issue context**
+- **C — Target plus structured historical knowledge**
 
-- Across 25 attempts per condition (15 preserved prior plus 10 new replication), A produced 0/25 F2P and 0 mechanism matches.
-- B produced 0/25 F2P and 2 mechanism matches.
-- C produced 2/25 verified `EXCEPTION_F2P` and 15 mechanism matches. Both valid F2P cases occurred in the preserved exploratory C batch and involved `UnicodeEncodeError` in target `pysnooper/tracer.py`, with the same tests passing on fixed.
-- No assertion-based F2P occurred. The new 10-attempt replication produced no F2P; C had 6/10 mechanism matches, two F2F, and eight P2P.
+B and C use the same underlying historical cases. C adds mechanism-oriented fields and an applicability decision.
 
-The evaluator ran every unchanged generated test on both buggy and fixed revisions. The two exception-based F2P cases satisfy the corrected criterion: their hypotheses and target-supported oracles were present before execution, setup was valid, the exception occurred inside target behavior, and the fixed revision passed.
+## 3. Structured-history intervention
 
-The honest conclusion is: in this retrospectively selected transfer-feasibility case, structured historical knowledge identified the correct failure mechanism and produced verified executable evidence distinguishing buggy and fixed revisions. The result is not architecture proof: the F2P cases occurred in one batch, later attempts did not reproduce them, and A/B did not produce valid F2P. Trigger construction remains the bottleneck.
+Historical records were reorganized around context, preconditions, trigger, expected invariant, observed failure, failure mechanism, oracle provenance, test strategy, and evidence references. The intent was to make transferable mechanism knowledge explicit instead of relying on the model to recover it from raw issue text.
 
-Reviewer artifacts: `results/evaluator_audit.md`, `results/experiment2_replication2.csv`, `results/experiment2_replication2_summary.md`, `results/experiment2_cumulative_summary.md`, and `results/failure_analysis_final.md`.
+## 4. Controlled result
 
-Limitations: one target, 25 total attempts per condition, retrospective history selection, model output/JSON failures, no statistical inference, and no recall denominator.
+The clean replication contains ten attempts per condition in `results/experiment2_replication2.csv`:
 
-## Experiment 3 trigger-construction follow-up
+| Condition | Mechanism matches | Attempts | Verified F2P |
+| --- | ---: | ---: | ---: |
+| A — Target only | 0 | 10 | 0 |
+| B — Raw history | 1 | 10 | 0 |
+| C — Structured history | 6 | 10 | 0 |
 
-The selected intervention is a generic structured trigger planner: freeze a structured-history hypothesis, generate four meaningfully distinct trigger plans, instantiate one executable test per plan, and reuse the existing evaluator. This was chosen because Experiment 2 already localized the main bottleneck to `TRIGGER_TOO_WEAK`, `TRIGGER_WRONG_SHAPE`, P2P, and F2F outcomes. The research comparison and leakage boundary are recorded in `results/trigger_research.md` and `results/trigger_intervention_design.md`.
+Structured history improved mechanism targeting in this selected case. It did not by itself produce an executable differential test.
 
-The implementation and contract tests were completed. The real harness still verifies buggy/fixed separation (`buggy=1`, `fixed=0`). Natural 3A produced no executable tests: 3 `NO_SUPPORTED_HYPOTHESIS` and 2 model-output errors. Conditional 3B kept five stored mechanism-matched hypotheses frozen. C1 generated 5 direct tests with 2 F2P, 1 F2F, and 2 P2P. C2 generated 8 executable trigger-tests with 3 F2P, 3 F2F, and 2 P2P after two bounded planner repairs; three hypotheses never yielded valid planner JSON. C2 used 20 LLM calls and 8 test pairs versus C1’s 5 calls and 5 pairs.
+## 5. What improved
 
-The complete status is in `results/experiment3_summary.md`, `results/experiment3_budget_analysis.md`, `results/experiment3_failure_analysis.md`, and `results/experiment3_reviewer_report.md`. The strongest conclusion is CASE C: diversification found one additional raw F2P, but F2P per hypothesis stayed at 40% and F2P per executed test fell from 40% to 37.5%. The next engineering change should target planner output validity and observable/assertion alignment; the evaluator should remain frozen.
+The cumulative record in `results/experiment2_re_evaluated.csv` contains 25 attempts per condition:
+
+| Condition | Mechanism matches | Attempts | Verified F2P |
+| --- | ---: | ---: | ---: |
+| A — Target only | 0 | 25 | 0 |
+| B — Raw history | 2 | 25 | 0 |
+| C — Structured history | 15 | 25 | 2 |
+
+The cumulative mechanism-match pattern supports the same narrow targeting conclusion. The two F2P cases occurred in exploratory structured-history runs and were verified against buggy and fixed revisions.
+
+## 6. What did not improve
+
+The clean replication produced zero F2P in all conditions. The two cumulative structured-history F2P results did not reproduce in the clean replication. Therefore, the evidence supports a mechanism-targeting improvement, not a stable F2P improvement claim.
+
+## 7. Root-cause diagnosis
+
+The remaining bottleneck was the transition from a correct mechanism hypothesis to a concrete precondition/state/action/observable/assertion. Correct hypotheses still produced weak triggers, wrong-shaped assertions, model-output failures, or mechanical setup failures.
+
+## 8. Trigger Plan refinement
+
+Experiment 4 addressed that downstream bottleneck with a strict Trigger Plan contract, deterministic validation, and bounded repair:
+
+- valid plans improved from 2/5 hypotheses to 5/5;
+- hypotheses with at least one F2P improved from 3/5 for direct generation to 4/5 for the planner under the budget-matched comparison;
+- direct generation remained more efficient per generated test.
+
+The Trigger Plan improved reliability and hypothesis coverage, but not per-test trigger efficiency. It is a follow-up implementation refinement, not the main contribution.
+
+## 9. Current implementation status
+
+The repository preserves the A/B/C evidence, leakage boundary, frozen hypotheses, generated tests, evaluator, execution logs, and Experiment 4 replay bundle. Deterministic verifiers now derive the core and downstream claims from machine-readable evidence. The current target and history selection remain deliberately narrow and retrospective.
+
+## 10. Limitations
+
+This is one selected target with small attempt counts, no statistical significance analysis, no recall denominator, and no broad cross-project generalization claim. A mechanism match is not equivalent to a verified F2P test.
+
+## 11. Next engineering step
+
+Keep the structured-history comparison and evaluator frozen while improving observable/assertion alignment and trigger-plan validity on a newly specified held-out set. Any future evaluation should separate retrieval quality, mechanism targeting, and executable test construction.

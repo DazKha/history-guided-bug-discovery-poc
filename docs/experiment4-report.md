@@ -1,5 +1,9 @@
 # Experiment 4 report
 
+Experiment 4 is a downstream engineering refinement to the executable-test
+generation stage. It does not replace the structured-history mechanism-targeting
+result described in [`docs/engineering-results.md`](engineering-results.md).
+
 ## Evidence
 
 The final strict planner arm (C2) retained five frozen hypotheses and allocated
@@ -15,11 +19,14 @@ failures. It used 15 calls and 15,801 tokens.
 
 ## Interpretation
 
-Strict planning solved the planner-output validity bottleneck and improved
-hypothesis-level F2P coverage from 3/5 to 4/5 against the budget-matched direct
-control. Candidate-level F2P efficiency did not improve: C2 produced 5/15 F2P
-versus 6/15 for direct generation. The result is CASE B / mixed and directional
-evidence from one selected target, not an architecture proof or cross-project
+The strict Trigger Plan contract improved valid plans from 2/5 hypotheses to
+5/5 after deterministic validation and bounded repair. Under the
+budget-matched comparison, it improved hypothesis-level F2P coverage from 3/5
+for direct generation to 4/5 for the planner. Candidate-level F2P efficiency
+did not improve: C2 produced 5/15 F2P versus 6/15 for direct generation. The
+correct conclusion is that the planner improved reliability and hypothesis
+coverage, but not per-test trigger efficiency. This is directional evidence
+from one selected target, not an architecture proof or cross-project
 generalization claim.
 
 ## Reproduction
