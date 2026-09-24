@@ -1,121 +1,123 @@
-# History-guided proactive bug discovery — empirical PoC
+# History-Guided Bug Discovery Engine
 
-## Research question
+This repository is an engineering-oriented system for turning structured
+historical bug evidence into executable, reproducible bug-discovery candidates.
+It keeps generation, target execution, benchmark validation, and reporting
+separate so an experiment can be replayed without an LLM call.
 
-Given the same target repository and LLM budget, does structured historical bug knowledge with applicability filtering produce more grounded and verifiable discoveries than target-only exploration or raw historical bug evidence?
+## Problem statement
 
-## Experiment 1 (original run, now audited)
+The system tests whether a frozen mechanism hypothesis can be instantiated as a
+deterministic test against a buggy target revision and pass unchanged on the
+fixed revision. The strongest benchmark signal is F2P: meaningful failure on
+buggy and pass on fixed. Historical evidence guides the hypothesis but does not
+give generation access to evaluator-only truth.
 
-This PoC used the official [BugsInPy repository](https://github.com/soarsmu/BugsInPy), one held-out real target (`PySnooper:1`), and six historical bugs from two projects. The target’s real buggy/fixed revisions were executed before the LLM study. The final matrix had five attempts for each of:
+## Architecture
 
-- A — target-only context
-- B — the same target context plus raw historical evidence
-- C — the same target context plus the same historical IDs represented as structured Bug Knowledge Units and bounded applicability decisions
+Typed domain models flow through application services using protocol ports.
+Adapters isolate DeepSeek, BugsInPy checkouts, subprocess execution, the shared
+benchmark evaluator, and append-only JSONL artifacts. See
+[`docs/architecture.md`](docs/architecture.md).
 
-Historical cases were retrospectively selected to test transfer feasibility; this experiment does not validate autonomous retrieval. The original run is retained as the frozen baseline and is audited in `results/experiment1_audit.md`.
+The product discovery boundary uses `FindingValidator`; the empirical
+`BenchmarkEvaluator` is the only component allowed to compare buggy and fixed
+revisions.
 
-## Harness evidence
+## Repository structure
 
-The target buggy commit is `e21a31162f4c54be693d8ca8260e42393b39abd3`; the fixed commit is `56f22f8ffe1c6b2be4d2cf3ad1987fdb66113da2`. The unmodified BugsInPy regression test failed on the buggy checkout and passed on the fixed checkout under the same Python 3.9.18 environment and ASCII locale. See `artifacts/harness/verification.json` and the two regression logs.
-
-Python 3.13 was not usable for this historical revision because it removed `collections.Mapping`. Docker was installed but its daemon was unavailable, so the benchmark’s declared Python 3.8-era behavior was reproduced with the available local Python 3.9 runtime. This environment decision is documented in `research_log.md`.
-
-## Leakage controls
-
-For Experiment 1, generation saw only `data/target_context/PySnooper-1.txt` for the target. For Experiment 2, the stricter split is recorded in `data/target_leakage_manifest.json`: generation saw `data/experiment2_target_context/PySnooper-1.txt` and the selected history representation, while evaluator-only truth, the fixed checkout, target fix, and hidden regression remained separate under `data/evaluator_truth/` and the fixed workspace. Experiment 2 B/C share exactly `cookiecutter:1` and `PySnooper:3`.
-
-The structured representation contains Context, Preconditions, Trigger, Expected Invariant, Observed Failure, Failure Mechanism, Oracle, Oracle Provenance, Test Strategy, Evidence References, and Confidence. Direct versus inferred provenance is recorded per field.
-
-## DeepSeek configuration
-
-The client follows the official [DeepSeek Chat Completions API](https://api-docs.deepseek.com/api/create-chat-completion/) and disables default reasoning using the documented [Thinking Mode](https://api-docs.deepseek.com/guides/thinking_mode/) switch. Configuration: model `deepseek-flash`, JSON output, `thinking.type=disabled`, temperature `0.2`, max output `1800` for Experiment 1 and `2200` for Experiment 2, bounded retries, and at most one repair attempt. API keys are read from `DEEPSEEK_API_KEY` and never logged.
-
-## Experiment 1 results
-
-| Condition | Attempts | Tests generated | No supported hypothesis | F2P | P2P | F2F | P2F | Mechanical |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| A target-only | 5 | 4 | 1 | 0 | 3 | 0 | 0 | 1 |
-| B raw history | 5 | 0 | 5 | 0 | 0 | 0 | 0 | 0 |
-| C structured/applicability-aware | 5 | 0 | 5 | 0 | 0 | 0 | 0 | 0 |
-
-The strongest success signal, F2P (meaningful FAIL on buggy and PASS on fixed), was zero for all three conditions. A produced four executable tests: three P2P non-triggers and one mechanical failure, plus one abstention. B produced no executable candidate. C conservatively rejected all five attempts as `NO_SUPPORTED_HYPOTHESIS` / `NOT_APPLICABLE`.
-
-### Detailed generated case
-
-In A/1, DeepSeek proposed that an invalid watched expression should be ignored and generated a real pytest. Both revisions raised `SyntaxError`, so the evaluator classified it mechanical and excluded it from discovery counts. A/2–A/4 were executable but passed on both revisions. The unchanged tests and logs are retained under `generated_tests/PySnooper_1/` and `artifacts/execution_logs/PySnooper_1/`.
-
-The benchmark sanity test is intentionally separate: `tests/test_chinese.py::test_chinese` gives buggy FAIL/fixed PASS and proves the evaluator can observe a real revision-specific semantic difference. It is not counted as an LLM discovery because it is evaluator-only.
-
-## Experiment 2: transfer-feasibility rerun
-
-The audit found that Experiment 1 was not a clean transfer test: B did not receive the raw fix diff containing the strongest signal, B inherited C’s abstention instruction, C’s fields were generic, and target locale facts were omitted. Experiment 2 therefore used the smallest selected subset with one strong mechanism match (`cookiecutter:1`) and one weaker same-domain analogue (`PySnooper:3`). The evaluator selection is recorded in `data/transfer_case_candidates.json`.
-
-This is a retrospectively selected transfer-feasibility experiment. It evaluates whether the mechanism can transfer when suitable history is available. It does not evaluate autonomous retrieval quality.
-
-| Condition | Attempts | Hypotheses/tests | Mechanism matches | F2P | P2P | F2F | Mechanical | Model errors/no-support |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| A target-only | 5 | 5/5 | 0 | 0 | 5 | 0 | 0 | 0/0 |
-| B naive raw history | 5 | 4/4 | 0 | 0 | 4 | 0 | 0 | 1/0 |
-| C structured + applicability | 5 | 3/3 | 2 | 0 | 2 | 1 | 0 | 2/0 |
-
-No final generated test achieved F2P. C did produce more mechanism-aligned hypotheses, but its executable outputs were either P2P or F2F. An earlier exploratory pass produced a buggy-exception/fixed-pass encoding probe, but it was not counted because the expected target exception escaped instead of producing an assertion-level failure. That run is preserved under `artifacts/experiment2_llm_run1/`.
-
-Detailed evidence is in [`results/experiment2_results.csv`](results/experiment2_results.csv), [`results/experiment2_failure_analysis.md`](results/experiment2_failure_analysis.md), [`results/experiment2_case_study.md`](results/experiment2_case_study.md), and [`results/experiment2_comparison_with_experiment1.md`](results/experiment2_comparison_with_experiment1.md).
-
-### Evaluator correction and additional loop
-
-The original strict evaluator was too narrow: it treated every non-assertion exception as mechanical. The corrected rule counts a failure as meaningful when it is either an assertion failure or a target-origin exception that violates an oracle recorded before execution, provided the unchanged test passes on fixed and setup is valid. The audit is in [`results/evaluator_audit.md`](results/evaluator_audit.md).
-
-Re-evaluation of all 75 Experiment 2 artifacts found two valid `EXCEPTION_F2P` cases in exploratory C. Both predict locale-dependent encoding failure, fail in target `pysnooper/tracer.py` with `UnicodeEncodeError` on buggy, and pass unchanged on fixed. No assertion-based F2P exists. The new 10-attempt-per-condition replication produced no additional F2P; C had 6/10 mechanism matches, two F2F, and eight P2P.
-
-Across 25 attempts per condition (15 preserved prior attempts plus 10 new replication attempts): A had 0/25 F2P and 0 mechanism matches; B had 0/25 F2P and 2 mechanism matches; C had 2/25 verified exception F2P and 15 mechanism matches. The new replication alone had 0/10 F2P for every condition, with C at 6/10 mechanism matches. This supports selected-case transfer feasibility, but not architecture proof or generalization. See [`results/experiment2_re_evaluated.csv`](results/experiment2_re_evaluated.csv), [`results/experiment2_replication2.csv`](results/experiment2_replication2.csv), [`results/experiment2_cumulative_summary.md`](results/experiment2_cumulative_summary.md), and [`results/failure_analysis_final.md`](results/failure_analysis_final.md).
-
-## Reproduction
-
-From the repository root:
-
-```bash
-git clone https://github.com/soarsmu/BugsInPy vendor/BugsInPy
-python3 -m scripts.bootstrap_benchmark
-cd workspace/harness-pysnooper-buggy/PySnooper
-/opt/anaconda3/bin/python3.9 -m venv env39
-env39/bin/python -m pip install setuptools pytest python_toolbox
-env39/bin/python setup.py install
-cd ../../harness-pysnooper-fixed/PySnooper
-/opt/anaconda3/bin/python3.9 -m venv env39
-env39/bin/python -m pip install setuptools pytest python_toolbox
-env39/bin/python setup.py install
-cd ../../..
-python3 -m scripts.verify_harness
-python3 scripts/prepare_data.py
-export DEEPSEEK_API_KEY='set this in your shell; do not write it to files'
-python3 -m scripts.run_experiment --attempts 3 --conditions A,B,C
-python3 -m scripts.evaluate_generated_tests
-
-# Experiment 2 preparation, generation, and exact B/F evaluation
-python3 scripts/prepare_experiment2.py
-export DEEPSEEK_API_KEY='set this in your shell; do not write it to files'
-python3 scripts/run_experiment2.py --attempts 5
-# The frozen runner prompt is a five-attempt batch; run both labels for 10 new attempts/condition.
-python3 scripts/run_experiment2.py --attempts 5 --run-label loop1
-python3 scripts/run_experiment2.py --attempts 5 --run-label replication2b
-python3 scripts/run_experiment2.py --attempts 5 --run-label replication2c
-python3 scripts/evaluate_experiment2.py
-python3 scripts/write_experiment2_reports.py
-python3 scripts/re_evaluate_experiment2.py --run all
-python3 scripts/write_final_reports.py
+```text
+src/history_guided_bug_discovery/  domain, config, ports, adapters, pipeline, reporting, CLI
+configs/                            versioned run configuration
+data/                               generation inputs and evaluator-only manifests
+artifacts/                          preserved runs and execution evidence
+generated_tests/                    preserved generated test source
+results/                            historical CSVs and research reports
+tests/unit, tests/contract, tests/integration/
 ```
 
-The checked-in `data/`, `generated_tests/`, `artifacts/`, and `results/` files are the outputs from the completed runs. `data/case_manifest.json` describes Experiment 1; `data/target_leakage_manifest.json` describes the Experiment 2 agent/evaluator split and configuration. The API key is intentionally not part of the reproduction files.
+## Quick start
 
-## Limitations and conclusion
+Install the already-used test dependencies, then run the local suite:
 
-This is one target, 25 attempts per condition across prior and replication batches, and a retrospective historical subset. It cannot support statistical significance, recall claims, or autonomous-retrieval claims. After correcting the evaluator, C produced two verified exception-based F2P tests in the preserved exploratory batch; A and B produced none. The 10-attempt replication did not reproduce the F2P, so the stable conclusion is selected-case transfer feasibility with trigger-construction instability—not proof that the architecture works. The next study should add more held-out targets and pre-register retrieval.
+```bash
+python3 -m pytest -q
+python3 -m compileall -q src scripts tests
+```
 
-## Experiment 3 trigger-construction follow-up
+A live run requires `DEEPSEEK_API_KEY` in the shell and never writes or prints
+that secret:
 
-Experiment 3 adds a generic trigger planner after a frozen structured-history hypothesis. The planner schema separates preconditions, input/state/environment setup, action sequence, observable, rationale, and target evidence, then requests four meaningfully distinct candidates. The evaluator remains unchanged. Research and design details are in [`results/trigger_research.md`](results/trigger_research.md) and [`results/trigger_intervention_design.md`](results/trigger_intervention_design.md).
+```bash
+python3 -m history_guided_bug_discovery.cli.run \
+  --config configs/experiment4.json \
+  --arm C2
+```
 
-The implementation is present in `scripts/experiment3_trigger_planner.py`, `scripts/run_experiment3.py`, and `scripts/evaluate_experiment3.py`. The real run completed using the repository `.env` format without printing or storing the key. Natural 3A produced 3 `NO_SUPPORTED_HYPOTHESIS` and 2 model errors, with no executable tests. Conditional 3B produced C1: 2 F2P/5 direct tests; C2: 3 F2P/8 executable trigger-tests after two bounded planner repairs. C2 used 20 LLM calls versus C1’s 5 and did not improve after execution-budget normalization. Results are in [`results/experiment3_summary.md`](results/experiment3_summary.md).
+The compatibility entry point remains available:
 
-Experiment 3 reproduction commands are in [`results/experiment3_reviewer_report.md`](results/experiment3_reviewer_report.md). Required artifacts include [`results/experiment3_results.csv`](results/experiment3_results.csv), [`results/experiment3_failure_analysis.md`](results/experiment3_failure_analysis.md), [`results/experiment3_budget_analysis.md`](results/experiment3_budget_analysis.md), and [`results/experiment3_run_status.json`](results/experiment3_run_status.json).
+```bash
+python3 scripts/run_experiment4.py --iteration 3 --arm C2
+```
+
+## Offline replay and reports
+
+Replay requires no API key and reads the preserved machine-readable iteration-3
+artifacts:
+
+```bash
+python3 -m history_guided_bug_discovery.cli.replay \
+  --config configs/experiment4.json \
+  --artifacts artifacts/experiment4/iteration3 \
+  --arm C2
+
+python3 -m history_guided_bug_discovery.cli.report \
+  --config configs/experiment4.json \
+  --run-id experiment4-final \
+  --artifacts artifacts/experiment4/iteration3 \
+  --arm C2
+```
+
+The report command writes consistent CSV, JSON, and Markdown summaries under
+`artifacts/reports/`. `scripts/evaluate_experiment4.py` remains a replay wrapper
+for historical command compatibility.
+
+## Safety and leakage boundary
+
+Generation sees only the target context, structured history, frozen hypothesis,
+and validated trigger plan. It cannot receive fixed source, issue reports,
+patches, hidden regression tests, evaluator verdicts, or benchmark paths.
+Preflight rejects syntax errors, missing assertions, unconditional failure,
+hidden benchmark access, Git inspection, and shell-based hidden-history access.
+
+## Configuration and extension points
+
+`configs/experiment4.json` versions the model, planner budget, execution
+environment, paths, target adapter settings, and evaluator version. Add a new
+LLM provider by implementing `LLMProvider`; add a target through
+`TargetAdapter`; add an executor or evaluator by implementing its protocol.
+The pipeline does not depend on a particular provider or target checkout path.
+
+## Experiment 4 evidence
+
+The preserved final C2 run has five frozen hypotheses, 15 candidate slots, 13
+generated/executed tests, five F2P tests, four hypotheses with at least one F2P,
+three P2P, five mechanical failures, two model-output failures, zero final C2
+F2F, 21 LLM calls, and 326,930 recorded tokens. The budget-matched direct arm
+has 15 slots, 13 generated tests, six F2P, three covered hypotheses, two F2F,
+five P2P, two model-output failures, 15 calls, and 15,801 tokens.
+
+The supported interpretation is directional and limited to one selected target:
+structured history improved mechanism targeting in the selected case; strict
+planning improved plan validity and hypothesis-level coverage; direct generation
+remained more efficient per candidate. This is a CASE B / mixed result, not an
+architecture proof or cross-project generalization claim. See
+[`docs/experiment4-report.md`](docs/experiment4-report.md).
+
+## Limitations
+
+The benchmark evidence is small, target-specific, and dependent on generated
+test quality. A valid plan is not a semantic proof, and the current system still
+has mechanical/runtime failure modes. The benchmark checkout is optional for
+offline replay; when absent, live target execution checks are skipped rather
+than fabricating results.

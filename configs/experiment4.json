@@ -1,0 +1,43 @@
+{
+  "schema_version": "1",
+  "run_id": "experiment4-final",
+  "target_id": "PySnooper:1",
+  "target_context": "data/experiment2_target_context/PySnooper-1.txt",
+  "structured_history": "data/experiment2_historical_structured.json",
+  "frozen_hypotheses": "data/experiment3_conditional_hypotheses.json",
+  "target_manifest": "data/target_leakage_manifest.json",
+  "artifact_root": "artifacts/runs",
+  "target": {
+    "buggy_checkout": "workspace/harness-pysnooper-buggy/PySnooper",
+    "fixed_checkout": "workspace/harness-pysnooper-fixed/PySnooper",
+    "python": "env39/bin/python",
+    "runner": "pytest",
+    "source_path_markers": ["pysnooper/", "pysnooper\\", "tracer.py"]
+  },
+  "model": {
+    "provider": "deepseek",
+    "name": "deepseek-flash",
+    "temperature": 0.2,
+    "max_output_tokens": 2200,
+    "thinking": "disabled",
+    "response_format": "json_object",
+    "timeout_seconds": 120
+  },
+  "planner": {
+    "strategy": "strict_trigger_plan_v1",
+    "candidate_count": 3,
+    "max_repairs": 2
+  },
+  "execution": {
+    "timeout_seconds": 90,
+    "environment": {
+      "LC_ALL": "C",
+      "PYTHONUTF8": "0",
+      "PYTHONCOERCECLOCALE": "0"
+    }
+  },
+  "evaluator": {
+    "strategy": "benchmark_f2p_v1",
+    "version": "benchmark_f2p_v1"
+  }
+}
