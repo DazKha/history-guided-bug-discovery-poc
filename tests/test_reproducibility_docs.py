@@ -30,3 +30,36 @@ def test_reports_use_honest_language():
         assert "F2P" in text
         assert "limitations" in text.lower() or "limitation" in text.lower()
         assert "does not" in text.lower() or "zero" in text.lower()
+
+
+def test_reviewer_path_names_the_real_entry_points_and_metric_boundary():
+    readme = (ROOT / "README.md").read_text()
+    code_map = ROOT / "docs/code-map.md"
+    assert code_map.is_file()
+    code_map_text = code_map.read_text()
+
+    for phrase in [
+        "## Quickstart",
+        "python scripts/verify_core_results.py",
+        "replay --config configs/experiment4.json",
+        "scripts/render_experiment2_prompt.py",
+        "--run-label",
+        "do not call the model",
+        "rule-based",
+        "0/10",
+        "1/10",
+        "6/10",
+        "## Limitations",
+    ]:
+        assert phrase in readme
+
+    for phrase in [
+        "scripts/run_experiment2.py",
+        "base_instructions()",
+        "prompt_for()",
+        "STRUCTURED_APPLICABILITY_AWARE",
+        "src/history_guided_bug_discovery/application/prompts.py",
+        "scripts/evaluate_experiment2.py",
+        "scripts/verify_core_results.py",
+    ]:
+        assert phrase in code_map_text

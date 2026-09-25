@@ -26,6 +26,7 @@ CONDITIONS = {
 }
 MAX_ATTEMPTS = 5
 MAX_REPAIRS = 1
+RUN_LABEL_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*\Z")
 
 
 def _json(value: object) -> str:
@@ -84,6 +85,29 @@ Evaluate each historical unit against this target with bounded decisions SUPPORT
     return prompt
 
 
+def validate_run_label(label: str) -> str:
+    """Validate the single path component used to isolate a live run."""
+
+    if not isinstance(label, str) or not RUN_LABEL_PATTERN.fullmatch(label):
+        raise ValueError(
+            "run label must be a non-empty path component containing only "
+            "letters, numbers, '.', '-', or '_'"
+        )
+    return label
+
+
+def ensure_fresh_run_paths(output_root: Path, test_root: Path) -> None:
+    """Refuse to reuse either live-run output location."""
+
+    existing = [str(path) for path in (output_root, test_root) if path.exists()]
+    if existing:
+        raise ValueError(
+            "refusing to reuse existing Experiment 2 output path(s): "
+            + ", ".join(existing)
+            + "; choose a new --run-label"
+        )
+
+
 def parse_model(content: str) -> dict:
     text = content.strip()
     if text.startswith("```"):
@@ -124,35 +148,33 @@ def parse_model(content: str) -> dict:
     return obj
 
 
-def write_templates() -> None:
-    out = ROOT / "prompts"
-    out.mkdir(exist_ok=True)
-    for condition in CONDITIONS:
-        label = CONDITIONS[condition]
-        (out / f"experiment2_{condition}_{label}.md").write_text(
-            f"Experiment 2 condition {condition}: {label}\n\n"
-            "The executable prompt is assembled by scripts/run_experiment2.py from the same target context and the condition-specific history representation.\n"
-        )
-
-
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--attempts", type=int, default=MAX_ATTEMPTS)
     parser.add_argument("--condition", choices=["A", "B", "C"], action="append")
-    parser.add_argument("--run-label", default="", help="optional artifact/test suffix used to preserve an exploratory run")
+    parser.add_argument("--run-label", required=True, help="new artifact/test suffix; it must not already exist")
     args = parser.parse_args()
     attempts = min(max(args.attempts, 1), MAX_ATTEMPTS)
     selected = args.condition or list(CONDITIONS)
+    try:
+        run_label = validate_run_label(args.run_label)
+    except ValueError as exc:
+        parser.error(str(exc))
     context = (ROOT / "data/experiment2_target_context/PySnooper-1.txt").read_text()
     raw = json.loads((ROOT / "data/experiment2_historical_raw.json").read_text())
     structured = json.loads((ROOT / "data/experiment2_historical_structured.json").read_text())
-    client = DeepSeekClient(model="deepseek-flash", temperature=0.2)
-    suffix = f"_{args.run_label}" if args.run_label else ""
-    out_root = ROOT / f"artifacts/experiment2_llm{suffix}/PySnooper_1"
-    test_root = ROOT / f"generated_tests/experiment2{suffix}/PySnooper_1"
+    suffix = f"_{run_label}"
+    run_output_root = ROOT / f"artifacts/experiment2_llm{suffix}"
+    run_test_root = ROOT / f"generated_tests/experiment2{suffix}"
+    try:
+        ensure_fresh_run_paths(run_output_root, run_test_root)
+    except ValueError as exc:
+        parser.error(str(exc))
+    out_root = run_output_root / "PySnooper_1"
+    test_root = run_test_root / "PySnooper_1"
     out_root.mkdir(parents=True, exist_ok=True)
     test_root.mkdir(parents=True, exist_ok=True)
-    write_templates()
+    client = DeepSeekClient(model="deepseek-flash", temperature=0.2)
     all_records = []
     for condition in selected:
         for attempt in range(1, attempts + 1):

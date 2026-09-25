@@ -1,7 +1,10 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from scripts.run_experiment2 import parse_model, prompt_for
+from scripts.run_experiment2 import ensure_fresh_run_paths, validate_run_label
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -36,3 +39,19 @@ def test_parser_canonicalizes_test_and_no_support():
     abstain = parse_model('{"status":"NOT_APPLICABLE","applicability_decisions":["not applicable"]}')
     assert test["status"] == "TEST"
     assert abstain["status"] == "NO_SUPPORTED_HYPOTHESIS"
+
+
+def test_run_label_rejects_path_traversal_and_empty_values():
+    with pytest.raises(ValueError):
+        validate_run_label("")
+    with pytest.raises(ValueError):
+        validate_run_label("../reuse")
+
+
+def test_new_experiment2_run_refuses_existing_output_root(tmp_path):
+    output_root = tmp_path / "artifacts"
+    test_root = tmp_path / "tests"
+    output_root.mkdir()
+
+    with pytest.raises(ValueError, match="refusing to reuse"):
+        ensure_fresh_run_paths(output_root, test_root)
