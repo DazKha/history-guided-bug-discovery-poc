@@ -22,7 +22,7 @@ The core verifier reads and aggregates:
 - `results/experiment2_replication2.csv`: the clean replication, two preserved five-attempt halves, ten attempts per condition.
 - `results/experiment2_re_evaluated.csv`: cumulative evidence, 25 attempts per condition across the preserved batches.
 
-It derives mechanism matches from `hypothesis_matches_true_failure_mechanism` and verified F2P from `verified_f2p`. It verifies the condition names, batch labels, required fields, and exact documented counts. It does not rerun generation or instantiate a provider.
+It derives the v1 mechanism-related signal from `hypothesis_matches_true_failure_mechanism` and verified F2P from `verified_f2p`. It verifies the condition names, batch labels, required fields, and exact documented counts. It does not rerun generation or instantiate a provider.
 
 The Experiment 4 verifier checks the frozen CSV hashes, evidence-bundle hashes, exact replay metrics, and generated report consistency:
 
@@ -34,6 +34,8 @@ replay --config configs/experiment4.json --artifacts artifacts/experiment4/itera
 
 No `DEEPSEEK_API_KEY` is needed for these commands, no provider is constructed, and no target checkout is required by evidence replay.
 
+To inspect the prompt assembled by the current Experiment 2 runner without an LLM call, run `python scripts/render_experiment2_prompt.py --condition C --attempt 1` (replace `C` with `A` or `B` to inspect another condition). A new A/B/C generation run uses `python scripts/run_experiment2.py --run-label reviewer-20260925 --attempts 5` and requires `DEEPSEEK_API_KEY`; it is intentionally separate from the offline checks.
+
 ## External harness
 
 If `workspace/harness-pysnooper-buggy` and `workspace/harness-pysnooper-fixed` are present with their `env39` runtimes, run:
@@ -42,7 +44,7 @@ If `workspace/harness-pysnooper-buggy` and `workspace/harness-pysnooper-fixed` a
 python scripts/verify_harness.py
 ```
 
-The expected machine-readable result is `buggy=1` and `fixed=0`. The script also records execution logs and environment metadata under `artifacts/harness/`. If the preserved checkouts are absent, offline evidence verification remains valid and the external check is skipped.
+The expected machine-readable result is `buggy=1` and `fixed=0`. The script also records execution logs and environment metadata under `artifacts/harness/`. If the preserved checkouts are absent, `verify_harness.py` cannot start and fails with a missing-checkout error; offline evidence verification remains valid.
 
 ## Provenance
 

@@ -12,9 +12,9 @@ The controlled comparison uses the same target, model/configuration, execution e
 
 - **A — Target only**
 - **B — Target plus raw historical issue context**
-- **C — Target plus structured historical knowledge**
+- **C — Target plus structured historical knowledge and applicability-aware instructions**
 
-B and C use the same underlying historical cases. C adds mechanism-oriented fields and an applicability decision.
+B and C use the same underlying historical cases. C adds mechanism-oriented fields and instructions to make bounded applicability decisions.
 
 ## 3. Structured-history intervention
 
@@ -24,25 +24,25 @@ Historical records were reorganized around context, preconditions, trigger, expe
 
 The clean replication contains ten attempts per condition in `results/experiment2_replication2.csv`:
 
-| Condition | Mechanism matches | Attempts | Verified F2P |
+| Condition | v1 mechanism-related signal | Attempts | Verified F2P |
 | --- | ---: | ---: | ---: |
 | A — Target only | 0 | 10 | 0 |
 | B — Raw history | 1 | 10 | 0 |
 | C — Structured history | 6 | 10 | 0 |
 
-Structured history improved mechanism targeting in this selected case. It did not by itself produce an executable differential test.
+Configuration C produced more mechanism-related hypotheses under the recorded v1 metric in this selected case. It did not produce an executable differential test in the clean replication.
 
 ## 5. What improved
 
 The cumulative record in `results/experiment2_re_evaluated.csv` contains 25 attempts per condition:
 
-| Condition | Mechanism matches | Attempts | Verified F2P |
+| Condition | v1 mechanism-related signal | Attempts | Verified F2P |
 | --- | ---: | ---: | ---: |
 | A — Target only | 0 | 25 | 0 |
 | B — Raw history | 2 | 25 | 0 |
 | C — Structured history | 15 | 25 | 2 |
 
-The cumulative mechanism-match pattern supports the same narrow targeting conclusion. The two F2P cases occurred in exploratory structured-history runs and were verified against buggy and fixed revisions.
+The cumulative v1 mechanism-related signal supports the same narrow targeting conclusion. The two F2P cases occurred in exploratory C runs and were verified against buggy and fixed revisions.
 
 ## 6. What did not improve
 
@@ -54,7 +54,7 @@ The remaining bottleneck was the transition from a correct mechanism hypothesis 
 
 ## 8. Trigger Plan refinement
 
-Experiment 4 addressed that downstream bottleneck with a strict Trigger Plan contract, deterministic validation, and bounded repair:
+Experiment 4 addressed that downstream bottleneck with a strict Trigger Plan contract, deterministic validation, and bounded repair. It is a separate downstream comparison over frozen hypotheses, not a rerun of the Experiment 2 A/B/C generation:
 
 - valid plans improved from 2/5 hypotheses to 5/5;
 - hypotheses with at least one F2P improved from 3/5 for direct generation to 4/5 for the planner under the budget-matched comparison;
@@ -68,7 +68,7 @@ The repository preserves the A/B/C evidence, leakage boundary, frozen hypotheses
 
 ## 10. Limitations
 
-This is one selected target with small attempt counts, no statistical significance analysis, no recall denominator, and no broad cross-project generalization claim. A mechanism match is not equivalent to a verified F2P test.
+This is one selected target with small attempt counts, no statistical significance analysis, no recall denominator, and no broad cross-project generalization claim. The v1 mechanism-related signal is not equivalent to a verified F2P test.
 
 ## 11. Next engineering step
 

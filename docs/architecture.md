@@ -42,11 +42,11 @@ The three controlled strategies are:
 
 - **A — Target only:** target context without history.
 - **B — Raw history:** target context plus raw historical issue material.
-- **C — Structured history:** target context plus the same historical cases represented as mechanism-level knowledge and applicability-aware evidence.
+- **C — Structured history:** target context plus the same historical cases represented as mechanism-level knowledge and applicability-aware instructions.
 
 This stage produces a hypothesis with a possible failure mechanism, trigger idea, expected invariant, and target-supported oracle. Hypotheses are frozen before executable test generation.
 
-**Implemented in the current POC:** A/B/C prompt contracts, raw/structured history inputs, frozen hypotheses, and machine-readable Experiment 2 evidence.
+**Implemented in the current POC:** A/B/C prompt contracts, raw/structured history inputs, applicability-aware C instructions, frozen hypotheses, and machine-readable Experiment 2 evidence.
 
 **Partially implemented:** the structured-history records are prepared rather than learned, and the current target is one retrospectively selected transfer-feasibility case.
 
@@ -92,3 +92,7 @@ A semantic failure must be distinguished from syntax, import, setup, or unrelate
 `LOAD_CONFIG → PREPARE_TARGET → LOAD_HISTORY → LOAD_OR_GENERATE_HYPOTHESIS → FREEZE_HYPOTHESIS → GENERATE_TRIGGER_PLAN (optional) → VALIDATE_TRIGGER_PLAN (optional) → GENERATE_TEST → PREFLIGHT_TEST → EXECUTE_BUGGY → EXECUTE_FIXED → EVALUATE → PERSIST → REPORT`
 
 The optional Trigger Plan steps are downstream of history-guided hypothesis generation. They do not replace the A/B/C comparison.
+
+## Recorded result boundary
+
+The clean Experiment 2 replication records A `0/10`, B `1/10`, and C `6/10` under the v1 mechanism-related signal, with zero verified F2P in all three conditions. Experiment 4 is a separate downstream comparison over frozen hypotheses and preserved artifacts; its replay metrics are not an A/B/C rerun.

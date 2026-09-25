@@ -64,7 +64,9 @@ It requires `workspace/harness-pysnooper-buggy/PySnooper` and `workspace/harness
 
 The clean preserved comparison has 10 attempts per condition. One attempt is one hypothesis-generation call, not one target bug and not necessarily one executable test.
 
-| Condition | Agent-visible input | Existing v1 rule-based mechanism-related signal | Attempts | Verified F2P |
+The **v1 mechanism-related signal** is a heuristic indicator that a generated response contains both encoding-related and target-related language. It is useful for this PoC's upstream comparison, but it is not a complete semantic validation of every causal detail. The implementation is mapped in [`scripts/evaluate_experiment2.py`](scripts/evaluate_experiment2.py) and [`docs/code-map.md`](docs/code-map.md).
+
+| Condition | Agent-visible input | v1 mechanism-related signal | Attempts | Verified F2P |
 | --- | --- | ---: | ---: | ---: |
 | A `TARGET_ONLY` | target context only | 0 | 10 | 0 |
 | B `NAIVE_RAW_HISTORY` | target context + raw history | 1 | 10 | 0 |
@@ -72,22 +74,38 @@ The clean preserved comparison has 10 attempts per condition. One attempt is one
 
 In compact form, the preserved v1 signal is A `0/10`, B `1/10`, C `6/10`.
 
-These are the unchanged historical v1 counts from `results/experiment2_replication2.csv`. The existing signal is not six independently validated, fully mechanism-aligned hypotheses: `scripts/evaluate_experiment2.py` checks for at least one encoding-related token and at least one target-related token across hypothesis, trigger, failure, test, and oracle text. It is a broad rule-based mechanism-related signal. Verified F2P is the stronger downstream result and is zero in this clean replication.
+These are the unchanged historical counts from `results/experiment2_replication2.csv`. Verified F2P is the stronger downstream result and is zero in this clean replication. On the selected `PySnooper:1` target, configuration C produced more mechanism-related hypotheses under the recorded v1 metric than the two baseline configurations.
 
 Condition C therefore changes both the history representation and the instructions: it supplies structured failure knowledge and asks for bounded `SUPPORTED`, `WEAK`, or `NOT_APPLICABLE` applicability decisions. The result should not be attributed to data formatting alone.
 
 ## Inspect one hypothesis through its result
 
-The preserved conditional hypothesis `conditional-h01` can be followed from source to downstream result with standard tools:
+The preserved conditional hypothesis `conditional-h01` can be followed from source to downstream result using only the documented Python setup:
 
 ```bash
-jq '.[] | select(.hypothesis_id == "conditional-h01")' data/experiment3_conditional_hypotheses.json
-jq '.' artifacts/experiment4/iteration3/hypotheses/conditional-h01-e0c8bd3ab2.json
-jq '.' artifacts/experiment4/iteration3/C2/conditional-h01-e0c8bd3ab2__plan-1.json
-rg 'conditional-h01-e0c8bd3ab2' artifacts/experiment4/iteration3/C2/evidence-rows.csv
+python - <<'PY'
+import csv, json
+from pathlib import Path
+
+root = Path('.')
+source = json.loads((root / 'data/experiment3_conditional_hypotheses.json').read_text())
+frozen = json.loads((root / 'artifacts/experiment4/iteration3/hypotheses/conditional-h01-e0c8bd3ab2.json').read_text())
+plan = json.loads((root / 'artifacts/experiment4/iteration3/C2/conditional-h01-e0c8bd3ab2__plan-2.json').read_text())
+with (root / 'artifacts/experiment4/iteration3/C2/evidence-rows.csv').open(newline='') as handle:
+    evidence = next(row for row in csv.DictReader(handle) if row['hypothesis_id'] == 'conditional-h01-e0c8bd3ab2' and row['trigger_id'] == plan['trigger_id'])
+
+print('1. Frozen hypothesis input:')
+print(json.dumps(next(item for item in source if item['hypothesis_id'] == 'conditional-h01'), indent=2))
+print('2. Experiment 4 frozen copy:')
+print(json.dumps(frozen, indent=2))
+print('3. One C2 Trigger Plan candidate:')
+print(json.dumps(plan, indent=2))
+print('4. Preserved buggy/fixed evidence row (plan-2):')
+print(json.dumps(evidence, indent=2))
+PY
 ```
 
-The first file is the frozen hypothesis source, the second is the Experiment 4 copy, the third is one Trigger Plan/test candidate, and the CSV row contains the replayable buggy/fixed classification. The corresponding preserved generated test and execution logs are referenced by the artifact/evidence records.
+The source JSON shows the hypothesis produced from condition C. The frozen copy shows the exact downstream input, the plan JSON shows how C2 turns it into a trigger candidate, and the evidence row shows the preserved buggy/fixed classification plus paths to the generated test and execution logs.
 
 ## Where the important pieces live
 
@@ -113,12 +131,13 @@ There are no standalone executable Experiment 2 prompt files: the current runner
 
 - The target set is one selected BugsInPy target and the historical cases were selected retrospectively.
 - Structured history is prepared data, not learned memory or autonomous retrieval.
-- The v1 mechanism signal is rule-based and broad; it does not validate a complete causal explanation.
+- The clean A/B/C replication is a single-target result; the v1 mechanism-related signal is not a verified F2P outcome.
 - The clean A/B/C replication produced no verified F2P. Plausible hypotheses can still fail during trigger construction, assertion design, or execution setup.
 - Live generation and the external harness require an API key and/or external target checkouts that are not part of this public clone.
 
 ## Detailed documentation
 
+- [Documentation and evidence index](docs/evidence-index.md)
 - [Code and prompt map](docs/code-map.md)
 - [Architecture and implementation boundary](docs/architecture.md)
 - [Reproducibility and provenance](docs/reproducibility.md)

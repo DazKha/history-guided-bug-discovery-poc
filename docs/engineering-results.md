@@ -14,7 +14,7 @@ The controlled comparison uses:
 
 - **A — Target only:** the bounded target context without historical cases.
 - **B — Raw history:** the target context plus the selected historical issue material in raw form.
-- **C — Structured history:** the target context plus the same underlying historical cases converted into mechanism-oriented knowledge and an applicability decision.
+- **C — Structured history:** the target context plus the same underlying historical cases converted into mechanism-oriented knowledge and applicability-aware instructions.
 
 The protocol keeps target context, model/configuration, runtime, evaluator policy, and comparable attempt budget aligned across conditions. The clean replication is the two preserved five-attempt halves in `results/experiment2_replication2.csv`, giving ten attempts per condition.
 
@@ -28,7 +28,7 @@ The implementation currently uses prepared structured records and fixed prompt s
 
 The clean replication is derived from `results/experiment2_replication2.csv`:
 
-| Condition | Mechanism matches | Attempts | Verified F2P |
+| Condition | v1 mechanism-related signal | Attempts | Verified F2P |
 | --- | ---: | ---: | ---: |
 | A — Target only | 0 | 10 | 0 |
 | B — Raw history | 1 | 10 | 0 |
@@ -36,24 +36,24 @@ The clean replication is derived from `results/experiment2_replication2.csv`:
 
 The source mapping is explicit:
 
-- Mechanism match: `hypothesis_matches_true_failure_mechanism == "yes"`.
+- The v1 mechanism-related signal is a heuristic indicator recorded in `hypothesis_matches_true_failure_mechanism`; it looks for mechanism-related and target-related language and is not complete semantic validation.
 - Verified F2P: `verified_f2p == "True"`; blank values are non-F2P because no verified result exists.
 - Conditions: `A/TARGET_ONLY`, `B/NAIVE_RAW_HISTORY`, and `C/STRUCTURED_APPLICABILITY_AWARE`.
 - Clean replication: `run_label == "replication2"` with source batches `replication2b` and `replication2c`.
 
-The result supports a narrow engineering conclusion: structured history improved mechanism targeting in this selected transfer-feasibility case. It does not establish that structured history alone produces more executable differential tests.
+The result supports a narrow engineering conclusion: configuration C produced more mechanism-related hypotheses under the recorded v1 metric than the two baselines in this selected transfer-feasibility case. It does not establish that C produces more executable differential tests.
 
 ## 5. What improved
 
 The cumulative file `results/experiment2_re_evaluated.csv` combines the preserved batches and is supporting evidence:
 
-| Condition | Mechanism matches | Attempts | Verified F2P |
+| Condition | v1 mechanism-related signal | Attempts | Verified F2P |
 | --- | ---: | ---: | ---: |
 | A — Target only | 0 | 25 | 0 |
 | B — Raw history | 2 | 25 | 0 |
 | C — Structured history | 15 | 25 | 2 |
 
-The structured condition retained the mechanism-match advantage across the cumulative record. The two verified F2P rows are both exploratory structured-history cases and are valid buggy/fixed differential outcomes under the recorded evaluator rule.
+Configuration C retained the v1 mechanism-related signal advantage across the cumulative record. The two verified F2P rows are both exploratory C cases and are valid buggy/fixed differential outcomes under the recorded evaluator.
 
 ## 6. What did not improve
 
@@ -72,7 +72,7 @@ The evaluator was kept fixed for the later engineering work. The strongest signa
 
 ## 8. Trigger Plan refinement
 
-Experiment 4 added a strict Trigger Plan contract inside executable-test generation. The plan makes preconditions, initial state, actions, observable, assertion, and timeout explicit; deterministic validation rejects incomplete or evaluator-leaking plans; bounded repair addresses invalid planner output.
+Experiment 4 added a strict Trigger Plan contract inside executable-test generation. It is a separate downstream comparison over frozen hypotheses, not an A/B/C rerun. The plan makes preconditions, initial state, actions, observable, assertion, and timeout explicit; deterministic validation rejects incomplete or evaluator-leaking plans; bounded repair addresses invalid planner output.
 
 The downstream comparison found:
 
@@ -107,7 +107,7 @@ Proposed future extension:
 
 ## 10. Limitations
 
-This is one selected target and one retrospectively selected transfer-feasibility case with small attempt counts. It has no statistical significance analysis, no recall denominator, and no broad cross-project generalization claim. The clean replication is evidence about mechanism targeting under this protocol, not a universal ranking of prompting methods.
+This is one selected target and one retrospectively selected transfer-feasibility case with small attempt counts. It has no statistical significance analysis, no recall denominator, and no broad cross-project generalization claim. The clean replication is evidence about the v1 mechanism-related signal under this protocol, not a universal ranking of prompting methods.
 
 ## 11. Next engineering step
 
